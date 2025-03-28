@@ -1,42 +1,83 @@
-﻿﻿/** \file application.cpp */
+﻿/** \file application.cpp */
 
 #include "core/application.hpp"
 #include "tracy/tracy.hpp"
 
-void* operator new (std::size_t count)
-{
-	//spdlog::info("Allocating size of {}", count);
-	void* ptr;
-	if (Application::MainLoop && Application::memArena != nullptr) {
-		spdlog::info("Allocating size of + Arena {}", count);
-		ptr = ((Arena*)Application::memArena.get())->get(count);
-		//TracyAllocN(ptr, count, "Arena");
+#include <iostream>
+#include <thread>
+#include <chrono>
+#include <SDL.h>
+#include <SDL_mixer.h>
+
+
+void playSoundWithVolumeControl(const char* filePath, int initialVolume = MIX_MAX_VOLUME / 2) {
+	// Initialize SDL
+
+	if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+		std::cerr << "SDL Initialization Error: " << SDL_GetError() << "\n";
+		return;
+	}
+
+	// Initialize SDL_mixer
+	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+		std::cerr << "SDL_mixer Initialization Error: " << Mix_GetError() << "\n";
+		SDL_Quit();
+		return;
+	}
+
+	// Load sound
+	Mix_Chunk* sound = Mix_LoadWAV(filePath);
+	if (!sound) {
+		std::cerr << "Failed to load sound: " << Mix_GetError() << "\n";
+		Mix_CloseAudio();
+		SDL_Quit();
+		return;
+	}
+
+	// Set initial volume
+	Mix_VolumeChunk(sound, initialVolume);
+
+	// Play the sound
+	int channel = Mix_PlayChannel(-1, sound, -1);  // -1 selects first available channel
+	
+	if (channel == -1) {
+		std::cerr << "Error playing sound: " << Mix_GetError() << "\n";
 	}
 	else {
+		std::cout << "Playing sound. Use '+' to increase and '-' to decrease volume. Press 'q' to quit.\n";
 
-		ptr = malloc(count);
-		TracyAlloc(ptr, count);
-	}
+		// Volume control loop
+		char input;
+		bool run = true;
+		while (run) {
+			std::cin >> input;
 
-	return ptr;
-}
-
-void operator delete (void* ptr) noexcept
-{
-
-
-	if (Application::MainLoop && Application::memArena != nullptr) {
-		//TracyFreeN(ptr, "Arena");
-		if (!((Arena*)Application::memArena.get())->release(ptr)) {
-			free(ptr);
+			//Mix_SetPosition()
+			if (input == '+') {
+				int newVolume = Mix_Volume(channel, -1) + 10;
+				Mix_Volume(channel, std::min(newVolume, MIX_MAX_VOLUME));
+			}
+			else if (input == '-') {
+				int newVolume = Mix_Volume(channel, -1) - 10;
+				Mix_Volume(channel, std::max(newVolume, 0));
+			}
+			else if (input == 'l') {
+				Mix_SetPanning(channel, 255, 0);
+			}
+			else if (input == 'r') {
+				Mix_SetPanning(channel, 0, 255);
+			}
+			else if (input == 'q') {
+				run = false;
+				Mix_HaltChannel(channel);
+			}
 		}
-
-	}
-	else {
-		TracyFree(ptr);
-		free(ptr);
 	}
 
+	// Clean up
+	Mix_FreeChunk(sound);
+	Mix_CloseAudio();
+	SDL_Quit();
 }
 
 Application::Application(const WindowProperties& winProps)
@@ -48,26 +89,25 @@ Application::Application(const WindowProperties& winProps)
 	m_window.handler.onKeyRelease = [this](KeyReleasedEvent& e) {onKeyReleased(e);};
 
 	auto setupTime = m_timer.reset();
-	memArena = std::make_shared<Arena>();
-
 }
 
-void Application::run()
+void Application::run() 
 {
-	spdlog::debug("Application running");
+	//const char* soundFile = "./assets/sounds/Extraction_soft_var0.wav";  // Replace with your file path
+	//playSoundWithVolumeControl(soundFile);
+
+    spdlog::debug("Application running");
 
 	glEnable(GL_DEPTH_TEST);
-	Application::MainLoop = true;
-	while (m_running) {
+
+	while (m_running) {		
 		auto timestep = m_timer.reset();
 
-
 		onUpdate(timestep);
-		if (m_window.isHostingImGui()) onImGuiRender();
+		if(m_window.isHostingImGui()) onImGuiRender();
 		onRender();
 
 		m_window.onUpdate(timestep);
-
 	}
 }
 
@@ -83,21 +123,7 @@ void Application::onRender() const
 
 void Application::onImGuiRender()
 {
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	ImGui::NewFrame();
-
-	if (m_ImGuiOpen)
-	{
-		ImGui::Begin("ImGUI Window", &m_ImGuiOpen, ImGuiWindowFlags_MenuBar);
-		if (!m_ImGuiOpen) spdlog::info("ImGui window closed. Press I to reopen it.");
-
-		if (m_layer) m_layer->onImGUIRender();
-
-		ImGui::End();
-	}
-
-	ImGui::Render();
+    if (m_layer) m_layer->onImGUIRender();
 }
 
 void Application::onClose(WindowCloseEvent& e)
@@ -121,7 +147,7 @@ void Application::onKeyPressed(KeyPressedEvent& e)
 		return;
 	}
 
-	else {
+	else{
 		if (e.getKeyCode() == GLFW_KEY_I) m_ImGuiOpen = true;
 		if (m_layer) m_layer->onKeyPressed(e);
 		e.handle();
@@ -152,145 +178,4 @@ void Application::onMouseMoved(MouseMovedEvent& e)
 void Application::onMouseScrolled(MouseScrolledEvent& e)
 {
 	if (m_layer) m_layer->onMouseScrolled(e);
-}
-
-bool getBitAtOffset(const void* ptr, uint8_t bitOffset) {
-
-	// Access the byte at the given offset
-	uint8_t byte = *((char*)ptr + (bitOffset / 8));
-
-	// Extract the bit at the specified bitOffset
-	return (byte & (1 << (bitOffset % 8))) != 0;
-
-}
-
-void flipBitAtOffset(void* ptr, uint8_t bitOffset) {
-
-	// Access the byte at the given offset
-	char* a = ((char*)ptr + (bitOffset / 8));
-	char byte = *a;
-	// Change the bit
-	byte ^= (1 << (bitOffset % 8));
-
-	*a = byte;
-
-}
-struct extraSize {
-	int x{ 0 };
-	int y{ 0 };
-	int z{ 0 };
-	int w{ 0 };
-};
-Arena::Arena()
-{
-
-	std::size_t totalMemNeeded = 0;
-
-
-	int currentOffset = 0;
-	for (int i = 0; i < m_sizes.size(); i++) {
-		totalMemNeeded += m_sizes[i] * m_counts[i];
-		m_availability[i] = (char*)malloc(m_counts[i] / 8);
-		std::vector<char> o(m_counts[i] / 8);
-		std::memcpy(((char*)m_availability[i]), o.data(), m_counts[i] / 8);
-
-	}
-	m_base.reset(malloc(totalMemNeeded));
-	n_size = totalMemNeeded;
-	for (int i = 0; i < m_basePtrs.size(); i++) {
-		m_basePtrs[i] = (void*)((char*)m_base.get() + currentOffset);
-		currentOffset += m_sizes[i] * m_counts[i];
-	}
-
-}
-
-
-
-void* Arena::get(size_t count)
-{
-	std::size_t temp = -1;
-	for (int i = 0; i < m_sizes.size(); i++) {
-		if (count <= m_sizes[i]) {
-			temp = i;
-			break;
-		}
-	}
-
-	//spdlog::info("Geting for Size: {}", m_sizes[temp]);
-	while (temp < m_sizes.size()) {
-		for (int i = 0; i < m_counts[temp] / 8; i++) {
-			if (m_availability[temp] == nullptr) {
-				break;
-			}
-			char* selected = (char*)m_availability[temp] + i;
-			if (*selected != 'ÿ') { // checks if byte is 11111111
-				for (int j = 0; j < 8; j++) {
-					if (!getBitAtOffset(selected, j)) {
-						flipBitAtOffset(selected, j);
-						void* outptr = (void*)((char*)m_basePtrs[temp] + (j * m_sizes[temp]));
-						//spdlog::info("Added At Offset: {}", (char*)outptr - (char*)m_base.get());
-						return outptr;
-					}
-				}
-			}
-		}
-		temp++;
-	}
-	return nullptr;
-}
-
-bool Arena::release(void* ptr)
-{
-
-	uint32_t GlobalOffset = (char*)ptr - (char*)m_base.get();
-	if (GlobalOffset > n_size || GlobalOffset < 0) {
-		return false;
-	}
-
-	uint32_t offset = 0;
-	uint32_t counter;
-	for (int i = 0; i < m_basePtrs.size(); i++)
-	{
-		offset = (char*)ptr - (char*)m_basePtrs[i];
-		if (offset >= 0) {
-			counter = i;
-			break;
-		}
-	}
-
-	if ((unsigned long long)m_availability[counter] == 0xdddddddddddddddd) {
-		return false;
-	}
-	flipBitAtOffset((char*)m_availability[counter], offset / m_sizes[counter]);
-	//spdlog::info("Freed At Offset: {}", offset);
-	return true;
-
-	//uint32_t counter2 = 0;
-	//for (int i = 0; i < m_counts.size(); i++) {
-	//	counter2 += m_counts[i] * m_sizes[i];
-	//	if (counter2 >= offset) {
-	//		counter2 -= m_counts[i] * m_sizes[i];
-	//		offset -= counter2;
-	//		
-
-	//	}
-	//}
-
-}
-
-void Arena::clear()
-{
-	std::size_t totalMemNeeded = 0;
-	for (int i = 0; i < m_sizes.size(); i++) {
-		totalMemNeeded += m_sizes[i] + m_counts[i];
-		if (m_availability[i] != nullptr) free(m_availability[i]);
-		m_availability[i] = (char*)malloc(m_counts[i] / 8);
-	}
-	m_base.reset(malloc(totalMemNeeded));
-
-	int currentOffset = 0;
-	for (int i = 0; i < m_basePtrs.size(); i++) {
-		m_basePtrs[i] = (void*)((char*)m_base.get() + currentOffset);
-		currentOffset += m_sizes[i] * m_counts[i];
-	}
 }

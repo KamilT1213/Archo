@@ -5,6 +5,7 @@
 #include "core/log.hpp"
 #include "core/timer.hpp"
 #include "core/physics.hpp"
+#include "core/randomiser.hpp"
 
 #include "assets/cubeMap.hpp"
 #include "assets/managedTexture.hpp"
@@ -42,6 +43,8 @@
 #include "rendering/renderer.hpp"
 #include "rendering/renderPass.hpp"
 #include "rendering/uniformDataTypes.hpp"
+
+#include "sound/soundManager.hpp"
 
 #include "windows/GLFW_GL_GC.hpp"
 #include "windows/GLFWSystem.hpp"

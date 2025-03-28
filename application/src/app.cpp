@@ -5,7 +5,7 @@
 
 App::App(const WindowProperties& winProps) : Application(winProps)
 {
-	m_layer = std::unique_ptr<Layer>(new AsteriodBelt(m_window));
+	m_layer = std::unique_ptr<Layer>(new Archo(m_window));
 }
 
 Application* startApplication()

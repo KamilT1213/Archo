@@ -17,7 +17,7 @@
 #include "rendering/renderPass.hpp"
 #include "rendering/renderer.hpp"
 
-class Arena;
+//class Arena;
 /** \class Application
  *  \brief Provides an application with a window, OpenGL context, logger (spdlog) and a timer.
  */
@@ -27,7 +27,7 @@ public:
 	explicit Application(const WindowProperties& winProps); //!< User defined constructor
 	void run();	//!< Run the application
 	glm::ivec2 getWindowSize() { return m_window.getSize(); }
-	inline static std::shared_ptr<Arena> memArena{ nullptr };
+	//inline static std::shared_ptr<Arena> memArena{ nullptr };
 
 protected:
 	GLFWWindowImpl m_window; //!< GLFW Window
@@ -59,44 +59,44 @@ public:
 // To be defined in users code
 Application* startApplication(); //!< Function definition which provides an entry hook
 
-void* operator new (std::size_t count);
-
-
-void operator delete (void* ptr) noexcept;
+//void* operator new (std::size_t count);
+//
+//
+//void operator delete (void* ptr) noexcept;
 
 
 // To be defined in users code
-Application* startApplication(); //!< Function definition which provides an entry hook
+//Application* startApplication(); //!< Function definition which provides an entry hook
 
-struct block {
-	void* ptr;
-	size_t length;
-};
-
-
-//Blk malloc(size_t size);
-//void free(Blk block)
-
-class Arena
-{
-
-public:
-	Arena();
-	void* get(size_t count);
-	bool release(void* ptr);
-	void clear();
-
-private:
-	static const size_t sections = 19;
-	std::unique_ptr<void, decltype([](void* ptr) {free(ptr); }) > m_base{ nullptr };
-	//std::unique_ptr<void> m_base;
-	std::array<void*, sections> m_basePtrs = { nullptr,nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-	std::array<void*, sections> m_currentPtrs = { nullptr,nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-
-	const std::array<size_t, sections> m_sizes = { 16,32,64,128, 256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304 };
-	const std::array<size_t, sections> m_counts = { 128,64,128,128,256,128, 256,128,32,8,16,8,8,8,8,8,8,8,8 };
-	//std::array<size_t, sections> m_used = { 0,0,0,0,0,0,0,0,0,0,0,0 };
-	std::array<void*, sections> m_availability;
-	size_t n_allocCount{ 0 };
-	size_t n_size{ 0 };
-};
+//struct block {
+//	void* ptr;
+//	size_t length;
+//};
+//
+//
+////Blk malloc(size_t size);
+////void free(Blk block)
+//
+//class Arena
+//{
+//
+//public:
+//	Arena();
+//	void* get(size_t count);
+//	bool release(void* ptr);
+//	void clear();
+//
+//private:
+//	static const size_t sections = 19;
+//	std::unique_ptr<void, decltype([](void* ptr) {free(ptr); }) > m_base{ nullptr };
+//	//std::unique_ptr<void> m_base;
+//	std::array<void*, sections> m_basePtrs = { nullptr,nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+//	std::array<void*, sections> m_currentPtrs = { nullptr,nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+//
+//	const std::array<size_t, sections> m_sizes = { 16,32,64,128, 256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304 };
+//	const std::array<size_t, sections> m_counts = { 128,64,128,128,256,128, 256,128,32,8,16,8,8,8,8,8,8,8,8 };
+//	//std::array<size_t, sections> m_used = { 0,0,0,0,0,0,0,0,0,0,0,0 };
+//	std::array<void*, sections> m_availability;
+//	size_t n_allocCount{ 0 };
+//	size_t n_size{ 0 };
+//};

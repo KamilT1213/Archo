@@ -9,6 +9,8 @@ FBO::FBO(glm::ivec2 size, FBOLayout layout) :
 	glCreateFramebuffers(1, &m_ID);
 
 	uint32_t colourAttachementCount = 0;
+	uint32_t thisAttachment{ 0 };
+
 	for (auto& [type, isSampled] : m_layout) // Using structured bindings
 	{
 		if (isSampled)
@@ -22,14 +24,18 @@ FBO::FBO(glm::ivec2 size, FBOLayout layout) :
 			case AttachmentType::Colour:
 				td.channels = 4;
 				m_sampledTargets.push_back(std::make_shared<Texture>(td));
-				glNamedFramebufferTexture(m_ID, GL_COLOR_ATTACHMENT0 + colourAttachementCount, m_sampledTargets.back()->getID(), 0);
+				thisAttachment = GL_COLOR_ATTACHMENT0 + colourAttachementCount;
+				glNamedFramebufferTexture(m_ID, thisAttachment, m_sampledTargets.back()->getID(), 0);
+				m_colAttachments.push_back(thisAttachment);
 				colourAttachementCount++;
 				break;
 			case AttachmentType::ColourHDR:
 				td.channels = 4;
 				td.isHDR = true;
 				m_sampledTargets.push_back(std::make_shared<Texture>(td));
+				thisAttachment = GL_COLOR_ATTACHMENT0 + colourAttachementCount;
 				glNamedFramebufferTexture(m_ID, GL_COLOR_ATTACHMENT0 + colourAttachementCount, m_sampledTargets.back()->getID(), 0);
+				m_colAttachments.push_back(thisAttachment);
 				colourAttachementCount++;
 				break;
 			case AttachmentType::Depth:

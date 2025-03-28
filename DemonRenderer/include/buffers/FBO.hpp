@@ -34,7 +34,7 @@ public:
 	uint32_t getID() { return m_ID; } //!< Get the API specific render ID
 	std::shared_ptr<Texture> getTarget(uint32_t index);
 
-
+	std::vector<uint32_t> m_colAttachments; //!< Sampled colour targets ( no depth) 
 
 protected:
 	FBOLayout m_layout; //! Layout of FBO attachements

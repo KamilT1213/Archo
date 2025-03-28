@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10...3.29)
 
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 set(APPLICATION_NAME "Application")
 
 project(${APPLICATION_NAME} VERSION 1.0.0)
@@ -101,6 +105,7 @@ set (RENDERER_HEADER_FILES
 	"DemonRenderer/include/components/script.hpp"
 	"DemonRenderer/include/components/order.hpp"
 	"DemonRenderer/include/components/collidable.hpp"
+	"DemonRenderer/include/sound/soundManager.hpp"
 )
 set (RENDERER_SOURCE_FILES
 	"DemonRenderer/src/core/application.cpp"
@@ -131,6 +136,7 @@ set (RENDERER_SOURCE_FILES
 	"DemonRenderer/src/rendering/renderer.cpp"
 	"DemonRenderer/src/rendering/renderPass.cpp"
 	"DemonRenderer/src/rendering/depthOnlyPass.cpp"
+	"DemonRenderer/src/sound/soundManager.cpp"
 )
 
 # Add library target (renderer) and include directory
@@ -145,6 +151,37 @@ include(FetchContent)
 
 find_package(OpenGL REQUIRED)
 
+# Ensure SDL2 is installed
+set(SDL_ENABLE_CXX_20 ON CACHE BOOL "" FORCE)
+set(SDL_INSTALL ON CACHE BOOL "" FORCE)
+set(SDL_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(SDL_TESTS_LIBRARY OFF CACHE BOOL "" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL_SHARED ON CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+        SDL2
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+        GIT_TAG release-2.32.2
+)
+
+FetchContent_MakeAvailable(SDL2)
+
+set(SDL2MIXER_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    SDL2_mixer
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
+    GIT_TAG release-2.8.1
+)
+
+
+
+FetchContent_MakeAvailable(SDL2_mixer)
+
+
 FetchContent_Declare(
     spdlog
     GIT_REPOSITORY  https://github.com/gabime/spdlog.git
@@ -152,14 +189,22 @@ FetchContent_Declare(
 )
 
 
-set(GLM_ENABLE_CXX_20 ON CACHE BOOL "" FORCE)
-set(GLM_BUILD_LIBRARY ON CACHE BOOL "" FORCE)
+#set(GLM_ENABLE_CXX_20 ON CACHE BOOL "" FORCE)
+#set(GLM_BUILD_LIBRARY ON CACHE BOOL "" FORCE)
+
+set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE) # Make sure GLM is not built as a library
+set(GLM_STATIC_LIBRARY_ENABLE OFF CACHE BOOL "" FORCE) # Ensure it's not compiled
 
 FetchContent_Declare(
 	glm
 	GIT_REPOSITORY	https://github.com/g-truc/glm.git
 	GIT_TAG 		1.0.1
 )
+
+FetchContent_MakeAvailable(glm)
+
+target_include_directories(${APPLICATION_NAME} PRIVATE ${glm_SOURCE_DIR})
+target_include_directories(${RENDERER_NAME} PRIVATE ${glm_SOURCE_DIR})
 
 FetchContent_Declare(
 	glfw 
@@ -175,6 +220,16 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/SimonCouplandDMU/DMUGlad.git
   GIT_TAG        gl4.6_core_no_ext
  )
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries instead of shared" FORCE)
+
+FetchContent_MakeAvailable(glad)
+
+# Create a glad static library explicitly
+#add_library(glad STATIC ${glad_SOURCE_DIR}/src/glad.c)
+#target_include_directories(glad PUBLIC ${glad_SOURCE_DIR}/include)
+
+target_include_directories(${APPLICATION_NAME} PRIVATE ${glad_SOURCE_DIR}/include)
+target_include_directories(${RENDERER_NAME} PRIVATE ${glad_SOURCE_DIR}/include)
 
 set(ASSIMP_BUILD_ZLIB ON)
 set(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
@@ -207,12 +262,8 @@ FetchContent_Declare(entt
 	GIT_TAG			v3.13.2
 )
 
-FetchContent_Declare(meshOptimiser
-	GIT_REPOSITORY	https://github.com/zeux/meshoptimizer.git
-	GIT_TAG			v0.21
-)
 
-FetchContent_MakeAvailable(spdlog glm glfw glad assimp GSL tracy entt meshOptimiser)
+FetchContent_MakeAvailable(spdlog glfw assimp GSL tracy entt)
 
 # Override Tracy's default settings
 message(STATUS "TRACY_ON_DEMAND: ON (On-demand profiling)")
@@ -270,42 +321,44 @@ target_include_directories(stb_image_impl PUBLIC "${STB_IMAGE_DIR}")
 set_target_properties(${APPLICATION_NAME} PROPERTIES CXX_STANDARD 20)
 set_target_properties(${RENDERER_NAME} PROPERTIES CXX_STANDARD 20)
 set_target_properties(spdlog PROPERTIES CXX_STANDARD 20)
-set_target_properties(glm PROPERTIES CXX_STANDARD 20)
+#set_target_properties(glm PROPERTIES CXX_STANDARD 20)
 set_target_properties(glfw PROPERTIES CXX_STANDARD 20)
 set_target_properties(glad PROPERTIES CXX_STANDARD 20)
 set_target_properties(assimp PROPERTIES CXX_STANDARD 20)
 set_target_properties(imgui_glfw PROPERTIES CXX_STANDARD 20)
 set_target_properties(stb_image_impl PROPERTIES CXX_STANDARD 20)
+set_target_properties(SDL2 PROPERTIES CXX_STANDARD 20)
+set_target_properties(SDL2_mixer PROPERTIES CXX_STANDARD 20)
 set_target_properties(TracyClient PROPERTIES CXX_STANDARD 20)
-set_target_properties(meshoptimizer PROPERTIES CXX_STANDARD 20)
+
 
 
 target_link_libraries(${RENDERER_NAME} PRIVATE OpenGL::GL)
 target_link_libraries(${RENDERER_NAME} PRIVATE spdlog)
-target_link_libraries(${RENDERER_NAME} PRIVATE glm)
+#target_link_libraries(${RENDERER_NAME} PRIVATE glm)
 target_link_libraries(${RENDERER_NAME} PRIVATE glfw)
 target_link_libraries(${RENDERER_NAME} PRIVATE glad)
 target_link_libraries(${RENDERER_NAME} PRIVATE assimp)
 target_link_libraries(${RENDERER_NAME} PRIVATE Microsoft.GSL::GSL)
 target_link_libraries(${RENDERER_NAME} PRIVATE imgui_glfw)
 target_link_libraries(${RENDERER_NAME} PRIVATE stb_image_impl)
+target_link_libraries(${RENDERER_NAME} PRIVATE SDL2 SDL2_mixer)
 target_link_libraries(${RENDERER_NAME} PUBLIC TracyClient)
 target_link_libraries(${RENDERER_NAME} PRIVATE EnTT)
-target_link_libraries(${RENDERER_NAME} PRIVATE meshoptimizer)
 
 target_link_libraries(${APPLICATION_NAME} PRIVATE ${RENDERER_NAME})
 target_link_libraries(${APPLICATION_NAME} PRIVATE OpenGL::GL)
 target_link_libraries(${APPLICATION_NAME} PRIVATE spdlog)
-target_link_libraries(${APPLICATION_NAME} PRIVATE glm)
+#target_link_libraries(${APPLICATION_NAME} PRIVATE glm)
 target_link_libraries(${APPLICATION_NAME} PRIVATE glfw)
 target_link_libraries(${APPLICATION_NAME} PRIVATE glad)
 target_link_libraries(${APPLICATION_NAME} PRIVATE assimp)
 target_link_libraries(${APPLICATION_NAME} PRIVATE Microsoft.GSL::GSL)
 target_link_libraries(${APPLICATION_NAME} PRIVATE imgui_glfw)
 target_link_libraries(${APPLICATION_NAME} PRIVATE stb_image_impl)
+target_link_libraries(${APPLICATION_NAME} PRIVATE SDL2 SDL2_mixer)
 target_link_libraries(${APPLICATION_NAME} PUBLIC TracyClient)
 target_link_libraries(${APPLICATION_NAME} PRIVATE EnTT)
-target_link_libraries(${APPLICATION_NAME} PRIVATE meshoptimizer)
 
 set_target_properties(glad PROPERTIES FOLDER "Glad")
 
@@ -323,5 +376,5 @@ set_target_properties(stb_image_impl PROPERTIES FOLDER "stb_image")
 
 set_target_properties(TracyClient PROPERTIES FOLDER "tracy")
 
-set_target_properties(meshoptimizer PROPERTIES FOLDER "Mesh Optim")
+set_target_properties(SDL2 SDL2-static ogg opus opusfile sdl_headers_copy SDL2_test SDL2main uninstall wavpack xmp_shared SDL2_mixer PROPERTIES FOLDER "SDL2")
 

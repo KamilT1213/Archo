@@ -16,7 +16,7 @@ using GLFWWinDeleter = decltype(
 		// End temp
 		glfwDestroyWindow(window);
 	}
-);
+	);
 
 /** \class GLFWWindowImpl
  * \brief A GLFW window implementation.
@@ -31,6 +31,11 @@ public:
 	[[nodiscard]] virtual bool doIsKeyPressed(int32_t keyCode) const override; //!< Function acts on is key pressed
 	[[nodiscard]] virtual bool doIsMouseButtonPressed(int32_t mouseButton) const override; //!< Function acts on is mouse button pressed
 	[[nodiscard]] virtual glm::vec2 doGetMousePosition() const override; //!< Function acts on get mouse position
+	[[nodiscard]] virtual glm::vec2 doGetMouseVector() const;
 	[[nodiscard]] virtual glm::ivec2 doGetSize() const override; //!< Virtual function acts on get the window size
+	[[nodiscard]] virtual void doSwitchInput();
+
+private:
+	bool w_mouseEnabled{ false };
 };
 

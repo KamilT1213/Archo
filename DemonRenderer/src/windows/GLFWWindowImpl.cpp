@@ -1,10 +1,6 @@
 /* \file GLFWWindowImplImpl.cpp*/
-#include <glad/gl.h>
 #include "windows/GLFWWindowImpl.hpp"
 #include "core/log.hpp"
-#include "tracy/TracyOpenGL.hpp"
-
-
 
 
 void GLFWWindowImpl::doOpen(const WindowProperties& properties)
@@ -107,6 +103,12 @@ void GLFWWindowImpl::doOpen(const WindowProperties& properties)
 		}
 	);
 
+	//Custom cursor adjustments
+
+	doSwitchInput();
+
+	///
+
 	glfwSetCursorPosCallback(m_nativeWindow.get(),
 		[](GLFWwindow* window, double mouseX, double mouseY)
 		{
@@ -170,16 +172,15 @@ void GLFWWindowImpl::doOnUpdate(float timestep)
 			glfwMakeContextCurrent(backup_current_context);
 		}
 	}
-	
+
 	m_graphicsContext.swapBuffers(m_nativeWindow.get(), isHostingImGui());
-	TracyGpuCollect;
-	
 }
 
 void GLFWWindowImpl::doSetVSync(bool VSync)
 {
 	if (m_isVSync) { glfwSwapInterval(1); }
 	else { glfwSwapInterval(0); }
+
 }
 
 bool GLFWWindowImpl::doIsKeyPressed(int32_t keyCode) const
@@ -201,11 +202,46 @@ glm::vec2 GLFWWindowImpl::doGetMousePosition() const
 	return glm::vec2(static_cast<float>(x), static_cast<float>(y));
 }
 
+glm::vec2 GLFWWindowImpl::doGetMouseVector() const
+{
+	if (w_mouseEnabled) return glm::vec2(0);
+	double x, y;
+	int width, height;
+	glfwGetCursorPos(m_nativeWindow.get(), &x, &y);
+	glfwGetWindowSize(m_nativeWindow.get(), &width, &height);
+
+	glfwSetCursorPos(m_nativeWindow.get(), width / 2.0f, height / 2.0f);
+
+	return glm::vec2(float(x) - (float(width) / 2), float(y) - (float(height) / 2));
+}
+
 glm::ivec2 GLFWWindowImpl::doGetSize() const
 {
 	int width{ 0 };
 	int height{ 0 };
 	glfwGetWindowSize(m_nativeWindow.get(), &width, &height);
 
-	return glm::ivec2(width, height);	
+	return glm::ivec2(width, height);
+}
+void GLFWWindowImpl::doSwitchInput()
+{
+	w_mouseEnabled = !w_mouseEnabled;
+	if (w_mouseEnabled) {
+		glfwSetInputMode(m_nativeWindow.get(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		if (glfwRawMouseMotionSupported()) {
+			glfwSetInputMode(m_nativeWindow.get(), GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+		}
+	}
+	else
+	{
+		int width, height;
+		glfwGetWindowSize(m_nativeWindow.get(), &width, &height);
+		glfwSetCursorPos(m_nativeWindow.get(), width / 2.0f, height / 2.0f);
+
+		glfwSetInputMode(m_nativeWindow.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		if (glfwRawMouseMotionSupported()) {
+			glfwSetInputMode(m_nativeWindow.get(), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+		}
+	}
+
 }
