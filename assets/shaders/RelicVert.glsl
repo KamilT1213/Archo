@@ -12,10 +12,6 @@ layout(std140, binding = 1) uniform b_relicCamera2D
 	uniform mat4 u_relicProjection2D;
 };
 
-
-//uniform mat4 u_relicView2D;
-//uniform mat4 u_relicProjection2D;
-
 uniform mat4 u_model;
 
 

@@ -18,13 +18,26 @@ struct Render
 {
 	std::shared_ptr<Material> material{ nullptr };
 	std::shared_ptr<VAO> geometry{ nullptr };
-	std::shared_ptr<std::vector<std::shared_ptr<VAO>>> LODGeometry{ nullptr };
 	std::shared_ptr<Material> depthMaterial{ nullptr };
 	std::shared_ptr<VAO> depthGeometry{ nullptr };
-	std::shared_ptr<std::vector<std::shared_ptr<VAO>>> LODDepthGeometry{ nullptr };
 	std::shared_ptr<SSBO> SSBOgeometry{ nullptr };
 
-	bool enabledLOD{false};
+	//void refreshLOD(float distClipSpace) {
+	//	if (enabledLOD) {
+	//		int index = glm::floor(distClipSpace * LODGeometry->size());
+	//		geometry = (*LODGeometry)[index];
+	//	}
+	//}
+
+};
+
+struct InstacedRender
+{
+	std::shared_ptr<Material> material{ nullptr };
+	std::shared_ptr<VAO> geometry{ nullptr };
+	std::shared_ptr<Material> depthMaterial{ nullptr };
+	std::shared_ptr<VAO> depthGeometry{ nullptr };
+	std::shared_ptr<SSBO> SSBOgeometry{ nullptr };
 
 	//void refreshLOD(float distClipSpace) {
 	//	if (enabledLOD) {

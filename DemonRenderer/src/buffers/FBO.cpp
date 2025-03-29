@@ -74,12 +74,18 @@ FBO::FBO(glm::ivec2 size, FBOLayout layout) :
 
 	if (colourAttachementCount == 0)
 	{
-		glNamedFramebufferDrawBuffer(m_ID,GL_NONE);
-		glNamedFramebufferReadBuffer(m_ID,GL_NONE);
+		glNamedFramebufferDrawBuffer(m_ID, GL_NONE);
+		glNamedFramebufferReadBuffer(m_ID, GL_NONE);
+	}
+
+	if (colourAttachementCount > 1) {   //MTR
+		glNamedFramebufferDrawBuffers(m_ID, colourAttachementCount, m_colAttachments.data());
 	}
 
 	if (glCheckNamedFramebufferStatus(m_ID, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		spdlog::error("Framebuffer is not complete!");
+
+
 }
 
 FBO::~FBO()

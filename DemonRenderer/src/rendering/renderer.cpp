@@ -7,12 +7,33 @@
 #include "components/transform.hpp"
 #include "components/collidable.hpp"
 
-void refreshLOD(Render& render, float distClipSpace) {
-	distClipSpace = glm::clamp(distClipSpace,0.f, 1.f);
-	if (render.enabledLOD) {
-		int index = glm::floor(distClipSpace * (render.LODGeometry->size() - 1));
-		render.geometry = (*render.LODGeometry)[index];
+struct RenderHasher
+{
+	size_t operator()(const InstacedRender& rc) const
+	{
+		auto g = reinterpret_cast<std::uintptr_t>(rc.geometry.get());
+		auto a = reinterpret_cast<std::uintptr_t>(rc.material.get());
+		return g >> 1 & a >> 1;
 	}
+};
+
+struct RenderEquals
+{
+	bool operator()(const InstacedRender& a, const InstacedRender& b) const
+	{
+		if (a.geometry.get() == b.geometry.get()) {
+			return a.material.get() == b.material.get();
+		}
+		return false;
+	}
+};
+
+void refreshLOD(Render& render, float distClipSpace) {
+	//distClipSpace = glm::clamp(distClipSpace,0.f, 1.f);
+	//if (render.enabledLOD) {
+	//	int index = glm::floor(distClipSpace * (render.LODGeometry->size() - 1));
+	//	render.geometry = (*render.LODGeometry)[index];
+	//}
 }
 
 void Renderer::addRenderPass(const RenderPass& pass)
@@ -134,9 +155,35 @@ void Renderer::render() const
 
 					}
 				}
+			}
 
+			std::unordered_map<InstacedRender, std::vector<glm::mat4>, RenderHasher, RenderEquals> instances;
 
+			auto view2 = renderPass.scene->m_entities.view<InstacedRender, Transform>();
 
+			for (auto& entity : view2) {
+				auto& renderComp = renderPass.scene->m_entities.get<InstacedRender>(entity);
+				auto& transformComp = renderPass.scene->m_entities.get<Transform>(entity);
+
+				auto it = instances.find(renderComp);
+				if (it != instances.end()) it->second.push_back(transformComp.transform);
+				else instances[renderComp] = { transformComp.transform };
+			}
+
+			for (auto it = instances.begin(); it != instances.end(); ++it) {
+				auto& renderComp = it->first;
+				auto& models = it->second;
+				//
+				if (renderComp.material != nullptr) {
+					renderComp.material->apply();
+					bindVertexArrays(renderComp.geometry->getID());
+
+					// Send data to SSBO
+					m_modelsSSBO->edit(0, sizeof(glm::mat4) * models.size(), models.data());
+
+					auto drawCount = renderComp.geometry->getDrawCount();
+					glDrawElementsInstanced(renderComp.material->getPrimitive(), drawCount, GL_UNSIGNED_INT, NULL, models.size());
+				}
 			}
 		}
 		else if (passType == PassType::depth)
@@ -239,6 +286,36 @@ void Renderer::render() const
 
 
 			}
+
+			std::unordered_map<InstacedRender, std::vector<glm::mat4>, RenderHasher, RenderEquals> instances;
+
+			auto view2 = depthPass.scene->m_entities.view<InstacedRender, Transform>();
+
+			for (auto& entity : view2) {
+				auto& renderComp = depthPass.scene->m_entities.get<InstacedRender>(entity);
+				auto& transformComp = depthPass.scene->m_entities.get<Transform>(entity);
+
+				auto it = instances.find(renderComp);
+				if (it != instances.end()) it->second.push_back(transformComp.transform);
+				else instances[renderComp] = { transformComp.transform };
+			}
+
+			for (auto it = instances.begin(); it != instances.end(); ++it) {
+				auto& renderComp = it->first;
+				auto& models = it->second;
+				//
+				if (renderComp.depthMaterial != nullptr) {
+					renderComp.depthMaterial->apply();
+					bindVertexArrays(renderComp.depthGeometry->getID());
+
+					// Send data to SSBO
+					m_modelsSSBO->edit(0, sizeof(glm::mat4) * models.size(), models.data());
+
+					auto drawCount = renderComp.depthGeometry->getDrawCount();
+					glDrawElementsInstanced(renderComp.depthMaterial->getPrimitive(), drawCount, GL_UNSIGNED_INT, NULL, models.size());
+				}
+			}
+
 			glCullFace(GL_BACK);
 		}
 		else if (passType == PassType::compute)

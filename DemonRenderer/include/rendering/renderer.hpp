@@ -4,6 +4,7 @@
 #include "rendering/renderPass.hpp"
 #include "rendering/depthOnlyPass.hpp"
 #include "rendering/computePass.hpp"
+#include "buffers/SSBO.hpp"
 
 /**	\class Renderer
 *	\brief Holds and executes a series of render passes
@@ -12,7 +13,10 @@
 class Renderer
 {
 public:
-	Renderer() = default; //!< Default constructor
+	Renderer() {
+		m_modelsSSBO = std::make_shared<SSBO>(sizeof(glm::mat4) * 200, 200);
+		m_modelsSSBO->bind(2);
+	}; //!< Default constructor
 	void addRenderPass(const RenderPass& renderPass); //!< Add a render pass
 	void addDepthPass(const DepthPass& renderPass); //!< Add a depth only pass
 	void addComputePass(const ComputePass& renderPass);  //!< Add a compute pass
@@ -29,6 +33,9 @@ private:
 	/** \enum PassType 
 	*	Type of render pass
 	*/
+
+	std::shared_ptr<SSBO> m_modelsSSBO;
+
 	enum class PassType {compute, depth, render}; 
 	std::vector<RenderPass> m_renderPasses; //!< Internal storage for render passes
 	std::vector<DepthPass> m_depthPasses; //!< Internal storage for depth only passes

@@ -271,15 +271,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 
 
-	Quad = m_screenScene->m_entities.create();
-	{
-		Render& renderComp = m_screenScene->m_entities.emplace<Render>(Quad);
-		m_screenScene->m_entities.emplace<Transform>(Quad);
-		renderComp.geometry = screenQuadVAO;
-
-		screenQuadMaterial->setValue("u_GroundDepthTexture", groundTexture);
-		renderComp.material = screenQuadMaterial;
-	}
+	
 
 
 	//AAquad.translation = glm::vec3(500.9f,0,0);
@@ -301,20 +293,32 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	ScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", ScreenRelicPass.camera.view);
 	ScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicProjection2D", ScreenRelicPass.camera.projection);
 
-	entt::basic_view view = m_RelicScene->m_entities.view<Render>();
-	for (auto& rel : view) {
-		Render render = m_RelicScene->m_entities.get<Render>(rel);
-		render.material->setValue("u_relicView2D", ScreenRelicPass.camera.view);
-		render.material->setValue("u_relicProjection2D", ScreenRelicPass.camera.projection);
-	}
+	//entt::basic_view view = m_RelicScene->m_entities.view<Render>();
+	//for (auto& rel : view) {
+	//	Render render = m_RelicScene->m_entities.get<Render>(rel);
+	//	render.material->setValue("u_relicView2D", ScreenRelicPass.camera.view);
+	//	render.material->setValue("u_relicProjection2D", ScreenRelicPass.camera.projection);
+	//}
 
 	ScreenRelicPassIDx = m_mainRenderer.getSumPassCount();
 	m_mainRenderer.addRenderPass(ScreenRelicPass);
 
 
 
+	screenQuadMaterial->setValue("u_GroundDepthTexture", groundTexture);
 	screenQuadMaterial->setValue("u_RelicTexture", ScreenRelicPass.target->getTarget(0));
 	screenQuadMaterial->setValue("u_RelicDataTexture", ScreenRelicPass.target->getTarget(1));
+
+	Quad = m_screenScene->m_entities.create();
+	{
+		Render& renderComp = m_screenScene->m_entities.emplace<Render>(Quad);
+		m_screenScene->m_entities.emplace<Transform>(Quad);
+		renderComp.geometry = screenQuadVAO;
+
+		renderComp.material = screenQuadMaterial;
+	}
+
+
 
 	/*************************
 	*  Screen Ground Render Pass

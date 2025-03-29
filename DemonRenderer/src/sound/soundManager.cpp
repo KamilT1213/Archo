@@ -37,7 +37,7 @@ int SoundManager::playSoundAtPosition(Mix_Chunk* sound, int volume, glm::vec3 ca
 	int dist = glm::distance(glm::vec3(0),offset);
 	Uint8 distance = dist;
 
-	spdlog::info("Angle: {} | Distance: {}", angle, dist);
+	//spdlog::info("Angle: {} | Distance: {}", angle, dist);
 	
 	if (dist <= 255) {
 		int channel = Mix_PlayChannel(-1, sound, 1);
