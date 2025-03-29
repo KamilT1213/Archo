@@ -10,9 +10,11 @@
 using GLFWWinDeleter = decltype(
 	[](GLFWwindow* window) {
 		// Probably temp to be moved
-		ImGui_ImplOpenGL3_Shutdown();
-		ImGui_ImplGlfw_Shutdown();
-		ImGui::DestroyContext();
+		if (false) {
+			ImGui_ImplOpenGL3_Shutdown();
+			ImGui_ImplGlfw_Shutdown();
+			ImGui::DestroyContext();
+		}
 		// End temp
 		glfwDestroyWindow(window);
 	}
@@ -35,6 +37,7 @@ public:
 	[[nodiscard]] virtual glm::ivec2 doGetSize() const override; //!< Virtual function acts on get the window size
 	[[nodiscard]] virtual void doSwitchInput();
 
+	bool m_ImGuiOpen{ true }; //!< Boolean for IMGui window
 private:
 	bool w_mouseEnabled{ false };
 };

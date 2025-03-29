@@ -7,7 +7,9 @@ class Archo : public Layer
 {
 public:
 	Archo(GLFWWindowImpl& win);
+	
 private:
+	void onImGUIRender() override;
 	void onRender() override;
 	void onUpdate(float timestep) override;
 	void onKeyPressed(KeyPressedEvent& e) override;

@@ -274,6 +274,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	Quad = m_screenScene->m_entities.create();
 	{
 		Render& renderComp = m_screenScene->m_entities.emplace<Render>(Quad);
+		m_screenScene->m_entities.emplace<Transform>(Quad);
 		renderComp.geometry = screenQuadVAO;
 
 		screenQuadMaterial->setValue("u_GroundDepthTexture", groundTexture);
@@ -285,9 +286,9 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	//AAquad.scale = glm::vec3(2);
 	//AAquad.recalc();
 
-/*************************
-*  Screen Relic Render Pass
-**************************/
+	/*************************
+	*  Screen Relic Render Pass
+	**************************/
 
 	RenderPass ScreenRelicPass;
 	ScreenRelicPass.scene = m_RelicScene;
@@ -298,12 +299,14 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	ScreenRelicPass.camera.projection = glm::ortho(0.f, 4096.0f, 4096.0f, 0.f);
 
 	ScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", ScreenRelicPass.camera.view);
-	ScreenRelicPass.UBOmanager.setCachedValue("b_relicCcamera2D", "u_relicProjection2D", ScreenRelicPass.camera.projection);
+	ScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicProjection2D", ScreenRelicPass.camera.projection);
 
-	//for (int i = 0; i < m_RelicScene->m_actors.size(); i++) {
-	//	m_RelicScene->m_actors.at(i).material->setValue("u_relicView2D", ScreenRelicPass.camera.view);
-	//	m_RelicScene->m_actors.at(i).material->setValue("u_relicProjection2D", ScreenRelicPass.camera.projection);
-	//}
+	entt::basic_view view = m_RelicScene->m_entities.view<Render>();
+	for (auto& rel : view) {
+		Render render = m_RelicScene->m_entities.get<Render>(rel);
+		render.material->setValue("u_relicView2D", ScreenRelicPass.camera.view);
+		render.material->setValue("u_relicProjection2D", ScreenRelicPass.camera.projection);
+	}
 
 	ScreenRelicPassIDx = m_mainRenderer.getSumPassCount();
 	m_mainRenderer.addRenderPass(ScreenRelicPass);
@@ -342,6 +345,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	AAQuad = m_screenScene->m_entities.create();
 	{
 		Render& renderComp = m_screenScene->m_entities.emplace<Render>(AAQuad);
+		m_screenScene->m_entities.emplace<Transform>(AAQuad);
 		renderComp.geometry = screenAAQuadVAO;
 		renderComp.material = screenAAQuadMaterial;
 	}
@@ -358,6 +362,12 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	AAPassIDx = m_mainRenderer.getSumPassCount();
 	m_mainRenderer.addRenderPass(ScreenAAPass);
+}
+
+void Archo::onImGUIRender()
+{
+	
+	// Scripts widgets
 }
 
 void Archo::onRender()

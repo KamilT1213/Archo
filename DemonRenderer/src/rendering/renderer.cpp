@@ -80,7 +80,6 @@ void Renderer::render() const
 			ViewPort VPort = renderPass.viewPort;
 			updateViewPort(VPort);
 
-
 			if (renderPass.clearDepth && renderPass.clearColour) {
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			}
@@ -107,45 +106,11 @@ void Renderer::render() const
 				Render& renderComp = renderPass.scene->m_entities.get<Render>(entity);
 				Transform& transformComp = renderPass.scene->m_entities.get<Transform>(entity);
 				//
-
-				bool InFrustrum = true;
-
-
-				if (obbs.contains(entity)) {
-					OBBCollider& obbComp = renderPass.scene->m_entities.get<OBBCollider>(entity);
-					InFrustrum = false;
-					glm::vec3 a = obbComp.getPointClosestToFront(camForward, camPos, transformComp.translation);
-					glm::vec4 clipSpacePos = VP * glm::vec4(a , 1.0f);
-					if (clipSpacePos.w > 0.0f && clipSpacePos.w < 1000.0f) {
-						glm::vec2 b = glm::vec2(clipSpacePos) / clipSpacePos.w;
-						b += glm::vec2(1);
-						b *= 0.5f;
-						if (b.x > 0 && b.x < 1 && b.y > 0 && b.y < 1) {
-							InFrustrum = true;
-						}
-					}
-				};
-
-				if (sphereColls.contains(entity)) {
-					SphereCollider& sphereCollComp = renderPass.scene->m_entities.get<SphereCollider>(entity);
-					InFrustrum = false;
-					glm::vec3 a = sphereCollComp.getPointClosestToFront(camForward, camPos, transformComp.translation);
-					glm::vec4 clipSpacePos = VP * glm::vec4(a, 1.0f);
-					if (clipSpacePos.w > 0.0f && clipSpacePos.w < 1000.0f) {
-						glm::vec2 b = glm::vec2(clipSpacePos) / clipSpacePos.w;
-						b += glm::vec2(1);
-						b *= 0.5f;
-						if (b.x > 0 && b.x < 1 && b.y > 0 && b.y < 1) {
-							InFrustrum = true;
-						}
-					}
-
-				};
 				
 				//ZoneScoped;
 				ZoneScopedN("Actor");
 				TracyGpuZone("Actor");
-				if (renderComp.material && InFrustrum) {
+				if (renderComp.material) {
 
 					renderComp.material->apply();
 					if (renderComp.material->getTransformUniformName().length() > 0) renderComp.material->m_shader->uploadUniform(renderComp.material->getTransformUniformName(), transformComp.transform);

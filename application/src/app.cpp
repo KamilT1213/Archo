@@ -5,13 +5,14 @@
 
 App::App(const WindowProperties& winProps) : Application(winProps)
 {
+	m_window.m_ImGuiOpen = false;
 	m_layer = std::unique_ptr<Layer>(new Archo(m_window));
 }
 
 Application* startApplication()
 {
-	WindowProperties props("Asteroid Belt", 1422, 800);
-	props.isHostingImGui = true;
+	WindowProperties props("Archo Digger", 1422, 800);
+	props.isHostingImGui = false;
 	props.isResizable = false;
 	return new App(props);
 }
