@@ -95,8 +95,8 @@ private:
 
 	FBOLayout relicScreenPassLayout = {
 		{AttachmentType::ColourHDR,true},
-		{AttachmentType::ColourHDR,true}//,
-		//{AttachmentType::Depth,true}
+		{AttachmentType::ColourHDR,true},
+		{AttachmentType::Depth,true}
 
 	};
 
