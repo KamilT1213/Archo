@@ -1,6 +1,5 @@
 #include "app.hpp"
-#include "GAMR3531.hpp"
-#include "LOD.hpp"
+#include "MainScene.hpp"
 
 
 App::App(const WindowProperties& winProps) : Application(winProps)

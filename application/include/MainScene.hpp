@@ -1,7 +1,7 @@
 #pragma once
 #include <DemonRenderer.hpp>
 
-enum class GameState {intro, running, gameOver};
+enum class GameState {MainMenu, InGame, Paused};
 
 class Archo : public Layer
 {
@@ -14,9 +14,12 @@ private:
 	void onUpdate(float timestep) override;
 	void onKeyPressed(KeyPressedEvent& e) override;
 
+	GameState state = GameState::MainMenu;
+
 	std::vector<entt::entity> m_Relics;
 	std::shared_ptr<Scene> m_RelicScene;
 	std::shared_ptr<Scene> m_screenScene;
+	std::shared_ptr<Scene> m_mainMenu;
 
 	entt::entity Quad;
 	entt::entity AAQuad;
@@ -41,7 +44,6 @@ private:
 	bool Flip{ true };
 	bool Fliping{ false };
 	int Relics{ 100 };
-	bool ActiveRelics[100];
 	float ProgressSegmentTarget{ 0.0f };
 
 	ImVec2 imageSize = ImVec2(width / 3, height / 3);
@@ -74,6 +76,7 @@ private:
 	};*/
 
 	Renderer m_mainRenderer;
+	Renderer m_mainMenuRenderer;
 	Renderer m_computeRenderer;
 
 

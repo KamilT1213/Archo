@@ -12,27 +12,21 @@ project(${APPLICATION_NAME} VERSION 1.0.0)
 # YOU WILL NEED TO ADD YOUR LAYER FILES HERE
 set (PROJECT_HEADER_FILES
 	"application/include/app.hpp"
-	"application/include/GAMR3531.hpp"
-	"application/include/ImGui/bloomPanel.hpp"
-	"application/include/ui.hpp"
-	"application/include/LOD.hpp"
+	"application/include/MainScene.hpp"
 )
 set (PROJECT_SOURCE_FILES
 	"application/src/app.cpp"
-	"application/src/GAMR3531.cpp"
-	"application/src/ImGui/bloomPanel.cpp"
-	"application/src/ui.cpp"
-	"application/src/LOD.cpp"
+	"application/src/MainScene.cpp"
 )
 
 # YOU WILL NEED TO ADD YOUR SCRIPT FILES HERE
 set (SCRIPT_HEADER_FILES
 	"application/scripts/include/controller.hpp"
-	"application/scripts/include/rotation.hpp"
+	"application/scripts/include/button.hpp"
 )
 set (SCRIPT_SOURCE_FILES
 	"application/scripts/src/controller.cpp"
-	"application/scripts/src/rotation.cpp"
+	"application/scripts/src/button.cpp"
 )
 
 # Add excutable target and include directory
@@ -148,6 +142,14 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}../DemonRenderer/include" PREFIX "
 
 # Add external libraries
 include(FetchContent)
+
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.2  # Replace with the latest version if needed
+)
+
+FetchContent_MakeAvailable(json)
 
 find_package(OpenGL REQUIRED)
 
@@ -330,6 +332,7 @@ set_target_properties(stb_image_impl PROPERTIES CXX_STANDARD 20)
 set_target_properties(SDL2 PROPERTIES CXX_STANDARD 20)
 set_target_properties(SDL2_mixer PROPERTIES CXX_STANDARD 20)
 set_target_properties(TracyClient PROPERTIES CXX_STANDARD 20)
+#set_target_properties(nlohmann_json::nlohmann_json PROPERTIES CXX_STANDARD 20)
 
 
 
@@ -345,6 +348,7 @@ target_link_libraries(${RENDERER_NAME} PRIVATE stb_image_impl)
 target_link_libraries(${RENDERER_NAME} PRIVATE SDL2 SDL2_mixer)
 target_link_libraries(${RENDERER_NAME} PUBLIC TracyClient)
 target_link_libraries(${RENDERER_NAME} PRIVATE EnTT)
+target_link_libraries(${RENDERER_NAME} PRIVATE nlohmann_json::nlohmann_json)
 
 target_link_libraries(${APPLICATION_NAME} PRIVATE ${RENDERER_NAME})
 target_link_libraries(${APPLICATION_NAME} PRIVATE OpenGL::GL)
@@ -359,6 +363,7 @@ target_link_libraries(${APPLICATION_NAME} PRIVATE stb_image_impl)
 target_link_libraries(${APPLICATION_NAME} PRIVATE SDL2 SDL2_mixer)
 target_link_libraries(${APPLICATION_NAME} PUBLIC TracyClient)
 target_link_libraries(${APPLICATION_NAME} PRIVATE EnTT)
+target_link_libraries(${APPLICATION_NAME} PRIVATE nlohmann_json::nlohmann_json)
 
 set_target_properties(glad PROPERTIES FOLDER "Glad")
 
