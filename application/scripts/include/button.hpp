@@ -1,20 +1,24 @@
 #pragma once
-#include "windows/GLFWWindowImpl.hpp"
-#include <glm/glm.hpp>
+//#include "windows/GLFWWindowImpl.hpp"
+#include "DemonRenderer.hpp"
 
-#include "core/log.hpp"
-#include "components/script.hpp"
-#include "components/transform.hpp"
-#include <entt/entt.hpp>
+//#include "core/log.hpp"
+//#include "components/script.hpp"
+//#include "components/transform.hpp"
+//#include <entt/entt.hpp>
 
 class ButtonScript : public Script
 {
 public:
-	ButtonScript(entt::entity entity, std::shared_ptr<Scene> scene, GLFWWindowImpl& win, Transform& trans) :
+	ButtonScript(entt::entity entity, std::shared_ptr<Scene> scene, GLFWWindowImpl& win, glm::vec2& mousePos, Transform& trans, Material& mat,const std::function<void()>& func) :
 		Script(entity, scene),
 		m_winRef(win),
+		m_mousePosRef(mousePos),
 		m_active(false),
-		m_transRef(trans)
+		m_hovered(false),
+		m_transRef(trans),
+		m_matRef(mat),
+		m_assignedFunc(func)
 	{
 
 	}
@@ -26,5 +30,9 @@ public:
 private:
 	GLFWWindowImpl& m_winRef;
 	Transform& m_transRef;
+	Material& m_matRef;
+	glm::vec2& m_mousePosRef;
+	std::function<void()> m_assignedFunc;
 	bool m_active{ false };
+	bool m_hovered{ false };
 };

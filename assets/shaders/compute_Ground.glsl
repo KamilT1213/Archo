@@ -17,7 +17,7 @@ void main()
 {
 	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
 	vec4 sampled = imageLoad(GroundImg, pixel_coords);
-	ivec2 texCoords = ivec2(4096 * MousePos.x, 4096 * MousePos.y);
+	ivec2 texCoords = ivec2(4096 / 2 * MousePos.x, 4096 / 2 * MousePos.y);
 	vec4 middleSampled = imageLoad(GroundImg, texCoords);
 
 	if (Reset > 0) {
@@ -36,7 +36,7 @@ void main()
 	else {
 		if (action > 0 && action < 1 && digging > 0) {
 			
-			float Size = (4096.0 / 15.0);
+			float Size = (4096.0 / 15.0 / 2);
 			float dist = distance(pixel_coords, texCoords) / Size;
 
 			float noiseLevel = noise(vec2(pixel_coords.x + 5812, pixel_coords.y + 321) / 200);

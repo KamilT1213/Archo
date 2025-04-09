@@ -1,7 +1,7 @@
 #pragma once
 #include <DemonRenderer.hpp>
 
-enum class GameState {MainMenu, InGame, Paused};
+
 
 class Archo : public Layer
 {
@@ -13,16 +13,34 @@ private:
 	void onRender() override;
 	void onUpdate(float timestep) override;
 	void onKeyPressed(KeyPressedEvent& e) override;
+	void playGame();
+	void mainSettings();
+	void mainSave();
+	void mainMenu();
+	void pauseMenu();
+	void pauseInventory();
+	void pauseSettings();
+	void exitGame();
+	void saveGame();
 
-	GameState state = GameState::MainMenu;
+
 
 	std::vector<entt::entity> m_Relics;
 	std::shared_ptr<Scene> m_RelicScene;
 	std::shared_ptr<Scene> m_screenScene;
 	std::shared_ptr<Scene> m_mainMenu;
+	std::shared_ptr<Scene> m_mainMenu_Settings;
+	std::shared_ptr<Scene> m_mainMenu_Save;
+	std::shared_ptr<Scene> m_pauseMenu;
+	std::shared_ptr<Scene> m_pauseMenu_Settings;
+	std::shared_ptr<Scene> m_pauseMenu_Inventory;
 
 	entt::entity Quad;
 	entt::entity AAQuad;
+	entt::entity backgroundQuad;
+	entt::entity MenuQuad;
+	entt::entity PauseQuad;
+
 
 	SoundManager m_soundManager;
 	std::shared_ptr<Mix_Chunk> sound;
@@ -31,7 +49,7 @@ private:
 	float height = m_winRef.getHeightf();
 
 	glm::vec2 m_ScreenSize = glm::vec2(m_winRef.getSizef());
-	glm::vec2 m_PointerPos = glm::vec2(0.5);
+	glm::vec2 m_PointerPos = glm::vec2(m_winRef.getSizef() / 2.0f);
 	glm::vec2 m_DigPos = glm::vec2(0.5);
 
 	bool b{ true };
@@ -43,6 +61,7 @@ private:
 	bool extrBegan{ false };
 	bool Flip{ true };
 	bool Fliping{ false };
+	bool Pausing{ false };
 	int Relics{ 100 };
 	float ProgressSegmentTarget{ 0.0f };
 
@@ -65,6 +84,11 @@ private:
 	size_t ScreenGroundPassIDx;
 	size_t ScreenRelicPassIDx;
 	size_t AAPassIDx;
+	size_t BackgroundPassIDx;
+	size_t ButtonPassIDx;
+	size_t PauseButtonPassIDx;
+	size_t FinalPausePassIDx;
+	size_t FinalMainMenuPassIDx;
 
 	//std::shared_ptr<SSBO> terrainParticlesStartPoints;
 	//std::shared_ptr<SSBO> terrainParticles;
@@ -78,6 +102,8 @@ private:
 	Renderer m_mainRenderer;
 	Renderer m_mainMenuRenderer;
 	Renderer m_computeRenderer;
+	Renderer m_backgroundRenderer;
+	Renderer m_pausedRenderer;
 
 
 
@@ -89,6 +115,18 @@ private:
 
 	//Gui
 	int Buffer{ 0 };
+
+	FBOLayout backgroundPassLayout = {
+		{AttachmentType::ColourHDR,true}
+	};
+
+	FBOLayout buttonPassLayout = {
+		{AttachmentType::ColourHDR,true}
+	};
+
+	FBOLayout AAPassLayout = {
+		{AttachmentType::ColourHDR,true}
+	};
 
 	FBOLayout mainScreenPassLayout = {
 		{AttachmentType::ColourHDR,true},

@@ -1,14 +1,20 @@
 #version 460 core
 
-layout(location = 0)out vec4 colour;
+out vec4 colour;
 
 in vec2 texCoords;
 
 uniform sampler2D u_ButtonTexture;
 uniform float ButtonID;
+uniform float Hovered;
+uniform float Pressed;
 
 void main() {
 
 	//colour = vec4(1);
-	colour = vec4(texCoords, ButtonID,1.0);
+	vec4 col = texture(u_ButtonTexture, texCoords);
+	col.xyz *= 1 - (Hovered - 0.5);
+	col.xyz *= 1 - (Pressed - 0.5);
+	colour = col;
+	//colour = vec4(1);
 }

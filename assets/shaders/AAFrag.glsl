@@ -4,7 +4,9 @@ out vec4 colour;
 
 in vec2 texCoords;
 
+uniform sampler2D u_background;
 uniform sampler2D u_inputTexture;
+uniform vec2 MousePos;
 uniform float factor;
 uniform float allTime;
 
@@ -27,18 +29,35 @@ float noise(in vec2 p);
 
 void main()
 {
+    float ScreenPixelSize = 1.0 / min(u_ScreenSize.x, u_ScreenSize.y);
+    float ScreenPixelRatio = 1.0 / (u_ScreenSize.x / u_ScreenSize.y);
     vec2 texelSize = 1.0/u_ScreenSize;
     float a = min(u_ScreenSize.x, u_ScreenSize.y);
     float b = max(u_ScreenSize.x, u_ScreenSize.y);
     float c = a / b;
 
     int offset = 1;
+
+    Samples[4] = texture(u_inputTexture, texCoords + (offset * vec2(0, 0) * texelSize));
+
+    if (Samples[4].a <= 0) {
+        colour = texture(u_background, texCoords);
+
+        vec2 localToMouse = (texCoords - (MousePos / u_ScreenSize));
+        localToMouse.y *= ScreenPixelRatio;
+        float RfromM = distance(localToMouse, vec2(0));
+        if (RfromM < ScreenPixelSize * (sizeOfRing - 7.5)) {
+            colour = mix(colour, vec4(vec3(1), 1), 0.4f);
+        }
+        
+        return;
+    }
 	Samples[0] = texture(u_inputTexture, texCoords + (offset * vec2(-1, 1) * texelSize));
 	Samples[1] = texture(u_inputTexture, texCoords + (offset * vec2(0, 1)  * texelSize));
 	Samples[2] = texture(u_inputTexture, texCoords + (offset * vec2(1, 1)  * texelSize));
                                                    
  	Samples[3] = texture(u_inputTexture, texCoords + (offset * vec2(-1, 0) * texelSize));
-	Samples[4] = texture(u_inputTexture, texCoords + (offset * vec2(0, 0)  * texelSize));
+
 	Samples[5] = texture(u_inputTexture, texCoords + (offset * vec2(1, 0)  * texelSize));
                                                    
  	Samples[6] = texture(u_inputTexture, texCoords + (offset * vec2(-1, -1)* texelSize));
@@ -65,41 +84,14 @@ void main()
     }
     
     total = mix(Samples[4], total, clamp(Edge(),0,1));
-    total.xyz = ((floor(total.xyz * 20) + 0.5) / 20);
-    float bTotal;
-    if (Samples[4].a <= 0) {
-        for (int i = 0; i < 5; i++) {
-            bTotal += noise((texCoords + vec2(i) + vec2(sin((allTime*3) + (texCoords.y * 5)) / 100, allTime/10)) * (i + 1) * 42.532);
-        }
-        bTotal = ((bTotal / 5) + 1) / 2.0;
-        bTotal = ((floor(bTotal * 20) + 0.5) / 20);
-
-        vec2 normedTex = texCoords;
-        vec2 dist = vec2(normedTex.x - 0.5f, normedTex.y - 0.5f) ;
-
-        if (u_ScreenSize.x > u_ScreenSize.y) {
-            dist.x *= (u_ScreenSize.x / u_ScreenSize.y);
-        }
-        else {
-            dist.y *= (u_ScreenSize.y / u_ScreenSize.x);
-        }
-        
-
-        float d = c;
-       /* d *= 0.5;
-        d = d / b;
-        d *= 2.0;*/
-
-        float s = 1;
-
-        dist *= s;
-        
-
-        float distance = (max(abs(dist.x), abs(dist.y)) - (d * s));
-        bTotal += clamp(((distance) * 2),-1.0,0.3);
-        total =  vec4(vec3(0.3,bTotal,0.6), 1.0);
+    
+    vec2 localToMouse = (texCoords - (MousePos / u_ScreenSize));
+    localToMouse.y *= ScreenPixelRatio;
+    float RfromM = distance(localToMouse, vec2(0));
+    if (RfromM < ScreenPixelSize * (sizeOfRing - 7.5)) {
+        total = mix(total, vec4(vec3(1), 1), 0.4f);
     }
-            
+
     colour = total;// vec4(vec3(rgb2hsv(Samples[4].rgb).z), 1); //vec4(vec3(Edge()), 1);//
 
 }

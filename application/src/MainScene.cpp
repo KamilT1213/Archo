@@ -25,14 +25,23 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	m_RelicScene.reset(new Scene);
 	m_screenScene.reset(new Scene);
 	m_mainMenu.reset(new Scene);
+	m_mainMenu_Settings.reset(new Scene);
+	m_mainMenu_Save.reset(new Scene);
+	m_pauseMenu.reset(new Scene);
+	m_pauseMenu_Settings.reset(new Scene);
+	m_pauseMenu_Inventory.reset(new Scene);
 
 	//Textures -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 	std::shared_ptr<Texture> testRelicTexture = std::make_shared<Texture>("./assets/textures/Relic.png");
+	std::shared_ptr<Texture> playButtonTexture = std::make_shared<Texture>("./assets/textures/UI/PlayButton.png");
+	std::shared_ptr<Texture> exitButtonTexture = std::make_shared<Texture>("./assets/textures/UI/ExitButton.png");
+	std::shared_ptr<Texture> saveButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SaveButton.png");
+	std::shared_ptr<Texture> settingsButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SettingsButton.png");
 
 	TextureDescription groundTextureDesc;
-	groundTextureDesc.height = 4096.0f;
-	groundTextureDesc.width = 4096.0f;
+	groundTextureDesc.height = 4096.0f / 2.0f;
+	groundTextureDesc.width = 4096.0f / 2.0f;
 	groundTextureDesc.channels = 4;
 	groundTextureDesc.isHDR = true;
 
@@ -55,6 +64,36 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	screenQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
 
+	//Final main menu screen
+	ShaderDescription menuQuadShaderDesc;
+	menuQuadShaderDesc.type = ShaderType::rasterization;
+	menuQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
+	menuQuadShaderDesc.fragmentSrcPath = "./assets/shaders/MainMenuFrag.glsl";
+	std::shared_ptr<Shader> menuQuadShader = std::make_shared<Shader>(menuQuadShaderDesc);
+	std::shared_ptr<Material> menuQuadMaterial = std::make_shared<Material>(menuQuadShader);
+
+	menuQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
+
+	//Pause menu screen
+	ShaderDescription pauseMenuQuadShaderDesc;
+	pauseMenuQuadShaderDesc.type = ShaderType::rasterization;
+	pauseMenuQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
+	pauseMenuQuadShaderDesc.fragmentSrcPath = "./assets/shaders/PauseMenuFrag.glsl";
+	std::shared_ptr<Shader> pauseMenuQuadShader = std::make_shared<Shader>(pauseMenuQuadShaderDesc);
+	std::shared_ptr<Material> pauseMenuQuadMaterial = std::make_shared<Material>(pauseMenuQuadShader);
+
+	pauseMenuQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
+
+	//background screen pass mat
+	ShaderDescription backgroundQuadShaderDesc;
+	backgroundQuadShaderDesc.type = ShaderType::rasterization;
+	backgroundQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
+	backgroundQuadShaderDesc.fragmentSrcPath = "./assets/shaders/BackgroundFrag.glsl";
+	std::shared_ptr<Shader> backgroundQuadShader = std::make_shared<Shader>(backgroundQuadShaderDesc);
+	std::shared_ptr<Material> backgroundQuadMaterial = std::make_shared<Material>(backgroundQuadShader);
+
+	backgroundQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
+
 	//AA screen pass mat
 	ShaderDescription screenAAQuadShaderDesc;
 	screenAAQuadShaderDesc.type = ShaderType::rasterization;
@@ -76,7 +115,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	//Menu Button material
 	ShaderDescription buttonQuadShaderDesc;
 	buttonQuadShaderDesc.type = ShaderType::rasterization;
-	buttonQuadShaderDesc.vertexSrcPath = "./assets/shaders/QuadVert.glsl";
+	buttonQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
 	buttonQuadShaderDesc.fragmentSrcPath = "./assets/shaders/UI/ButtonFrag.glsl";
 	std::shared_ptr<Shader> buttonQuadShader = std::make_shared<Shader>(buttonQuadShaderDesc);
 	//std::shared_ptr<Material> buttonQuadMaterial = std::make_shared<Material>(buttonQuadShader);
@@ -186,6 +225,13 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	//Actors ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+
+	/*************************
+	*  Main Menu Buttons
+	**************************/
+
+	float widthRatio = 1.0f /( width / height);
+
 	{
 		entt::entity startButton = m_mainMenu->m_entities.create();
 
@@ -197,15 +243,318 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 		renderComp.geometry = buttonQuadVAO;
 
 		std::shared_ptr<Material> startButtonMat = std::make_shared<Material>(buttonQuadShader);
-		startButtonMat->setValue("ButtonID", 1.0f);
+		startButtonMat->setValue("u_ButtonTexture", playButtonTexture);
 		
 		renderComp.material = startButtonMat;
 
-		transformComp.scale = glm::vec3(0.5f);
-		transformComp.translation = glm::vec3(0,0,-1.f);
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(-(width / 5.f) * widthRatio,0,0);
 
-		scriptComp.attachScript<ButtonScript>(startButton, m_mainMenu, m_winRef, transformComp);
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::playGame, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(startButton, m_mainMenu, m_winRef, m_PointerPos, transformComp, *(startButtonMat.get()), boundFunc);
 	}
+
+	{
+		entt::entity settingsButton = m_mainMenu->m_entities.create();
+
+		Render& renderComp = m_mainMenu->m_entities.emplace<Render>(settingsButton);
+		Transform& transformComp = m_mainMenu->m_entities.emplace<Transform>(settingsButton);
+		ScriptComp& scriptComp = m_mainMenu->m_entities.emplace<ScriptComp>(settingsButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> settingsButtonMat = std::make_shared<Material>(buttonQuadShader);
+		settingsButtonMat->setValue("u_ButtonTexture", settingsButtonTexture);
+
+		renderComp.material = settingsButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::mainSettings, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(settingsButton, m_mainMenu, m_winRef, m_PointerPos, transformComp, *(settingsButtonMat.get()), boundFunc);
+	}
+
+	{
+		entt::entity saveButton = m_mainMenu->m_entities.create();
+
+		Render& renderComp = m_mainMenu->m_entities.emplace<Render>(saveButton);
+		Transform& transformComp = m_mainMenu->m_entities.emplace<Transform>(saveButton);
+		ScriptComp& scriptComp = m_mainMenu->m_entities.emplace<ScriptComp>(saveButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> saveButtonMat = std::make_shared<Material>(buttonQuadShader);
+		saveButtonMat->setValue("u_ButtonTexture", saveButtonTexture);
+
+		renderComp.material = saveButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, -height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3((width / 5.f) * widthRatio, 0, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::mainSave, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(saveButton, m_mainMenu, m_winRef, m_PointerPos, transformComp, *(saveButtonMat.get()), boundFunc);
+	}
+
+	{
+		entt::entity exitButton = m_mainMenu->m_entities.create();
+
+		Render& renderComp = m_mainMenu->m_entities.emplace<Render>(exitButton);
+		Transform& transformComp = m_mainMenu->m_entities.emplace<Transform>(exitButton);
+		ScriptComp& scriptComp = m_mainMenu->m_entities.emplace<ScriptComp>(exitButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = exitButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) +glm::vec3(0, height / 5.f, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::exitGame, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+	}
+
+	/*************************
+	*  Main Menu Settings Buttons
+	**************************/
+
+	{
+		entt::entity exitButton = m_mainMenu_Settings->m_entities.create();
+
+		Render& renderComp = m_mainMenu_Settings->m_entities.emplace<Render>(exitButton);
+		Transform& transformComp = m_mainMenu_Settings->m_entities.emplace<Transform>(exitButton);
+		ScriptComp& scriptComp = m_mainMenu_Settings->m_entities.emplace<ScriptComp>(exitButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = exitButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f);// +glm::vec3(-(width / 5.f), 0, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::mainMenu, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Settings, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+	}
+
+	/*************************
+	*  Main Menu Save Buttons
+	**************************/
+
+	{
+		entt::entity exitButton = m_mainMenu_Save->m_entities.create();
+
+		Render& renderComp = m_mainMenu_Save->m_entities.emplace<Render>(exitButton);
+		Transform& transformComp = m_mainMenu_Save->m_entities.emplace<Transform>(exitButton);
+		ScriptComp& scriptComp = m_mainMenu_Save->m_entities.emplace<ScriptComp>(exitButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = exitButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f);// +glm::vec3(-(width / 5.f), 0, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::mainMenu, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Save, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+	}
+
+	/*************************
+	*  Pause Menu Buttons
+	**************************/
+
+	{
+		entt::entity startButton = m_pauseMenu->m_entities.create();
+
+		Render& renderComp = m_pauseMenu->m_entities.emplace<Render>(startButton);
+		Transform& transformComp = m_pauseMenu->m_entities.emplace<Transform>(startButton);
+		ScriptComp& scriptComp = m_pauseMenu->m_entities.emplace<ScriptComp>(startButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> startButtonMat = std::make_shared<Material>(buttonQuadShader);
+		startButtonMat->setValue("u_ButtonTexture", playButtonTexture);
+
+		renderComp.material = startButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(-(width / 5.f) * widthRatio, 0, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::playGame, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(startButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(startButtonMat.get()), boundFunc);
+	}
+
+	{
+		entt::entity settingsButton = m_pauseMenu->m_entities.create();
+
+		Render& renderComp = m_pauseMenu->m_entities.emplace<Render>(settingsButton);
+		Transform& transformComp = m_pauseMenu->m_entities.emplace<Transform>(settingsButton);
+		ScriptComp& scriptComp = m_pauseMenu->m_entities.emplace<ScriptComp>(settingsButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> settingsButtonMat = std::make_shared<Material>(buttonQuadShader);
+		settingsButtonMat->setValue("u_ButtonTexture", settingsButtonTexture);
+
+		renderComp.material = settingsButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::pauseSettings, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(settingsButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(settingsButtonMat.get()), boundFunc);
+	}
+
+	{
+		entt::entity saveAndExitButton = m_pauseMenu->m_entities.create();
+
+		Render& renderComp = m_pauseMenu->m_entities.emplace<Render>(saveAndExitButton);
+		Transform& transformComp = m_pauseMenu->m_entities.emplace<Transform>(saveAndExitButton);
+		ScriptComp& scriptComp = m_pauseMenu->m_entities.emplace<ScriptComp>(saveAndExitButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> saveAndExitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		saveAndExitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = saveAndExitButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, -height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3((width / 5.f) * widthRatio, 0, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::saveGame, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
+	}
+
+	//{
+	//	entt::entity exitButton = m_pauseMenu->m_entities.create();
+
+	//	Render& renderComp = m_pauseMenu->m_entities.emplace<Render>(exitButton);
+	//	Transform& transformComp = m_pauseMenu->m_entities.emplace<Transform>(exitButton);
+	//	ScriptComp& scriptComp = m_pauseMenu->m_entities.emplace<ScriptComp>(exitButton);
+
+
+	//	renderComp.geometry = buttonQuadVAO;
+
+	//	std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
+	//	exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+	//	renderComp.material = exitButtonMat;
+
+	//	transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+	//	transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(0, height / 5.f, 0);
+
+	//	transformComp.recalc();
+
+	//	std::function<void()> boundFunc = std::bind(&Archo::playGame, this);
+	//	//boundFunc();
+	//	scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu, m_winRef, transformComp, *(exitButtonMat.get()), boundFunc);
+	//}
+
+	/*************************
+	*  Pause Menu Settings Buttons
+	**************************/
+
+	{
+		entt::entity exitButton = m_pauseMenu_Settings->m_entities.create();
+
+		Render& renderComp = m_pauseMenu_Settings->m_entities.emplace<Render>(exitButton);
+		Transform& transformComp = m_pauseMenu_Settings->m_entities.emplace<Transform>(exitButton);
+		ScriptComp& scriptComp = m_pauseMenu_Settings->m_entities.emplace<ScriptComp>(exitButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = exitButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f);// +glm::vec3(-(width / 5.f), 0, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::pauseMenu, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Settings, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+	}
+
+	/*************************
+	*  Pause Menu Inventory Buttons
+	**************************/
+
+	{
+		entt::entity exitButton = m_pauseMenu_Inventory->m_entities.create();
+
+		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(exitButton);
+		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(exitButton);
+		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(exitButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = exitButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f);// +glm::vec3(-(width / 5.f), 0, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::pauseMenu, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+	}
+
+	/*************************
+	*  Relics
+	**************************/
 
 	for (int i = 0; i < Relics; i++) {
 
@@ -270,7 +619,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	//Terrain Normals Compute Pass
 	ComputePass GroundComputePass;
 	GroundComputePass.material = compute_GroundMaterial;
-	GroundComputePass.workgroups = { 128,128,1 };
+	GroundComputePass.workgroups = { 128 / 2,128 / 2,1 };
 	GroundComputePass.barrier = MemoryBarrier::ShaderImageAccess;
 
 	Image GroundImg;
@@ -326,23 +675,126 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	//AAquad.recalc();
 
 	/*************************
+	*  Background Render Pass
+	**************************/
+
+	m_screenScene.reset(new Scene);
+
+	backgroundQuad = m_screenScene->m_entities.create();
+	{
+		Render& renderComp = m_screenScene->m_entities.emplace<Render>(backgroundQuad);
+		m_screenScene->m_entities.emplace<Transform>(backgroundQuad);
+		renderComp.geometry = screenAAQuadVAO;
+		renderComp.material = backgroundQuadMaterial;
+	}
+
+	RenderPass BackgroundPass;
+	BackgroundPass.scene = m_screenScene;
+	BackgroundPass.parseScene();
+	BackgroundPass.target = std::make_shared<FBO>(m_winRef.doGetSize(), backgroundPassLayout);
+	BackgroundPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+
+	BackgroundPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+	BackgroundPass.UBOmanager.setCachedValue("b_camera2D", "u_view2D", BackgroundPass.camera.view);
+	BackgroundPass.UBOmanager.setCachedValue("b_camera2D", "u_projection2D", BackgroundPass.camera.projection);
+
+	BackgroundPassIDx = m_backgroundRenderer.getSumPassCount();
+	m_backgroundRenderer.addRenderPass(BackgroundPass);
+
+	/*************************
+	*  Pause Menu Render Pass
+	**************************/
+
+	RenderPass PauseButtonPass;
+	PauseButtonPass.scene = m_pauseMenu;
+	PauseButtonPass.parseScene();
+	PauseButtonPass.target = std::make_shared<FBO>(m_winRef.doGetSize(), buttonPassLayout);
+	PauseButtonPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	PauseButtonPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+
+	PauseButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuView", PauseButtonPass.camera.view);
+	PauseButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", PauseButtonPass.camera.projection);
+
+	PauseButtonPassIDx = m_pausedRenderer.getSumPassCount();
+
+	m_pausedRenderer.addRenderPass(PauseButtonPass);
+
+
+	m_screenScene.reset(new Scene);
+
+	pauseMenuQuadMaterial->setValue("u_background", BackgroundPass.target->getTarget(0));
+	pauseMenuQuadMaterial->setValue("u_buttons", PauseButtonPass.target->getTarget(0));
+
+	PauseQuad = m_screenScene->m_entities.create();
+	{
+		Render& renderComp = m_screenScene->m_entities.emplace<Render>(PauseQuad);
+		m_screenScene->m_entities.emplace<Transform>(PauseQuad);
+
+		renderComp.geometry = screenAAQuadVAO;
+		renderComp.material = pauseMenuQuadMaterial;
+	}
+
+	RenderPass PauseMenuPass;
+	PauseMenuPass.scene = m_screenScene;
+	PauseMenuPass.parseScene();
+	PauseMenuPass.target = std::make_shared<FBO>();
+	PauseMenuPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	PauseMenuPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+
+	PauseMenuPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuView", PauseMenuPass.camera.view);
+	PauseMenuPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", PauseMenuPass.camera.projection);
+
+	FinalPausePassIDx = m_pausedRenderer.getSumPassCount();
+
+	m_pausedRenderer.addRenderPass(PauseMenuPass);
+
+	/*************************
 	*  Main Menu Render Pass
 	**************************/
 
+	RenderPass ButtonPass;
+	ButtonPass.scene = m_mainMenu;
+	ButtonPass.parseScene();
+	ButtonPass.target = std::make_shared<FBO>(m_winRef.doGetSize(), buttonPassLayout);
+	ButtonPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	ButtonPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+
+	ButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuView", ButtonPass.camera.view);
+	ButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", ButtonPass.camera.projection);
+
+	ButtonPassIDx = m_mainMenuRenderer.getSumPassCount();
+
+	m_mainMenuRenderer.addRenderPass(ButtonPass);
+
+
+	m_screenScene.reset(new Scene);
+
+	menuQuadMaterial->setValue("u_background", BackgroundPass.target->getTarget(0));
+	menuQuadMaterial->setValue("u_buttons", ButtonPass.target->getTarget(0));
+
+	MenuQuad = m_screenScene->m_entities.create();
+	{
+		Render& renderComp = m_screenScene->m_entities.emplace<Render>(MenuQuad);
+		m_screenScene->m_entities.emplace<Transform>(MenuQuad);
+
+		renderComp.geometry = screenAAQuadVAO;
+		renderComp.material = menuQuadMaterial;
+	}
+
 	RenderPass MainMenuPass;
-	MainMenuPass.scene = m_mainMenu;
+	MainMenuPass.scene = m_screenScene;
 	MainMenuPass.parseScene();
 	MainMenuPass.target = std::make_shared<FBO>();
 	MainMenuPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
 	MainMenuPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
 
-	//Transform transform;
+	MainMenuPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuView", MainMenuPass.camera.view);
+	MainMenuPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", MainMenuPass.camera.projection);
 
-	//MainMenuPass.camera.updateView(transform.transform);
-	MainMenuPass.UBOmanager.setCachedValue("b_camera2D", "u_view2D", MainMenuPass.camera.view);
-	MainMenuPass.UBOmanager.setCachedValue("b_camera2D", "u_projection2D", MainMenuPass.camera.projection);
+	FinalMainMenuPassIDx = m_mainMenuRenderer.getSumPassCount();
 
 	m_mainMenuRenderer.addRenderPass(MainMenuPass);
+
 
 	/*************************
 	*  Screen Relic Render Pass
@@ -375,6 +827,8 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	screenQuadMaterial->setValue("u_RelicTexture", ScreenRelicPass.target->getTarget(0));
 	screenQuadMaterial->setValue("u_RelicDataTexture", ScreenRelicPass.target->getTarget(1));
 
+	m_screenScene.reset(new Scene);
+
 	Quad = m_screenScene->m_entities.create();
 	{
 		Render& renderComp = m_screenScene->m_entities.emplace<Render>(Quad);
@@ -404,11 +858,15 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	ScreenGroundPassIDx = m_mainRenderer.getSumPassCount();
 	m_mainRenderer.addRenderPass(ScreenGroundPass);
 
+	pauseMenuQuadMaterial->setValue("u_game", ScreenGroundPass.target->getTarget(0));
+
 	/*************************
 	*  AA Render Pass
 	**************************/
 
 	screenAAQuadMaterial->setValue("u_inputTexture", ScreenGroundPass.target->getTarget(0));
+	screenAAQuadMaterial->setValue("u_background", BackgroundPass.target->getTarget(0));
+
 
 	m_screenScene.reset(new Scene);
 
@@ -432,6 +890,11 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	AAPassIDx = m_mainRenderer.getSumPassCount();
 	m_mainRenderer.addRenderPass(ScreenAAPass);
+
+
+
+
+
 }
 
 void Archo::onImGUIRender()
@@ -442,6 +905,8 @@ void Archo::onImGUIRender()
 
 void Archo::onRender()
 {
+	m_backgroundRenderer.render();
+
 	if (state == GameState::MainMenu) {
 		m_mainMenuRenderer.render();
 	}
@@ -450,28 +915,118 @@ void Archo::onRender()
 		m_mainRenderer.render();
 		glDisable(GL_BLEND);
 	}
+	else if (state == GameState::Paused) {
+		m_pausedRenderer.render();
+	}
 
 }
 
 void Archo::onUpdate(float timestep)
 {
+
+	if (m_winRef.doIsKeyPressed(GLFW_KEY_ESCAPE) && !Pausing) {
+		if (state == GameState::InGame) {
+			pauseMenu();
+		}
+		else if(state == GameState::Paused) {
+
+			playGame();
+		}
+		Pausing = true;
+	}
+	else if(!m_winRef.doIsKeyPressed(GLFW_KEY_ESCAPE) && Pausing){
+		Pausing = false;
+	}
+
+	if (m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && !modeToggle) {
+		modeToggle = true;
+		focusMode = !focusMode;
+		m_winRef.doSwitchInput();
+	}
+	if (!m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && modeToggle) {
+		modeToggle = false;
+	}
+
+	if (focusMode) {
+		m_PointerPos += (m_winRef.doGetMouseVector() * glm::vec2(1, -1)) / glm::min(width, height) * 500.0f;
+		m_PointerPos = glm::clamp((m_PointerPos), glm::vec2(0), m_winRef.getSizef());
+		//spdlog::info("Mouse Position: x:{}  y:{}", m_PointerPos.x, m_PointerPos.y);
+	}
+
+
+
+
+	auto& backgroundPass = m_backgroundRenderer.getRenderPass(BackgroundPassIDx);
+	auto& BackgroundQuad = backgroundPass.scene->m_entities.get<Render>(backgroundQuad).material;
+
+	allTime += timestep / 10.0f;
+
+	BackgroundQuad->setValue("allTime", allTime);
+
 	if (state == GameState::MainMenu) {
 
-		auto view = m_mainMenu->m_entities.view<ScriptComp>();
-		for (auto& entity : view) {
-			ScriptComp script = view.get<ScriptComp>(entity);
-			script.onUpdate(timestep);
+		auto& menuPassMat = m_mainMenuRenderer.getRenderPass(FinalMainMenuPassIDx).scene->m_entities.get<Render>(MenuQuad).material;
+		menuPassMat->setValue("u_mousePos", m_PointerPos);
+
+		if (menuState == MenuState::Main) {
+			auto view = m_mainMenu->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+		else if (menuState == MenuState::Settings) {
+			auto view = m_mainMenu_Settings->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+		else if (menuState == MenuState::Save) {
+			auto view = m_mainMenu_Save->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
 		}
 
 	}
+	else if (state == GameState::Paused) {
+
+		auto& pausePassMat = m_pausedRenderer.getRenderPass(FinalPausePassIDx).scene->m_entities.get<Render>(PauseQuad).material;
+		pausePassMat->setValue("u_mousePos", m_PointerPos);
+
+		if (pauseState == PauseState::Pause) {
+			auto view = m_pauseMenu->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+		else if (pauseState == PauseState::Settings) {
+			auto view = m_pauseMenu_Settings->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+		else if (pauseState == PauseState::Inventory) {
+			auto view = m_pauseMenu_Inventory->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+	}
 	else if (state == GameState::InGame) {
 		ZoneScoped;
-		allTime += timestep / 10.0f;
+		
 
 		auto& computeGroundPass = m_mainRenderer.getComputePass(GroundComputePassIDx);
 		auto& relicPass = m_mainRenderer.getRenderPass(ScreenRelicPassIDx);
 		auto& screenGroundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
 		auto& screenAAPass = m_mainRenderer.getRenderPass(AAPassIDx);
+		
 
 		//for (int i = 0; i < m_mainRenderer.getRenderPassCount(); i++) {
 		//	auto& targetPass = m_mainRenderer.getRenderPass(i);
@@ -484,23 +1039,27 @@ void Archo::onUpdate(float timestep)
 		//}
 		auto& QuadMat = screenGroundPass.scene->m_entities.get<Render>(Quad).material;
 		auto& AAQuadMat = screenAAPass.scene->m_entities.get<Render>(AAQuad).material;
+		
 
 
-		if (m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && !modeToggle) {
-			modeToggle = true;
-			focusMode = !focusMode;
-			m_winRef.doSwitchInput();
-		}
-		if (!m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && modeToggle) {
-			modeToggle = false;
-		}
-
-		if (focusMode) {
-			m_PointerPos += (m_winRef.doGetMouseVector() * glm::vec2(1, -1)) / glm::min(width, height);
-			m_PointerPos = glm::clamp((m_PointerPos), glm::vec2(0), glm::vec2(1));
-		}
 		if (!Pressed) {
-			m_DigPos = m_PointerPos;
+			glm::vec2 temp = m_PointerPos;// -(m_winRef.getSizef() * 0.5f);
+			if (height > width) {
+				float diff = (height - width)/2.0f;
+				temp.y -= diff;
+				temp /= (m_winRef.getSizef() - glm::vec2(0, diff * 2.0f));
+			}
+			else if (height < width) {
+				float diff = (width - height) / 2.0f;
+				temp.x -= diff;
+				temp /= (m_winRef.getSizef() - glm::vec2(diff * 2.0f, 0));
+			}
+
+
+
+			temp = glm::clamp(temp, glm::vec2(0), glm::vec2(1));
+
+			m_DigPos = temp;
 		}
 
 		float timeToDig = 1.0f;
@@ -725,7 +1284,8 @@ void Archo::onUpdate(float timestep)
 		QuadMat->setValue("RelicFill", RelicSetWave);
 		QuadMat->setValue("u_flip", (float)(int)Flip);
 
-		AAQuadMat->setValue("allTime", allTime);
+		AAQuadMat->setValue("MousePos", m_PointerPos);
+		
 		computeGroundPass.material->setValue("Reset", (float)(int)Reseting);
 		computeGroundPass.material->setValue("ResetWave", glm::clamp((-glm::pow(ResetWave - 1, 2.0f)) + 1, 0.0f, 1.0f));
 		//if (ProgressBar >= 1) {
@@ -767,6 +1327,82 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 	//		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	//	}
 	//}
+}
+
+void Archo::playGame()
+{
+	state = GameState::InGame;
+	pauseState = PauseState::Pause;
+}
+
+void Archo::mainSettings()
+{
+	auto& pass = m_mainMenuRenderer.getRenderPass(ButtonPassIDx);
+	pass.scene = m_mainMenu_Settings;
+	pass.parseScene();
+
+	menuState = MenuState::Settings;
+}
+
+void Archo::mainSave()
+{
+	auto& pass = m_mainMenuRenderer.getRenderPass(ButtonPassIDx);
+	pass.scene = m_mainMenu_Save;
+	pass.parseScene();
+
+	menuState = MenuState::Save;
+}
+
+void Archo::mainMenu()
+{
+	auto& pass = m_mainMenuRenderer.getRenderPass(ButtonPassIDx);
+	pass.scene = m_mainMenu;
+	pass.parseScene();
+
+	menuState = MenuState::Main;
+
+}
+
+
+
+void Archo::pauseMenu()
+{
+	auto& pass = m_pausedRenderer.getRenderPass(PauseButtonPassIDx);
+	pass.scene = m_pauseMenu;
+	pass.parseScene();
+
+	pauseState = PauseState::Pause;
+	state = GameState::Paused;
+}
+
+void Archo::pauseInventory()
+{
+	auto& pass = m_pausedRenderer.getRenderPass(PauseButtonPassIDx);
+	pass.scene = m_pauseMenu_Inventory;
+	pass.parseScene();
+
+	pauseState = PauseState::Inventory;
+}
+
+void Archo::pauseSettings()
+{
+	auto& pass = m_pausedRenderer.getRenderPass(PauseButtonPassIDx);
+	pass.scene = m_pauseMenu_Settings;
+	pass.parseScene();
+
+	pauseState = PauseState::Settings;
+}
+
+void Archo::exitGame()
+{
+	_sleep(1000);
+	state = GameState::Exit;
+}
+
+void Archo::saveGame()
+{
+	spdlog::info("Game Saved! (not implemented yet)");
+	state = GameState::MainMenu;
 }
 
 

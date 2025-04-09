@@ -4,6 +4,10 @@
 #include "events/events.hpp"
 #include "windows/GLFWWindowImpl.hpp"
 
+enum class GameState { MainMenu, InGame, Paused, Exit };
+enum class PauseState { Pause, Inventory, Settings };
+enum class MenuState { Main, Settings, Save };
+
 /**
 \class Layer
 \brief A convient abstraction of rendering and events into a layer which can be placed in the application.
@@ -26,6 +30,10 @@ public:
 	virtual void onMouseReleased(MouseButtonReleasedEvent& e) {}; //!< Run when a Mouse Button is released
 	virtual void onMouseMoved(MouseMovedEvent& e) {}; //!< Run when the mouse is moved
 	virtual void onMouseScrolled(MouseScrolledEvent& e) {}; //!<< Run when the mouse wheel is scrolled
+
+	GameState state = GameState::MainMenu;
+	PauseState pauseState = PauseState::Pause;
+	MenuState menuState = MenuState::Main;
 protected:
 	GLFWWindowImpl& m_winRef; //!< Reference to the window where this layer is rendered
 };

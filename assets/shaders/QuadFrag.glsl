@@ -57,6 +57,8 @@ void main()
 
     colour += vec4(vec3(-noiseDis), 0.0);
 
+    colour.xyz = ((floor(colour.xyz * 20) + 0.5) / 20);
+
     vec4 c = texture(u_RelicTexture,texCoords);
     vec4 d = texture(u_RelicDataTexture,texCoords);
     if(c.a >= 1 && clamp(d.x,-0.1,RelicFill) > groundDepth){
