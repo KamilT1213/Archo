@@ -4,7 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <numeric> // For std::iota
 #include <string>
-//#include <nlohmann/json.hpp>
+
 
 struct Relic {
 	bool Active;
@@ -12,6 +12,9 @@ struct Relic {
 
 Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 {
+	m_settings = Load_Settings();
+	m_save = Load_Game();
+
 	const char* soundFile = "./assets/sounds/Extraction_soft_var0.wav";
 	sound = (std::shared_ptr<Mix_Chunk>)Mix_LoadWAV(soundFile);
 	if (!sound) {
@@ -37,6 +40,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	std::shared_ptr<Texture> playButtonTexture = std::make_shared<Texture>("./assets/textures/UI/PlayButton.png");
 	std::shared_ptr<Texture> exitButtonTexture = std::make_shared<Texture>("./assets/textures/UI/ExitButton.png");
 	std::shared_ptr<Texture> saveButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SaveButton.png");
+	std::shared_ptr<Texture> deleteSaveButtonTexture = std::make_shared<Texture>("./assets/textures/UI/DeleteSaveButton.png");
 	std::shared_ptr<Texture> settingsButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SettingsButton.png");
 
 	TextureDescription groundTextureDesc;
@@ -356,7 +360,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		transformComp.recalc();
 
-		std::function<void()> boundFunc = std::bind(&Archo::mainMenu, this);
+		std::function<void()> boundFunc = std::bind(&Archo::settings_to_mainMenu, this);
 		//boundFunc();
 		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Settings, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
 	}
@@ -364,6 +368,31 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	/*************************
 	*  Main Menu Save Buttons
 	**************************/
+
+	{
+		entt::entity deleteSaveButton = m_mainMenu_Save->m_entities.create();
+
+		Render& renderComp = m_mainMenu_Save->m_entities.emplace<Render>(deleteSaveButton);
+		Transform& transformComp = m_mainMenu_Save->m_entities.emplace<Transform>(deleteSaveButton);
+		ScriptComp& scriptComp = m_mainMenu_Save->m_entities.emplace<ScriptComp>(deleteSaveButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> deleteSaveButtonMat = std::make_shared<Material>(buttonQuadShader);
+		deleteSaveButtonMat->setValue("u_ButtonTexture", deleteSaveButtonTexture);
+
+		renderComp.material = deleteSaveButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, -height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(-(width / 5.f) * widthRatio, 0, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::deleteGameSave, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(deleteSaveButton, m_mainMenu_Save, m_winRef, m_PointerPos, transformComp, *(deleteSaveButtonMat.get()), boundFunc);
+	}
 
 	{
 		entt::entity exitButton = m_mainMenu_Save->m_entities.create();
@@ -381,7 +410,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 		renderComp.material = exitButtonMat;
 
 		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
-		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f);// +glm::vec3(-(width / 5.f), 0, 0);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3((width / 5.f) * widthRatio, 0, 0);
 
 		transformComp.recalc();
 
@@ -445,6 +474,31 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	}
 
 	{
+		entt::entity saveButton = m_pauseMenu->m_entities.create();
+
+		Render& renderComp = m_pauseMenu->m_entities.emplace<Render>(saveButton);
+		Transform& transformComp = m_pauseMenu->m_entities.emplace<Transform>(saveButton);
+		ScriptComp& scriptComp = m_pauseMenu->m_entities.emplace<ScriptComp>(saveButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> saveButtonMat = std::make_shared<Material>(buttonQuadShader);
+		saveButtonMat->setValue("u_ButtonTexture", saveButtonTexture);
+
+		renderComp.material = saveButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, -height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3((width / 5.f) * widthRatio, 0, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::saveGame, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(saveButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(saveButtonMat.get()), boundFunc);
+	}
+
+	{
 		entt::entity saveAndExitButton = m_pauseMenu->m_entities.create();
 
 		Render& renderComp = m_pauseMenu->m_entities.emplace<Render>(saveAndExitButton);
@@ -459,15 +513,16 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		renderComp.material = saveAndExitButtonMat;
 
-		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, -height / 10.f, 1.f);
-		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3((width / 5.f) * widthRatio, 0, 0);
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(0, height / 5.f, 0);
 
 		transformComp.recalc();
 
-		std::function<void()> boundFunc = std::bind(&Archo::saveGame, this);
+		std::function<void()> boundFunc = std::bind(&Archo::saveAndExit, this);
 		//boundFunc();
 		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
 	}
+
 
 	//{
 	//	entt::entity exitButton = m_pauseMenu->m_entities.create();
@@ -518,7 +573,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		transformComp.recalc();
 
-		std::function<void()> boundFunc = std::bind(&Archo::pauseMenu, this);
+		std::function<void()> boundFunc = std::bind(&Archo::settings_to_pauseMenu, this);
 		//boundFunc();
 		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Settings, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
 	}
@@ -547,7 +602,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		transformComp.recalc();
 
-		std::function<void()> boundFunc = std::bind(&Archo::pauseMenu, this);
+		std::function<void()> boundFunc = std::bind(&Archo::unpauseInventory, this);
 		//boundFunc();
 		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
 	}
@@ -1363,10 +1418,16 @@ void Archo::mainMenu()
 
 }
 
-
-
 void Archo::pauseMenu()
 {
+	state = GameState::Paused;
+	pauseState = PauseState::Pause;
+}
+
+void Archo::settings_to_pauseMenu()
+{
+	Save_Settings(m_settings);
+
 	auto& pass = m_pausedRenderer.getRenderPass(PauseButtonPassIDx);
 	pass.scene = m_pauseMenu;
 	pass.parseScene();
@@ -1382,6 +1443,17 @@ void Archo::pauseInventory()
 	pass.parseScene();
 
 	pauseState = PauseState::Inventory;
+	state = GameState::Paused;
+}
+
+void Archo::unpauseInventory()
+{
+	auto& pass = m_pausedRenderer.getRenderPass(PauseButtonPassIDx);
+	pass.scene = m_pauseMenu;
+	pass.parseScene();
+
+	pauseState = PauseState::Pause;
+	state = GameState::InGame;
 }
 
 void Archo::pauseSettings()
@@ -1395,14 +1467,46 @@ void Archo::pauseSettings()
 
 void Archo::exitGame()
 {
+	Save_Game(m_save);
+	Save_Settings(m_settings);
 	_sleep(1000);
 	state = GameState::Exit;
 }
 
 void Archo::saveGame()
 {
-	spdlog::info("Game Saved! (not implemented yet)");
+	//spdlog::info("Game Saved! (not implemented yet)");
+	Save_Game(m_save);
+}
+
+void Archo::settings_to_mainMenu()
+{
+	Save_Settings(m_settings);
+
+	auto& pass = m_mainMenuRenderer.getRenderPass(ButtonPassIDx);
+	pass.scene = m_mainMenu;
+	pass.parseScene();
+
+	menuState = MenuState::Main;
+}
+
+void Archo::settings_to_Game()
+{
+	Save_Settings(m_settings);
+	state = GameState::InGame;
+	pauseState = PauseState::Pause;
+}
+
+void Archo::saveAndExit()
+{
+	Save_Game(m_save);
 	state = GameState::MainMenu;
+}
+
+void Archo::deleteGameSave()
+{
+	m_save = Game_Save();
+	Save_Game(m_save);
 }
 
 

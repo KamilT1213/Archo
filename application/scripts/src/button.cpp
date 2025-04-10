@@ -1,6 +1,6 @@
 #include "scripts/include/button.hpp"
 //#include "core/log.hpp"
-
+#include "MainScene.hpp"
 
 void ButtonScript::onUpdate(float timestep)
 {
@@ -9,6 +9,7 @@ void ButtonScript::onUpdate(float timestep)
 	std::pair<glm::vec2, glm::vec2> boundingBox;
 	boundingBox.first = glm::vec2(m_transRef.translation - glm::abs(m_transRef.scale));
 	boundingBox.second = glm::vec2(m_transRef.translation + glm::abs(m_transRef.scale));
+
 
 	//auto& matRef = m_scene->m_entities.get<Material>(m_entity);
 

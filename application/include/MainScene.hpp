@@ -1,6 +1,6 @@
 #pragma once
 #include <DemonRenderer.hpp>
-
+#include "core/saving.hpp"
 
 
 class Archo : public Layer
@@ -18,11 +18,16 @@ private:
 	void mainSave();
 	void mainMenu();
 	void pauseMenu();
+	void settings_to_pauseMenu();
 	void pauseInventory();
+	void unpauseInventory();
 	void pauseSettings();
 	void exitGame();
 	void saveGame();
-
+	void settings_to_mainMenu();
+	void settings_to_Game();
+	void saveAndExit();
+	void deleteGameSave();
 
 
 	std::vector<entt::entity> m_Relics;
@@ -40,7 +45,6 @@ private:
 	entt::entity backgroundQuad;
 	entt::entity MenuQuad;
 	entt::entity PauseQuad;
-
 
 	SoundManager m_soundManager;
 	std::shared_ptr<Mix_Chunk> sound;
@@ -105,7 +109,8 @@ private:
 	Renderer m_backgroundRenderer;
 	Renderer m_pausedRenderer;
 
-
+	Settings_Save m_settings;
+	Game_Save m_save;
 
 	// Actor positions for ease of use and to avoid additonal magic numbers
 
