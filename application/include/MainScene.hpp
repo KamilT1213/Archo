@@ -22,14 +22,16 @@ private:
 	void pauseInventory();
 	void unpauseInventory();
 	void pauseSettings();
+	void pause_to_Game();
 	void exitGame();
 	void saveGame();
 	void settings_to_mainMenu();
 	void settings_to_Game();
 	void saveAndExit();
 	void deleteGameSave();
+	void setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Shader> shader);
 
-
+	std::vector<std::shared_ptr<Shader>> m_generators;
 	std::vector<entt::entity> m_Relics;
 	std::shared_ptr<Scene> m_RelicScene;
 	std::shared_ptr<Scene> m_screenScene;
@@ -108,6 +110,7 @@ private:
 	Renderer m_computeRenderer;
 	Renderer m_backgroundRenderer;
 	Renderer m_pausedRenderer;
+	Renderer m_generationRenderer;
 
 	Settings_Save m_settings;
 	Game_Save m_save;

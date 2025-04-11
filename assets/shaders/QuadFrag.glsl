@@ -28,6 +28,7 @@ void main()
 {
     float ScreenPixelSize = 1.0/min(u_ScreenSize.x, u_ScreenSize.y);
     float groundDepth = texture(u_GroundDepthTexture, texCoords).r;
+    vec4 colourout = texture(u_GroundDepthTexture, texCoords);
     float groundDepthAtDig = texture(u_GroundDepthTexture, DigPos).r;
     vec2 dir = normalize(vec2(1,-1));
     float groundDepthoff = texture(u_GroundDepthTexture, texCoords + (-dir * (1.0 / u_ScreenSize))).r;
@@ -84,7 +85,9 @@ void main()
     if (RfromM < ScreenPixelSize * (sizeOfRing - 7.5)) {
         colour = mix(colour, vec4(vec3(1), 1), 0.4f);
     }
-    //colour = vec4(vec3(Dot - (1 - groundDepth)), 1.0);
+
+    if (colourout.a <= 0.6) discard;
+    colour = colourout;
 }
 
 vec2 hash2(vec2 p)

@@ -57,6 +57,11 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	//Materials -------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+	//Level Generators
+	ShaderDescription compute_Generator_Type1_ShaderDesc;
+	compute_Generator_Type1_ShaderDesc.type = ShaderType::compute;
+	compute_Generator_Type1_ShaderDesc.computeSrcPath = "./assets/shaders/compute_Generate_Type1.glsl";
+	m_generators.push_back(std::make_shared<Shader>(compute_Generator_Type1_ShaderDesc));
 
 	//Final screen post processing pass (screen effects) material
 	ShaderDescription screenQuadShaderDesc;
@@ -443,7 +448,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		transformComp.recalc();
 
-		std::function<void()> boundFunc = std::bind(&Archo::playGame, this);
+		std::function<void()> boundFunc = std::bind(&Archo::pause_to_Game, this);
 		//boundFunc();
 		scriptComp.attachScript<ButtonScript>(startButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(startButtonMat.get()), boundFunc);
 	}
@@ -669,33 +674,35 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	*  Compute Pass
 	**************************/
 
+	setupGenerator(m_generationRenderer, groundTexture, m_generators.at(0));
+
 	//Terrain:
 
 	//Terrain Normals Compute Pass
-	ComputePass GroundComputePass;
-	GroundComputePass.material = compute_GroundMaterial;
-	GroundComputePass.workgroups = { 128 / 2,128 / 2,1 };
-	GroundComputePass.barrier = MemoryBarrier::ShaderImageAccess;
+	//ComputePass GroundComputePass;
+	//GroundComputePass.material = compute_GroundMaterial;
+	//GroundComputePass.workgroups = { 128 / 2,128 / 2,1 };
+	//GroundComputePass.barrier = MemoryBarrier::ShaderImageAccess;
 
-	Image GroundImg;
-	GroundImg.mipLevel = 0;
-	GroundImg.layered = false;
-	GroundImg.texture = groundTexture;
-	GroundImg.imageUnit = GroundComputePass.material->m_shader->m_imageBindingPoints["GroundImg"];
-	GroundImg.access = TextureAccess::ReadWrite;
+	//Image GroundImg;
+	//GroundImg.mipLevel = 0;
+	//GroundImg.layered = false;
+	//GroundImg.texture = groundTexture;
+	//GroundImg.imageUnit = GroundComputePass.material->m_shader->m_imageBindingPoints["GroundImg"];
+	//GroundImg.access = TextureAccess::ReadWrite;
 
-	Image GroundImgTemp;
-	GroundImgTemp.mipLevel = 0;
-	GroundImgTemp.layered = false;
-	GroundImgTemp.texture = groundTextureTemp;
-	GroundImgTemp.imageUnit = GroundComputePass.material->m_shader->m_imageBindingPoints["GroundImgHold"];
-	GroundImgTemp.access = TextureAccess::ReadWrite;
+	//Image GroundImgTemp;
+	//GroundImgTemp.mipLevel = 0;
+	//GroundImgTemp.layered = false;
+	//GroundImgTemp.texture = groundTextureTemp;
+	//GroundImgTemp.imageUnit = GroundComputePass.material->m_shader->m_imageBindingPoints["GroundImgHold"];
+	//GroundImgTemp.access = TextureAccess::ReadWrite;
 
-	GroundComputePass.images.push_back(GroundImg);
-	GroundComputePass.images.push_back(GroundImgTemp);
+	//GroundComputePass.images.push_back(GroundImg);
+	//GroundComputePass.images.push_back(GroundImgTemp);
 
-	GroundComputePassIDx = m_mainRenderer.getSumPassCount();
-	m_mainRenderer.addComputePass(GroundComputePass);
+	//GroundComputePassIDx = m_mainRenderer.getSumPassCount();
+	//m_mainRenderer.addComputePass(GroundComputePass);
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -985,7 +992,7 @@ void Archo::onUpdate(float timestep)
 		}
 		else if(state == GameState::Paused) {
 
-			playGame();
+			pause_to_Game();
 		}
 		Pausing = true;
 	}
@@ -1013,8 +1020,15 @@ void Archo::onUpdate(float timestep)
 
 	auto& backgroundPass = m_backgroundRenderer.getRenderPass(BackgroundPassIDx);
 	auto& BackgroundQuad = backgroundPass.scene->m_entities.get<Render>(backgroundQuad).material;
+	auto& generatePass = m_generationRenderer.getComputePass(0).material;
 
 	allTime += timestep / 10.0f;
+
+	if (allTime > 1000) {
+		allTime = (allTime - 1000);
+	}
+
+	generatePass->setValue("Seed", allTime);
 
 	BackgroundQuad->setValue("allTime", allTime);
 
@@ -1077,7 +1091,7 @@ void Archo::onUpdate(float timestep)
 		ZoneScoped;
 		
 
-		auto& computeGroundPass = m_mainRenderer.getComputePass(GroundComputePassIDx);
+		//auto& computeGroundPass = m_mainRenderer.getComputePass(GroundComputePassIDx);
 		auto& relicPass = m_mainRenderer.getRenderPass(ScreenRelicPassIDx);
 		auto& screenGroundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
 		auto& screenAAPass = m_mainRenderer.getRenderPass(AAPassIDx);
@@ -1092,7 +1106,7 @@ void Archo::onUpdate(float timestep)
 		//	targetPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", relicPass.camera.view);
 		//	targetPass.UBOmanager.setCachedValue("b_relicCcamera2D", "u_relicProjection2D", relicPass.camera.projection);
 		//}
-		auto& QuadMat = screenGroundPass.scene->m_entities.get<Render>(Quad).material;
+		//auto& QuadMat = screenGroundPass.scene->m_entities.get<Render>(Quad).material;
 		auto& AAQuadMat = screenAAPass.scene->m_entities.get<Render>(AAQuad).material;
 		
 
@@ -1333,16 +1347,16 @@ void Archo::onUpdate(float timestep)
 		}
 
 
-		QuadMat->setValue("MousePos", (m_PointerPos));
-		QuadMat->setValue("DigPos", (m_DigPos));
-		QuadMat->setValue("Progress", x);
-		QuadMat->setValue("RelicFill", RelicSetWave);
-		QuadMat->setValue("u_flip", (float)(int)Flip);
+		//QuadMat->setValue("MousePos", (m_PointerPos));
+		//QuadMat->setValue("DigPos", (m_DigPos));
+		//QuadMat->setValue("Progress", x);
+		//QuadMat->setValue("RelicFill", RelicSetWave);
+		//QuadMat->setValue("u_flip", (float)(int)Flip);
 
 		AAQuadMat->setValue("MousePos", m_PointerPos);
 		
-		computeGroundPass.material->setValue("Reset", (float)(int)Reseting);
-		computeGroundPass.material->setValue("ResetWave", glm::clamp((-glm::pow(ResetWave - 1, 2.0f)) + 1, 0.0f, 1.0f));
+		//computeGroundPass.material->setValue("Reset", (float)(int)Reseting);
+		//computeGroundPass.material->setValue("ResetWave", glm::clamp((-glm::pow(ResetWave - 1, 2.0f)) + 1, 0.0f, 1.0f));
 		//if (ProgressBar >= 1) {
 		//	Pressed = true;
 		//}
@@ -1354,10 +1368,10 @@ void Archo::onUpdate(float timestep)
 		float x3 = glm::pow(x2 * timeToDig, 30) / timeToDig;
 		float x4 = glm::floor(action * timeToDig) / timeToDig;
 		action = x3 + x4;
-		computeGroundPass.material->setValue("action", action);
-		computeGroundPass.material->setValue("digging", (float)(int)(!finished && !isExtracting));
-		computeGroundPass.material->setValue("MousePos", (m_DigPos));
-		computeGroundPass.material->setValue("subBy", Subby);
+		//computeGroundPass.material->setValue("action", action);
+		//computeGroundPass.material->setValue("digging", (float)(int)(!finished && !isExtracting));
+		//computeGroundPass.material->setValue("MousePos", (m_DigPos));
+		//computeGroundPass.material->setValue("subBy", Subby);
 
 		//spdlog::info("Reset Wave: {:03.2f}", ResetWave);
 		//spdlog::info("Reseting: {:03.2f}", (float)(int)Reseting);
@@ -1386,6 +1400,8 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 
 void Archo::playGame()
 {
+
+	m_generationRenderer.render();
 	state = GameState::InGame;
 	pauseState = PauseState::Pause;
 }
@@ -1465,6 +1481,12 @@ void Archo::pauseSettings()
 	pauseState = PauseState::Settings;
 }
 
+void Archo::pause_to_Game()
+{
+	state = GameState::InGame;
+	pauseState = PauseState::Pause;
+}
+
 void Archo::exitGame()
 {
 	Save_Game(m_save);
@@ -1507,6 +1529,39 @@ void Archo::deleteGameSave()
 {
 	m_save = Game_Save();
 	Save_Game(m_save);
+}
+
+void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Shader> shader)
+{
+	
+
+	int Layers[4]{0,1,2,3};
+
+	for (int i = 0; i < std::size(Layers); i++) {
+
+		std::shared_ptr<Material> mat = std::make_shared<Material>(shader);
+
+		mat->setValue("Type", (float)Layers[i]);
+		mat->setValue("Size", glm::vec2(target->getWidthf(), target->getHeightf()));
+
+		ComputePass ComputePass;
+		ComputePass.material = mat;
+		ComputePass.workgroups = { glm::max(target->getWidth() / 32, (unsigned)1),glm::max(target->getHeight() / 32, (unsigned)1),1};
+		ComputePass.barrier = MemoryBarrier::ShaderImageAccess;
+
+		Image TargetImg;
+		TargetImg.mipLevel = 0;
+		TargetImg.layered = false;
+		TargetImg.texture = target;
+		TargetImg.imageUnit = ComputePass.material->m_shader->m_imageBindingPoints["ImgIn"];
+		TargetImg.access = TextureAccess::ReadWrite;
+
+		ComputePass.images.push_back(TargetImg);
+
+		renderer.addComputePass(ComputePass);
+	}
+
+
 }
 
 
