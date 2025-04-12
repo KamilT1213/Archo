@@ -36,6 +36,8 @@ private:
 	void onRender() const; //!< Do all drawing
 	void onImGuiRender(); //!< Draw all ImGui wigdets
 	void onClose(WindowCloseEvent& e); //!< Run when the window is closed
+	void onFocus(WindowFocusEvent& e);
+	void onLostFocus(WindowLostFocusEvent& e);
 	void onResize(WindowResizeEvent& e); //!< Run when the window is resized
 	void onKeyPressed(KeyPressedEvent& e); //!< Run when a key is press and the window is focused
 	void onKeyReleased(KeyReleasedEvent& e); //!< Run when a key is released and the window is focused

@@ -23,6 +23,8 @@ public:
 	virtual void onImGUIRender() {}; //!< Runs when layer is renderered
 	virtual void onUpdate(float timestep) = 0;//!< Runs every frame
 	virtual void onClose(WindowCloseEvent& e) {}; //!< Run when the window is closed
+	virtual void onFocus(WindowFocusEvent& e) {};
+	virtual void onLostFocus(WindowLostFocusEvent& e) {};
 	virtual void onResize(WindowResizeEvent& e) {}; //!< Run when the window is resized
 	virtual void onKeyPressed(KeyPressedEvent& e) {}; //!< Run when a key is press and the window is focused
 	virtual void onKeyReleased(KeyReleasedEvent& e) {}; //!< Run when a key is released and the window is focused

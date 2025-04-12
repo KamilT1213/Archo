@@ -13,6 +13,8 @@ private:
 	void onRender() override;
 	void onUpdate(float timestep) override;
 	void onKeyPressed(KeyPressedEvent& e) override;
+	void onFocus(WindowFocusEvent& e) override;
+	void onLostFocus(WindowLostFocusEvent& e) override;
 	void playGame();
 	void mainSettings();
 	void mainSave();
@@ -29,7 +31,7 @@ private:
 	void settings_to_Game();
 	void saveAndExit();
 	void deleteGameSave();
-	void setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Shader> shader);
+	void setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Texture> working, std::shared_ptr<Shader> shader);
 
 	std::vector<std::shared_ptr<Shader>> m_generators;
 	std::vector<entt::entity> m_Relics;
@@ -59,7 +61,7 @@ private:
 	glm::vec2 m_DigPos = glm::vec2(0.5);
 
 	bool b{ true };
-	bool focusMode{ false };
+	bool focusMode{ true };
 	bool modeToggle{ false };
 	bool Reseting{ false };
 	bool Pressed{ false };

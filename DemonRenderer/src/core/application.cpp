@@ -8,6 +8,8 @@ Application::Application(const WindowProperties& winProps)
 	m_window.open(winProps);
 
 	m_window.handler.onWinClose = [this](WindowCloseEvent& e) {onClose(e);};
+	m_window.handler.onWinFocused = [this](WindowFocusEvent& e) {onFocus(e);};
+	m_window.handler.onWinLostFocus = [this](WindowLostFocusEvent& e) {onLostFocus(e);};
 	m_window.handler.onKeyPress = [this](KeyPressedEvent& e) {onKeyPressed(e);};
 	m_window.handler.onKeyRelease = [this](KeyReleasedEvent& e) {onKeyReleased(e);};
 
@@ -55,6 +57,16 @@ void Application::onClose(WindowCloseEvent& e)
 {
 	m_running = false;
 	if (m_layer) m_layer->onClose(e);
+	e.handle();
+}
+
+void Application::onFocus(WindowFocusEvent& e) {
+	m_layer->onFocus(e);
+	e.handle();
+}
+
+void Application::onLostFocus(WindowLostFocusEvent& e) {
+	m_layer->onLostFocus(e);
 	e.handle();
 }
 

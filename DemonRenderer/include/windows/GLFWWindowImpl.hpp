@@ -35,10 +35,13 @@ public:
 	[[nodiscard]] virtual glm::vec2 doGetMousePosition() const override; //!< Function acts on get mouse position
 	[[nodiscard]] virtual glm::vec2 doGetMouseVector() const;
 	[[nodiscard]] virtual glm::ivec2 doGetSize() const override; //!< Virtual function acts on get the window size
-	[[nodiscard]] virtual void doSwitchInput();
+	[[nodiscard]] virtual void doSwitchInput();	
+	[[nodiscard]] virtual void doSwitchInputTo(bool b);
+	[[nodiscard]] virtual int isFocus();
 
 	bool m_ImGuiOpen{ true }; //!< Boolean for IMGui window
-private:
 	bool w_mouseEnabled{ false };
+private:
+	
 };
 

@@ -40,7 +40,7 @@ void main()
 	float f = noise((centerCoords * u_ScreenSize * 0.25) + 0.5) - abs(noise((centerCoords * u_ScreenSize * 0.01) + 0.5));
 	float f2 = noise((centerCoords2 * u_ScreenSize * 0.25) + 0.5) - abs(noise((centerCoords2 * u_ScreenSize * 0.01) + 0.5));
 	if (distance(vec2(0), centerCoords) < 0.5) f = f2;
-	if (distance(vec2(0), centerCoords) < 0.4) f -= distance(vec2(0), centerCoords) *  (1 / 0.4);
+	//if (distance(vec2(0), centerCoords) < 0.4) f -= distance(vec2(0), centerCoords) *  (1 / 0.4);
 	//if (distance(centerCoords, point) < 0.05) {
 	//	f = 1;
 	//}

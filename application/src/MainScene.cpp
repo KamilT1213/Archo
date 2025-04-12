@@ -21,7 +21,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 		std::cerr << "Failed to load sound: " << Mix_GetError() << "\n";
 		Mix_CloseAudio();
 		SDL_Quit();
-		return;
+		//return;
 	}
 
 	m_winRef.setVSync(false);
@@ -129,17 +129,17 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	std::shared_ptr<Shader> buttonQuadShader = std::make_shared<Shader>(buttonQuadShaderDesc);
 	//std::shared_ptr<Material> buttonQuadMaterial = std::make_shared<Material>(buttonQuadShader);
 
-	ShaderDescription compute_GroundShaderDesc;
-	compute_GroundShaderDesc.type = ShaderType::compute;
-	compute_GroundShaderDesc.computeSrcPath = "./assets/shaders/compute_Ground.glsl";
-	std::shared_ptr<Shader> compute_GroundShader = std::make_shared<Shader>(compute_GroundShaderDesc);
-	std::shared_ptr<Material> compute_GroundMaterial = std::make_shared<Material>(compute_GroundShader);
+	//ShaderDescription compute_GroundShaderDesc;
+	//compute_GroundShaderDesc.type = ShaderType::compute;
+	//compute_GroundShaderDesc.computeSrcPath = "./assets/shaders/compute_Ground.glsl";
+	//std::shared_ptr<Shader> compute_GroundShader = std::make_shared<Shader>(compute_GroundShaderDesc);
+	//std::shared_ptr<Material> compute_GroundMaterial = std::make_shared<Material>(compute_GroundShader);
 
-	ShaderDescription compute_GroundNormalShaderDesc;
-	compute_GroundNormalShaderDesc.type = ShaderType::compute;
-	compute_GroundNormalShaderDesc.computeSrcPath = "./assets/shaders/compute_CDMnormals.glsl";
-	std::shared_ptr<Shader> compute_GroundNormalShader = std::make_shared<Shader>(compute_GroundNormalShaderDesc);
-	std::shared_ptr<Material> compute_GroundNormalMaterial = std::make_shared<Material>(compute_GroundNormalShader);
+	//ShaderDescription compute_GroundNormalShaderDesc;
+	//compute_GroundNormalShaderDesc.type = ShaderType::compute;
+	//compute_GroundNormalShaderDesc.computeSrcPath = "./assets/shaders/compute_CDMnormals.glsl";
+	//std::shared_ptr<Shader> compute_GroundNormalShader = std::make_shared<Shader>(compute_GroundNormalShaderDesc);
+	//std::shared_ptr<Material> compute_GroundNormalMaterial = std::make_shared<Material>(compute_GroundNormalShader);
 
 	//VAOs ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -674,7 +674,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	*  Compute Pass
 	**************************/
 
-	setupGenerator(m_generationRenderer, groundTexture, m_generators.at(0));
+	setupGenerator(m_generationRenderer, groundTexture, groundTextureTemp, m_generators.at(0));
 
 	//Terrain:
 
@@ -1000,14 +1000,14 @@ void Archo::onUpdate(float timestep)
 		Pausing = false;
 	}
 
-	if (m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && !modeToggle) {
-		modeToggle = true;
-		focusMode = !focusMode;
-		m_winRef.doSwitchInput();
-	}
-	if (!m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && modeToggle) {
-		modeToggle = false;
-	}
+	//if (m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && !modeToggle) {
+	//	modeToggle = true;
+	//	focusMode = !focusMode;
+	//	m_winRef.doSwitchInput();
+	//}
+	//if (!m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && modeToggle) {
+	//	modeToggle = false;
+	//}
 
 	if (focusMode) {
 		m_PointerPos += (m_winRef.doGetMouseVector() * glm::vec2(1, -1)) / glm::min(width, height) * 500.0f;
@@ -1398,6 +1398,20 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 	//}
 }
 
+void Archo::onFocus(WindowFocusEvent& e)
+{
+	focusMode = true;
+	spdlog::info("Focused: {}", focusMode);
+	m_winRef.doSwitchInputTo(false);
+}
+
+void Archo::onLostFocus(WindowLostFocusEvent& e)
+{
+	focusMode = false;
+	spdlog::info("Unfocused: {}",focusMode);
+	m_winRef.doSwitchInputTo(true);
+}
+
 void Archo::playGame()
 {
 
@@ -1531,13 +1545,17 @@ void Archo::deleteGameSave()
 	Save_Game(m_save);
 }
 
-void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Shader> shader)
+void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Texture> working, std::shared_ptr<Shader> shader)
 {
 	
 
-	int Layers[4]{0,1,2,3};
+	std::vector<int> Layers{ 0,1,2,3,2,3,1,2,3,2,4,2 };
 
-	for (int i = 0; i < std::size(Layers); i++) {
+	std::shared_ptr<Texture> flipper[2]{ working, target };
+
+	bool isWorking = false; // is Layers size Even
+
+	for (int i = 0; i < Layers.size(); i++) {
 
 		std::shared_ptr<Material> mat = std::make_shared<Material>(shader);
 
@@ -1549,16 +1567,26 @@ void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, 
 		ComputePass.workgroups = { glm::max(target->getWidth() / 32, (unsigned)1),glm::max(target->getHeight() / 32, (unsigned)1),1};
 		ComputePass.barrier = MemoryBarrier::ShaderImageAccess;
 
-		Image TargetImg;
-		TargetImg.mipLevel = 0;
-		TargetImg.layered = false;
-		TargetImg.texture = target;
-		TargetImg.imageUnit = ComputePass.material->m_shader->m_imageBindingPoints["ImgIn"];
-		TargetImg.access = TextureAccess::ReadWrite;
+		Image InImg;
+		InImg.mipLevel = 0;
+		InImg.layered = false;
+		InImg.texture = target;//flipper[(int)isWorking];
+		InImg.imageUnit = ComputePass.material->m_shader->m_imageBindingPoints["ImgIn"];
+		InImg.access = TextureAccess::ReadWrite;
 
-		ComputePass.images.push_back(TargetImg);
+		//Image OutImg;
+		//OutImg.mipLevel = 0;
+		//OutImg.layered = false;
+		//OutImg.texture = flipper[(int)(!isWorking)];;
+		//OutImg.imageUnit = ComputePass.material->m_shader->m_imageBindingPoints["ImgOut"];
+		//OutImg.access = TextureAccess::ReadWrite;
+
+		ComputePass.images.push_back(InImg);
+		//ComputePass.images.push_back(OutImg);
 
 		renderer.addComputePass(ComputePass);
+
+		//isWorking = !isWorking;
 	}
 
 

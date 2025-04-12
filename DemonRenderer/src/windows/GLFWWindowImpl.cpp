@@ -105,7 +105,7 @@ void GLFWWindowImpl::doOpen(const WindowProperties& properties)
 
 	//Custom cursor adjustments
 
-	doSwitchInput();
+	doSwitchInputTo(false);
 
 	///
 
@@ -244,4 +244,31 @@ void GLFWWindowImpl::doSwitchInput()
 		}
 	}
 
+}
+
+void GLFWWindowImpl::doSwitchInputTo(bool i)
+{
+	w_mouseEnabled = i;
+	if (w_mouseEnabled) {
+		glfwSetInputMode(m_nativeWindow.get(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		if (glfwRawMouseMotionSupported()) {
+			glfwSetInputMode(m_nativeWindow.get(), GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+		}
+	}
+	else
+	{
+		int width, height;
+		glfwGetWindowSize(m_nativeWindow.get(), &width, &height);
+		glfwSetCursorPos(m_nativeWindow.get(), width / 2.0f, height / 2.0f);
+
+		glfwSetInputMode(m_nativeWindow.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		if (glfwRawMouseMotionSupported()) {
+			glfwSetInputMode(m_nativeWindow.get(), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+		}
+	}
+}
+
+int GLFWWindowImpl::isFocus()
+{
+	return glfwGetWindowAttrib(m_nativeWindow.get(), GLFW_FOCUSED);
 }
