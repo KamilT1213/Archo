@@ -1028,7 +1028,7 @@ void Archo::onUpdate(float timestep)
 		allTime = (allTime - 1000);
 	}
 
-	generatePass->setValue("Seed", allTime);
+	//generatePass->setValue("Seed", allTime);
 
 	BackgroundQuad->setValue("allTime", allTime);
 
@@ -1380,6 +1380,11 @@ void Archo::onUpdate(float timestep)
 
 void Archo::onKeyPressed(KeyPressedEvent& e)
 {
+	if (e.getKeyCode() == GLFW_KEY_R) {
+
+		m_generationRenderer.getComputePass(0).material->setValue("Seed", allTime);
+		m_generationRenderer.render();
+	}
 	/*if (e.getKeyCode() == GLFW_KEY_SPACE && m_state == GameState::intro) m_state = GameState::running;
 	for (auto it = m_RelicScene->m_actors.begin(); it != m_RelicScene->m_actors.end(); ++it)
 	{
@@ -1401,20 +1406,21 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 void Archo::onFocus(WindowFocusEvent& e)
 {
 	focusMode = true;
-	spdlog::info("Focused: {}", focusMode);
+	//spdlog::info("Focused: {}", focusMode);
 	m_winRef.doSwitchInputTo(false);
 }
 
 void Archo::onLostFocus(WindowLostFocusEvent& e)
 {
 	focusMode = false;
-	spdlog::info("Unfocused: {}",focusMode);
+	//spdlog::info("Unfocused: {}",focusMode);
 	m_winRef.doSwitchInputTo(true);
 }
 
 void Archo::playGame()
 {
-
+	m_generationRenderer.getComputePass(0).material->setValue("Seed", allTime);
+	//spdlog::info("dispatched with: {}",allTime);
 	m_generationRenderer.render();
 	state = GameState::InGame;
 	pauseState = PauseState::Pause;
@@ -1545,15 +1551,30 @@ void Archo::deleteGameSave()
 	Save_Game(m_save);
 }
 
+std::vector<glm::vec2> IslandSeeder(int lines) {
+	std::vector<glm::vec2> pointsOut;
+	for (int i = 0; i < lines; i++) {
+		glm::vec2 newPoint1;
+		glm::vec2 newPoint2;
+
+		newPoint1 = glm::vec2(Randomiser::uniformFloatBetween(-0.5, 0.5), Randomiser::uniformFloatBetween(-0.5, 0.5));
+		newPoint2 = glm::vec2(Randomiser::uniformFloatBetween(-0.5, 0.5), Randomiser::uniformFloatBetween(-0.5, 0.5));
+
+		pointsOut.push_back(newPoint1);
+		pointsOut.push_back(newPoint2);
+	}
+	return pointsOut;
+}
+
 void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Texture> working, std::shared_ptr<Shader> shader)
 {
-	
 
-	std::vector<int> Layers{ 0,1,2,3,2,3,1,2,3,2,4,2 };
+
+	std::vector<int> Layers{ 0,1,1,2,1,1,1,2,4,3,4,3,4,3,4,3,4 };//1,2,3,2,3,1,2,3,2,4,2 };
 
 	std::shared_ptr<Texture> flipper[2]{ working, target };
 
-	bool isWorking = false; // is Layers size Even
+	bool isWorking = !(Layers.size() & 1); // is Layers size Even
 
 	for (int i = 0; i < Layers.size(); i++) {
 
@@ -1561,6 +1582,7 @@ void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, 
 
 		mat->setValue("Type", (float)Layers[i]);
 		mat->setValue("Size", glm::vec2(target->getWidthf(), target->getHeightf()));
+		mat->setValue("Depth", (float)i);
 
 		ComputePass ComputePass;
 		ComputePass.material = mat;
@@ -1570,23 +1592,23 @@ void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, 
 		Image InImg;
 		InImg.mipLevel = 0;
 		InImg.layered = false;
-		InImg.texture = target;//flipper[(int)isWorking];
+		InImg.texture = flipper[(int)isWorking];
 		InImg.imageUnit = ComputePass.material->m_shader->m_imageBindingPoints["ImgIn"];
 		InImg.access = TextureAccess::ReadWrite;
 
-		//Image OutImg;
-		//OutImg.mipLevel = 0;
-		//OutImg.layered = false;
-		//OutImg.texture = flipper[(int)(!isWorking)];;
-		//OutImg.imageUnit = ComputePass.material->m_shader->m_imageBindingPoints["ImgOut"];
-		//OutImg.access = TextureAccess::ReadWrite;
+		Image OutImg;
+		OutImg.mipLevel = 0;
+		OutImg.layered = false;
+		OutImg.texture = flipper[(int)(!isWorking)];;
+		OutImg.imageUnit = ComputePass.material->m_shader->m_imageBindingPoints["ImgOut"];
+		OutImg.access = TextureAccess::ReadWrite;
 
 		ComputePass.images.push_back(InImg);
-		//ComputePass.images.push_back(OutImg);
+		ComputePass.images.push_back(OutImg);
 
 		renderer.addComputePass(ComputePass);
 
-		//isWorking = !isWorking;
+		isWorking = !isWorking;
 	}
 
 

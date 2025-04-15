@@ -5,6 +5,7 @@ layout(binding = 1, rgba16f) uniform image2D ImgOut;
 
 uniform float Type;
 uniform float Seed;
+uniform float Depth;
 uniform vec2 Size;
 
 float hash(vec2 p);
@@ -12,6 +13,7 @@ vec2 randvec2(vec2 p);
 vec2 fade(vec2 t);
 float perlin(vec2 p, vec2 fp);
 vec3 voronoi(vec2 p, vec2 fp);
+mat2 rotate2d(float _angle);
 
 float pi = 3.1415926;
 float factor;
@@ -25,62 +27,84 @@ void main()
 	//ivec2 texCoords = ivec2(4096 / 2 * MousePos.x, 4096 / 2 * MousePos.y);
 
 
-	float pixels = 30;
+	float pixels = 70;
 	vec2 fraction = Size / pixels;
 	vec2 clampCoords = floor(center_pixel_coords / fraction);
 	vec2 fractCoords = mod(center_pixel_coords, fraction) / fraction;
 
 	if (Type == 0) {
-		
+		vec2 dir = vec2(0,1) * rotate2d(pi * Seed * 5935);
+		vec2 dir2 = vec2(0, 1) * rotate2d(pi * Seed * 3365);
+		clampCoords *= rotate2d(pi * Seed * 6215);
 		float s = pixels / 3.0;
+		s = (s + sin(Seed * 1542));
 		float a = -((sqrt(pow(clampCoords.x,2) + pow(clampCoords.y,2))) - s - (s / 5.0));
 		float b = (sqrt(pow(clampCoords.x,2) + pow(clampCoords.y,2))) - s + (s / 5.0);
 
-		a = clamp(a,0,1);
+		a = clamp(a, 0, 1);
 		b = clamp(b,0,1);
 
 		vec4 c = vec4(a * b);
 		if(abs(clampCoords.y) < (s / 10.0)) c = vec4(1) * a;
-		imageStore(ImgIn, pixel_coords, vec4(c.rgb,step(0.95,c.a)));
+		if(dot(dir,normalize(clampCoords)) > 0.8) c = vec4(0);
+		if(dot(dir2,normalize(clampCoords)) > 0.8) c = vec4(0);
+		imageStore(ImgOut, pixel_coords, vec4(c.rgb,step(0.95,c.a)));
+		//imageStore(ImgIn, pixel_coords, vec4(1.0));
 	}
 	if (Type == 1) {
 
 		vec3 outV = voronoi(clampCoords, fractCoords);
 		vec4 sampled = imageLoad(ImgIn, ivec2(floor((outV.xy + (pixels / 2.0)) * fraction)));
-		imageStore(ImgIn, pixel_coords, sampled);
+		imageStore(ImgOut, pixel_coords, sampled);
 	}
 	if (Type == 2) {
 
-		vec3 total;
-		float size = 25;
-
-		int halfs = int(floor(size / 2));
-
-		for(int x = -halfs; x <= halfs; x++){
-			for(int y = -halfs; y <= halfs; y++){
-				total += imageLoad(ImgIn, pixel_coords.xy + ivec2(x,y)).xyz * (1.0 / pow(size,2));
+		int target = 150;
+		bool reached = false;
+		for (int d = target; d > 0; d--) {
+			for (int i = 0; i <= 128; i++) {
+				float a = float(i) / 128.0;
+				a *= pi * 2;
+				vec2 dir = vec2(cos(a), sin(a)) * (d / 2);
+				float sam = imageLoad(ImgIn, ivec2(pixel_coords + dir)).a;
+				if (sam > 0.0) {
+					reached = true;
+					break;
+				}
+			}
+			if (reached) {
+				break;
 			}
 		}
-
-		//total = step(0.01,total);
-
-		imageStore(ImgIn, pixel_coords, vec4(total, step(0.01,distance(vec3(0),total))) );
+		
+		if (reached) {
+			imageStore(ImgOut, pixel_coords, vec4(1.0));
+		}
 
 	}
 	if (Type == 3) {
+
+		float perFactor = 25 * (Depth);
+		vec2 coords2 = floor(center_pixel_coords / (Size / perFactor));
+		vec2 fcoords2 = mod(center_pixel_coords, (Size / perFactor)) / (Size / perFactor);
+
+
 		vec4 sampled = imageLoad(ImgIn, pixel_coords);
-		sampled.xyz *= (perlin(clampCoords + Seed, fractCoords - 0.5) + 1.0);
-		imageStore(ImgIn, pixel_coords, sampled);
+		sampled.y -= (perlin(coords2 + Seed, fcoords2 - 0.5) + 1) / 16;
+		sampled.y = step(0.01, sampled.y);
+		sampled.x = 1 - sampled.y;
+		sampled.a = step(0.01, sampled.y);
+		imageStore(ImgOut, pixel_coords, vec4(vec3(1.0) * sampled.a,sampled.a));
 	}
 	if (Type == 4){
-		float dist = 100.0;
+		float dist = 1024.0;
 
 		float alpha = imageLoad(ImgIn, pixel_coords).a;
 
 		if(alpha > 0){
-			for(int d = 1; d < 200; d++){
-				for(int i = 0; i <= 128; i++){
-					float a = float(i) / 128.0;
+			for(int d = 1; d < 256.0 * 2.0; d++){
+				for(int i = 0; i <= 256; i++){
+					float a = float(i) / 256;
 					a *= pi * 2;
 					vec2 dir = vec2(cos(a),sin(a)) * (d / 2);
 					float sam = imageLoad(ImgIn, ivec2(pixel_coords + dir)).a;
@@ -90,28 +114,23 @@ void main()
 						}
 					}
 				}
-				if(dist < 100.0){
+				if(dist < 256.0){
 					break;
 				}
 			}
 
-			dist /= 100;
+			dist /= 256.0;
 			//dist = distance(vec2(0),fade(vec2(dist)));
-			dist = smoothstep(0.0,0.5,dist);
-			imageStore(ImgIn, pixel_coords, vec4(vec3(dist),1.0));
+			dist = smoothstep(0.0,1.0,dist);
+			imageStore(ImgOut, pixel_coords, vec4(1 - dist, dist, 1.0 ,1.0));
+		}
+		else {
+			imageStore(ImgOut, pixel_coords, vec4(0.0, 0.0, 0.0, 0.0));
 		}
 
 
 	}
 	
-
-	//vec3 outV = voronoi(clampCoords, fractCoords);
-	//float p = (perlin(clampCoords, fractCoords - 0.5) + 1.0) / 2.0;
-
-	//vec3 c = vec3(hash(outV.xy),hash(outV.xy + 1202.0), hash(outV.xy - 8882.0)) * 1.5;
-
-	//imageStore(ImgOut, pixel_coords, vec4( c2 * vec3( (1.0 - outV.z)) , 1));
-
 }
 
 
@@ -172,4 +191,9 @@ vec3 voronoi(vec2 p, vec2 fp){
 	}
 
 	return vec3(closest,dist * 0.75);
+}
+
+mat2 rotate2d(float _angle) {
+	return mat2(cos(_angle), -sin(_angle),
+		sin(_angle), cos(_angle));
 }

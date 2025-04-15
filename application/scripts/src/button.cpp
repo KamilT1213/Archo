@@ -34,7 +34,7 @@ void ButtonScript::onUpdate(float timestep)
 
 	if (m_active && m_hovered && !m_winRef.doIsMouseButtonPressed(0)) {
 
-		spdlog::info("Released");
+		//spdlog::info("Released");
 
 		//_sleep(1000);
 

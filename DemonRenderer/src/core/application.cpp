@@ -77,19 +77,7 @@ void Application::onResize(WindowResizeEvent& e)
 
 void Application::onKeyPressed(KeyPressedEvent& e)
 {
-	//if (e.getKeyCode() == GLFW_KEY_ESCAPE) {
-	//	spdlog::info("Exiting");
-	//	m_running = false;
-	//	e.handle();
-	//	return;
-	//}
-
-	//else{
-	//	if (e.getKeyCode() == GLFW_KEY_I) m_ImGuiOpen = true;
-	//	if (m_layer) m_layer->onKeyPressed(e);
-	//	e.handle();
-	//}
-
+	if (m_layer) m_layer->onKeyPressed(e);
 }
 
 void Application::onKeyReleased(KeyReleasedEvent& e)

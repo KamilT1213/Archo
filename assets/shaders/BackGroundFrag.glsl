@@ -19,33 +19,34 @@ mat2 rotate2d(float _angle);
 
 void main()
 {
-	float ratio = u_ScreenSize.x / u_ScreenSize.y;
+	old();
+	//float ratio = u_ScreenSize.x / u_ScreenSize.y;
 
-	float Modulation = 10;
-	float adjustedTime = mod(allTime, Modulation);
-	float adjustedPi = (adjustedTime * pi) / (Modulation / 2);
-
-
-	vec2 centerCoords = texCoords - 0.5f;
-	centerCoords.x *= ratio;
-
-	//vec2 point = vec2(0, 1);//)vec2(sin(adjustedPi), cos(adjustedPi));
-	//point *= 0.6;
-	//point = point * rotate2d(adjustedPi * 100 * distance(vec2(0),centerCoords));
-
-	centerCoords = centerCoords * rotate2d(adjustedPi);
-	vec2 centerCoords2 = centerCoords * rotate2d((adjustedPi * 5) - ( distance(vec2(0), centerCoords) * 5));
+	//float Modulation = 10;
+	//float adjustedTime = mod(allTime, Modulation);
+	//float adjustedPi = (adjustedTime * pi) / (Modulation / 2);
 
 
-	float f = noise((centerCoords * u_ScreenSize * 0.25) + 0.5) - abs(noise((centerCoords * u_ScreenSize * 0.01) + 0.5));
-	float f2 = noise((centerCoords2 * u_ScreenSize * 0.25) + 0.5) - abs(noise((centerCoords2 * u_ScreenSize * 0.01) + 0.5));
-	if (distance(vec2(0), centerCoords) < 0.5) f = f2;
-	//if (distance(vec2(0), centerCoords) < 0.4) f -= distance(vec2(0), centerCoords) *  (1 / 0.4);
-	//if (distance(centerCoords, point) < 0.05) {
-	//	f = 1;
-	//}
+	//vec2 centerCoords = texCoords - 0.5f;
+	//centerCoords.x *= ratio;
 
-	colour = vec4(f, f, f, 1.0);
+	////vec2 point = vec2(0, 1);//)vec2(sin(adjustedPi), cos(adjustedPi));
+	////point *= 0.6;
+	////point = point * rotate2d(adjustedPi * 100 * distance(vec2(0),centerCoords));
+
+	//centerCoords = centerCoords * rotate2d(adjustedPi);
+	//vec2 centerCoords2 = centerCoords * rotate2d((adjustedPi * 5) - ( distance(vec2(0), centerCoords) * 5));
+
+
+	//float f = noise((centerCoords * u_ScreenSize * 0.25) + 0.5) - abs(noise((centerCoords * u_ScreenSize * 0.01) + 0.5));
+	//float f2 = noise((centerCoords2 * u_ScreenSize * 0.25) + 0.5) - abs(noise((centerCoords2 * u_ScreenSize * 0.01) + 0.5));
+	//if (distance(vec2(0), centerCoords) < 0.5) f = f2;
+	////if (distance(vec2(0), centerCoords) < 0.4) f -= distance(vec2(0), centerCoords) *  (1 / 0.4);
+	////if (distance(centerCoords, point) < 0.05) {
+	////	f = 1;
+	////}
+
+	//colour = vec4(f, f, f, 1.0);
 	//old();
 
 
