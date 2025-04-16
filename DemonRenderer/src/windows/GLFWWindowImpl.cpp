@@ -5,15 +5,22 @@
 
 void GLFWWindowImpl::doOpen(const WindowProperties& properties)
 {
+
+
 	if (m_isFullScreen)
 	{
-		spdlog::error("Fullscreen not yet implemented");
+		if (!properties.isResizable) glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+		glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+		//glfwWindowHint(GLFW_WINDOW)
+		m_nativeWindow = std::unique_ptr<GLFWwindow, GLFWWinDeleter>(glfwCreateWindow(glfwGetVideoMode(glfwGetPrimaryMonitor())->width, glfwGetVideoMode(glfwGetPrimaryMonitor())->height, properties.title, glfwGetPrimaryMonitor(), nullptr));
+		//spdlog::error("Fullscreen not yet implemented");
 	}
 	else
 	{
 		if (!properties.isResizable) glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 		m_nativeWindow = std::unique_ptr<GLFWwindow, GLFWWinDeleter>(glfwCreateWindow(properties.width, properties.height, properties.title, nullptr, nullptr));
 	}
+	glfwSetWindowAspectRatio(m_nativeWindow.get(), 16, 9);
 
 	setVSync(m_isVSync);
 
@@ -40,6 +47,7 @@ void GLFWWindowImpl::doOpen(const WindowProperties& properties)
 			onResize(e);
 		}
 	);
+
 
 	glfwSetWindowPosCallback(m_nativeWindow.get(),
 		[](GLFWwindow* window, int posX, int posY)
@@ -173,6 +181,11 @@ void GLFWWindowImpl::doOnUpdate(float timestep)
 		}
 	}
 
+	if (m_Resizing && !doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1)) {
+		m_Resizing = false;
+		doSwitchInputTo(false);
+	}
+
 	m_graphicsContext.swapBuffers(m_nativeWindow.get(), isHostingImGui());
 }
 
@@ -204,7 +217,7 @@ glm::vec2 GLFWWindowImpl::doGetMousePosition() const
 
 glm::vec2 GLFWWindowImpl::doGetMouseVector() const
 {
-	if (w_mouseEnabled) return glm::vec2(0);
+	if (w_mouseEnabled || m_Resizing) return glm::vec2(0);
 	double x, y;
 	int width, height;
 	glfwGetCursorPos(m_nativeWindow.get(), &x, &y);
@@ -235,8 +248,8 @@ void GLFWWindowImpl::doSwitchInput()
 	else
 	{
 		int width, height;
-		glfwGetWindowSize(m_nativeWindow.get(), &width, &height);
-		glfwSetCursorPos(m_nativeWindow.get(), width / 2.0f, height / 2.0f);
+		//glfwGetWindowSize(m_nativeWindow.get(), &width, &height);
+		//glfwSetCursorPos(m_nativeWindow.get(), width / 2.0f, height / 2.0f);
 
 		glfwSetInputMode(m_nativeWindow.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		if (glfwRawMouseMotionSupported()) {
@@ -249,23 +262,26 @@ void GLFWWindowImpl::doSwitchInput()
 void GLFWWindowImpl::doSwitchInputTo(bool i)
 {
 	w_mouseEnabled = i;
-	if (w_mouseEnabled) {
-		glfwSetInputMode(m_nativeWindow.get(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-		if (glfwRawMouseMotionSupported()) {
-			glfwSetInputMode(m_nativeWindow.get(), GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+	
+		if (w_mouseEnabled) {
+			glfwSetInputMode(m_nativeWindow.get(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			if (glfwRawMouseMotionSupported()) {
+				glfwSetInputMode(m_nativeWindow.get(), GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+			}
 		}
-	}
-	else
-	{
-		int width, height;
-		glfwGetWindowSize(m_nativeWindow.get(), &width, &height);
-		glfwSetCursorPos(m_nativeWindow.get(), width / 2.0f, height / 2.0f);
+		else if(!m_Resizing)
+		{
+			int width, height;
+			//glfwGetWindowSize(m_nativeWindow.get(), &width, &height);
+			//glfwSetCursorPos(m_nativeWindow.get(), width / 2.0f, height / 2.0f);
 
-		glfwSetInputMode(m_nativeWindow.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-		if (glfwRawMouseMotionSupported()) {
-			glfwSetInputMode(m_nativeWindow.get(), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+			glfwSetInputMode(m_nativeWindow.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			if (glfwRawMouseMotionSupported()) {
+				glfwSetInputMode(m_nativeWindow.get(), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+			}
 		}
-	}
+	
+
 }
 
 int GLFWWindowImpl::isFocus()

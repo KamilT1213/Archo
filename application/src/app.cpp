@@ -12,6 +12,7 @@ Application* startApplication()
 {
 	WindowProperties props("Archo Digger", 1422, 800);
 	props.isHostingImGui = false;
-	props.isResizable = false;
+	props.isResizable = true;
+	props.isFullScreen = true;
 	return new App(props);
 }

@@ -41,6 +41,8 @@ public:
 
 	bool m_ImGuiOpen{ true }; //!< Boolean for IMGui window
 	bool w_mouseEnabled{ false };
+	bool m_Resizing{ false };
+	bool m_isFullScreen{ true };
 private:
 	
 };

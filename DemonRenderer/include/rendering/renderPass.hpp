@@ -13,7 +13,7 @@ struct RenderPass
 	ViewPort viewPort; //!< Portion of the render target being rendered too
 	bool clearColour{ true };//!< Should the colour buffer be cleared by this parse?
 	bool clearDepth{ true }; //!< Should the depth buffer be cleared by this parse?
-
+	bool isScreen{ false };
 	void parseScene(); //!< Populate variable based on the scene
 };
 

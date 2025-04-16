@@ -27,6 +27,7 @@ public:
 	size_t [[nodiscard]] getDepthPassCount() noexcept { return m_depthPasses.size(); } //!< Returns number of renderpasses
 	size_t [[nodiscard]] getComputePassCount() noexcept { return m_computePasses.size(); } //!< Returns number of renderpasses
 	size_t [[nodiscard]] getSumPassCount() noexcept { return m_renderOrder.size(); } //!< Returns total number of all passes
+	void updateRenderAndDepthPassSize(glm::ivec2 newSize);
 	void render() const; //!< Execute all render passes
 
 private:

@@ -10,6 +10,7 @@ Application::Application(const WindowProperties& winProps)
 	m_window.handler.onWinClose = [this](WindowCloseEvent& e) {onClose(e);};
 	m_window.handler.onWinFocused = [this](WindowFocusEvent& e) {onFocus(e);};
 	m_window.handler.onWinLostFocus = [this](WindowLostFocusEvent& e) {onLostFocus(e);};
+	m_window.handler.onWinResized = [this](WindowResizeEvent& e) {onResize(e);};
 	m_window.handler.onKeyPress = [this](KeyPressedEvent& e) {onKeyPressed(e);};
 	m_window.handler.onKeyRelease = [this](KeyReleasedEvent& e) {onKeyReleased(e);};
 

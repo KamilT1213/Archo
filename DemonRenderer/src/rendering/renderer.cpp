@@ -73,6 +73,19 @@ ComputePass& Renderer::getComputePass(size_t index)
 	return m_computePasses[passIdx];
 }
 
+void Renderer::updateRenderAndDepthPassSize(glm::ivec2 newSize)
+{
+	for (auto& pass : m_renderPasses) {
+		if (pass.isScreen) {
+			pass.viewPort = { 0,0,(unsigned)newSize.x, (unsigned)newSize.y };
+			pass.camera.projection = glm::ortho(0.f, (float)newSize.x, (float)newSize.y, 0.f);
+			pass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", pass.camera.projection);
+			pass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicProjection2D", pass.camera.projection);
+			pass.UBOmanager.setCachedValue("b_camera2D", "u_projection2D", pass.camera.projection);
+		}
+	}
+}
+
 void Renderer::render() const
 {
 	for (auto& [passType, idx] : m_renderOrder) {

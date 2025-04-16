@@ -15,6 +15,8 @@ private:
 	void onKeyPressed(KeyPressedEvent& e) override;
 	void onFocus(WindowFocusEvent& e) override;
 	void onLostFocus(WindowLostFocusEvent& e) override;
+	void onResize(WindowResizeEvent& e) override;
+
 	void playGame();
 	void mainSettings();
 	void mainSave();
@@ -31,6 +33,7 @@ private:
 	void settings_to_Game();
 	void saveAndExit();
 	void deleteGameSave();
+	void toggleFullscreen();
 	void setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Texture> working, std::shared_ptr<Shader> shader);
 
 	std::vector<std::shared_ptr<Shader>> m_generators;
@@ -44,7 +47,10 @@ private:
 	std::shared_ptr<Scene> m_pauseMenu_Settings;
 	std::shared_ptr<Scene> m_pauseMenu_Inventory;
 
+	float initialRatio;
+
 	entt::entity Quad;
+	entt::entity finalQuad;
 	entt::entity AAQuad;
 	entt::entity backgroundQuad;
 	entt::entity MenuQuad;
@@ -113,6 +119,7 @@ private:
 	Renderer m_backgroundRenderer;
 	Renderer m_pausedRenderer;
 	Renderer m_generationRenderer;
+	Renderer m_finalRenderer;
 
 	Settings_Save m_settings;
 	Game_Save m_save;
@@ -126,9 +133,15 @@ private:
 	//Gui
 	int Buffer{ 0 };
 
-	FBOLayout backgroundPassLayout = {
+
+	FBOLayout defaultPassLayout = {
 		{AttachmentType::ColourHDR,true}
 	};
+
+	FBOLayout backgroundPassLayout = {
+		{AttachmentType::ColourHDR,true}
+	};	
+
 
 	FBOLayout buttonPassLayout = {
 		{AttachmentType::ColourHDR,true}

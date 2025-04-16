@@ -34,6 +34,10 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	m_pauseMenu_Settings.reset(new Scene);
 	m_pauseMenu_Inventory.reset(new Scene);
 
+	initialRatio = width / height;
+
+
+
 	//Textures -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 	std::shared_ptr<Texture> testRelicTexture = std::make_shared<Texture>("./assets/textures/Relic.png");
@@ -73,6 +77,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	screenQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
 
+
 	//Final main menu screen
 	ShaderDescription menuQuadShaderDesc;
 	menuQuadShaderDesc.type = ShaderType::rasterization;
@@ -82,6 +87,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	std::shared_ptr<Material> menuQuadMaterial = std::make_shared<Material>(menuQuadShader);
 
 	menuQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
+
 
 	//Pause menu screen
 	ShaderDescription pauseMenuQuadShaderDesc;
@@ -93,6 +99,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	pauseMenuQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
 
+
 	//background screen pass mat
 	ShaderDescription backgroundQuadShaderDesc;
 	backgroundQuadShaderDesc.type = ShaderType::rasterization;
@@ -103,6 +110,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	backgroundQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
 
+
 	//AA screen pass mat
 	ShaderDescription screenAAQuadShaderDesc;
 	screenAAQuadShaderDesc.type = ShaderType::rasterization;
@@ -111,7 +119,17 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	std::shared_ptr<Shader> screenAAQuadShader = std::make_shared<Shader>(screenAAQuadShaderDesc);
 	std::shared_ptr<Material> screenAAQuadMaterial = std::make_shared<Material>(screenAAQuadShader);
 
-	screenAAQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
+	screenAAQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);	
+	
+
+	//final screen pass mat
+	ShaderDescription finalQuadShaderDesc;
+	finalQuadShaderDesc.type = ShaderType::rasterization;
+	finalQuadShaderDesc.vertexSrcPath = "./assets/shaders/FinalVert.glsl";
+	finalQuadShaderDesc.fragmentSrcPath = "./assets/shaders/FinalFrag.glsl";
+	std::shared_ptr<Shader> finalQuadShader = std::make_shared<Shader>(finalQuadShaderDesc);
+	std::shared_ptr<Material> finalQuadMaterial = std::make_shared<Material>(finalQuadShader);
+
 
 	//Relic mat
 	ShaderDescription RelicShaderDesc;
@@ -164,6 +182,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	//Screen Quad VAOs
 	std::vector<float> screenVertices;
 	std::vector<float> screenAAVertices;
+	std::vector<float> FinalVertices;
 
 	screenAAVertices = std::vector<float>{
 		//Position               UV
@@ -171,6 +190,14 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	width, 0.0f,   0.0f,     1.0f, 1.0f, // Bottom Right
 	width, height, 0.0f,     1.0f, 0.0f, // Top Right
 	0.0f,  height, 0.0f,     0.0f, 0.0f  // Top Left
+	};
+
+	FinalVertices = std::vector<float>{
+		//Position               UV
+	0.0f,  0.0f,   0.0f,     0.0f, 1.0f, // Bottom Left
+	1.0f, 0.0f,   0.0f,     1.0f, 1.0f, // Bottom Right
+	1.0f, 1.0f, 0.0f,     1.0f, 0.0f, // Top Right
+	0.0f,  1.0f, 0.0f,     0.0f, 0.0f  // Top Left
 	};
 
 	float a = glm::max(width, height);
@@ -211,6 +238,13 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	std::shared_ptr<VAO> screenAAQuadVAO;
 	screenAAQuadVAO = std::make_shared<VAO>(screenIndices);
 	screenAAQuadVAO->addVertexBuffer(screenAAVertices, {
+		{GL_FLOAT, 3},  // position
+		{GL_FLOAT, 2}   // UV
+		});	
+	
+	std::shared_ptr<VAO> FinalQuadVAO;
+	FinalQuadVAO = std::make_shared<VAO>(screenIndices);
+	FinalQuadVAO->addVertexBuffer(FinalVertices, {
 		{GL_FLOAT, 3},  // position
 		{GL_FLOAT, 2}   // UV
 		});
@@ -263,7 +297,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::playGame, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(startButton, m_mainMenu, m_winRef, m_PointerPos, transformComp, *(startButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(startButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(startButtonMat.get()), boundFunc);
 	}
 
 	{
@@ -288,7 +322,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::mainSettings, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(settingsButton, m_mainMenu, m_winRef, m_PointerPos, transformComp, *(settingsButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(settingsButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(settingsButtonMat.get()), boundFunc);
 	}
 
 	{
@@ -313,7 +347,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::mainSave, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(saveButton, m_mainMenu, m_winRef, m_PointerPos, transformComp, *(saveButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(saveButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(saveButtonMat.get()), boundFunc);
 	}
 
 	{
@@ -338,7 +372,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::exitGame, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
 	}
 
 	/*************************
@@ -367,7 +401,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::settings_to_mainMenu, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Settings, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Settings, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
 	}
 
 	/*************************
@@ -396,7 +430,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::deleteGameSave, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(deleteSaveButton, m_mainMenu_Save, m_winRef, m_PointerPos, transformComp, *(deleteSaveButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(deleteSaveButton, m_mainMenu_Save, m_winRef, m_PointerPos, height, transformComp, *(deleteSaveButtonMat.get()), boundFunc);
 	}
 
 	{
@@ -421,7 +455,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::mainMenu, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Save, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Save, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
 	}
 
 	/*************************
@@ -450,7 +484,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::pause_to_Game, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(startButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(startButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(startButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(startButtonMat.get()), boundFunc);
 	}
 
 	{
@@ -475,7 +509,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::pauseSettings, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(settingsButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(settingsButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(settingsButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(settingsButtonMat.get()), boundFunc);
 	}
 
 	{
@@ -500,7 +534,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::saveGame, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(saveButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(saveButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(saveButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(saveButtonMat.get()), boundFunc);
 	}
 
 	{
@@ -525,7 +559,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::saveAndExit, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu, m_winRef, m_PointerPos, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
 	}
 
 
@@ -580,7 +614,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::settings_to_pauseMenu, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Settings, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Settings, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
 	}
 
 	/*************************
@@ -609,7 +643,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 		std::function<void()> boundFunc = std::bind(&Archo::unpauseInventory, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
 	}
 
 	/*************************
@@ -755,6 +789,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	BackgroundPass.parseScene();
 	BackgroundPass.target = std::make_shared<FBO>(m_winRef.doGetSize(), backgroundPassLayout);
 	BackgroundPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	BackgroundPass.isScreen = true;
 
 	BackgroundPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
 	BackgroundPass.UBOmanager.setCachedValue("b_camera2D", "u_view2D", BackgroundPass.camera.view);
@@ -773,6 +808,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	PauseButtonPass.target = std::make_shared<FBO>(m_winRef.doGetSize(), buttonPassLayout);
 	PauseButtonPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
 	PauseButtonPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+	PauseButtonPass.isScreen = true;
 
 	PauseButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuView", PauseButtonPass.camera.view);
 	PauseButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", PauseButtonPass.camera.projection);
@@ -799,9 +835,10 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	RenderPass PauseMenuPass;
 	PauseMenuPass.scene = m_screenScene;
 	PauseMenuPass.parseScene();
-	PauseMenuPass.target = std::make_shared<FBO>();
+	PauseMenuPass.target = std::make_shared<FBO>(m_winRef.getSize(), defaultPassLayout);
 	PauseMenuPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
 	PauseMenuPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+	PauseMenuPass.isScreen = true;
 
 	PauseMenuPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuView", PauseMenuPass.camera.view);
 	PauseMenuPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", PauseMenuPass.camera.projection);
@@ -809,6 +846,8 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	FinalPausePassIDx = m_pausedRenderer.getSumPassCount();
 
 	m_pausedRenderer.addRenderPass(PauseMenuPass);
+
+	finalQuadMaterial->setValue("u_PausedIn", PauseMenuPass.target->getTarget(0));
 
 	/*************************
 	*  Main Menu Render Pass
@@ -820,6 +859,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	ButtonPass.target = std::make_shared<FBO>(m_winRef.doGetSize(), buttonPassLayout);
 	ButtonPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
 	ButtonPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+	ButtonPass.isScreen = true;
 
 	ButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuView", ButtonPass.camera.view);
 	ButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", ButtonPass.camera.projection);
@@ -846,9 +886,10 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	RenderPass MainMenuPass;
 	MainMenuPass.scene = m_screenScene;
 	MainMenuPass.parseScene();
-	MainMenuPass.target = std::make_shared<FBO>();
+	MainMenuPass.target = std::make_shared<FBO>(m_winRef.getSize(), defaultPassLayout);
 	MainMenuPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
 	MainMenuPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+	MainMenuPass.isScreen = true;
 
 	MainMenuPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuView", MainMenuPass.camera.view);
 	MainMenuPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", MainMenuPass.camera.projection);
@@ -857,6 +898,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	m_mainMenuRenderer.addRenderPass(MainMenuPass);
 
+	finalQuadMaterial->setValue("u_MainMenuIn", MainMenuPass.target->getTarget(0));
 
 	/*************************
 	*  Screen Relic Render Pass
@@ -910,6 +952,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	ScreenGroundPass.parseScene();
 	ScreenGroundPass.target = std::make_shared<FBO>(m_winRef.doGetSize(), mainScreenPassLayout);
 	ScreenGroundPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	ScreenGroundPass.isScreen = true;
 
 	ScreenGroundPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
 	ScreenGroundPass.UBOmanager.setCachedValue("b_camera2D", "u_view2D", ScreenGroundPass.camera.view);
@@ -943,8 +986,9 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	RenderPass ScreenAAPass;
 	ScreenAAPass.scene = m_screenScene;
 	ScreenAAPass.parseScene();
-	ScreenAAPass.target = std::make_shared<FBO>();
+	ScreenAAPass.target = std::make_shared<FBO>(m_winRef.getSize(),defaultPassLayout);
 	ScreenAAPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	ScreenAAPass.isScreen = true;
 
 	ScreenAAPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
 	ScreenAAPass.UBOmanager.setCachedValue("b_camera2D", "u_view2D", ScreenAAPass.camera.view);
@@ -953,6 +997,42 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	AAPassIDx = m_mainRenderer.getSumPassCount();
 	m_mainRenderer.addRenderPass(ScreenAAPass);
 
+	finalQuadMaterial->setValue("u_InGameIn", ScreenAAPass.target->getTarget(0));
+
+	finalQuadMaterial->setValue("u_State", 0.0f);
+
+	m_screenScene.reset(new Scene);
+
+	m_winRef.m_isFullScreen = !m_settings.s_Fullscreen;
+	toggleFullscreen();
+
+	finalQuad = m_screenScene->m_entities.create();
+	{
+		Render& renderComp = m_screenScene->m_entities.emplace<Render>(finalQuad);
+		Transform& transComp = m_screenScene->m_entities.emplace<Transform>(finalQuad);
+
+		transComp.scale = glm::vec3(width, height, 1);
+		transComp.recalc();
+
+		renderComp.geometry = FinalQuadVAO;
+		renderComp.material = finalQuadMaterial;
+	}
+
+
+
+	RenderPass FinalPass;
+	FinalPass.scene = m_screenScene;
+	FinalPass.parseScene();
+	FinalPass.target = std::make_shared<FBO>();
+	FinalPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	FinalPass.isScreen = true;
+
+	FinalPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+	FinalPass.UBOmanager.setCachedValue("b_finalcamera2D", "u_finalview2D", FinalPass.camera.view);
+	FinalPass.UBOmanager.setCachedValue("b_finalcamera2D", "u_finalprojection2D", FinalPass.camera.projection);
+
+
+	m_finalRenderer.addRenderPass(FinalPass);
 
 
 
@@ -981,6 +1061,7 @@ void Archo::onRender()
 		m_pausedRenderer.render();
 	}
 
+	m_finalRenderer.render();
 }
 
 void Archo::onUpdate(float timestep)
@@ -1009,11 +1090,7 @@ void Archo::onUpdate(float timestep)
 	//	modeToggle = false;
 	//}
 
-	if (focusMode) {
-		m_PointerPos += (m_winRef.doGetMouseVector() * glm::vec2(1, -1)) / glm::min(width, height) * 500.0f;
-		m_PointerPos = glm::clamp((m_PointerPos), glm::vec2(0), m_winRef.getSizef());
-		//spdlog::info("Mouse Position: x:{}  y:{}", m_PointerPos.x, m_PointerPos.y);
-	}
+
 
 
 
@@ -1021,6 +1098,12 @@ void Archo::onUpdate(float timestep)
 	auto& backgroundPass = m_backgroundRenderer.getRenderPass(BackgroundPassIDx);
 	auto& BackgroundQuad = backgroundPass.scene->m_entities.get<Render>(backgroundQuad).material;
 	auto& generatePass = m_generationRenderer.getComputePass(0).material;
+
+	if (focusMode) {
+		m_PointerPos += (m_winRef.doGetMouseVector() * glm::vec2(1, -1)) / glm::min((float)backgroundPass.viewPort.width, (float)backgroundPass.viewPort.height) * 1000.0f;
+		m_PointerPos = glm::clamp((m_PointerPos), glm::vec2(0), glm::vec2((float)backgroundPass.viewPort.width, (float)backgroundPass.viewPort.height));
+		//spdlog::info("Mouse Position: x:{}  y:{}", m_PointerPos.x, m_PointerPos.y);
+	}
 
 	allTime += timestep / 10.0f;
 
@@ -1032,8 +1115,10 @@ void Archo::onUpdate(float timestep)
 
 	BackgroundQuad->setValue("allTime", allTime);
 
-	if (state == GameState::MainMenu) {
+	auto& FinalQuad = m_finalRenderer.getRenderPass(0).scene->m_entities.get<Render>(finalQuad).material;
 
+	if (state == GameState::MainMenu) {
+		FinalQuad->setValue("u_State", 0.0f);
 		auto& menuPassMat = m_mainMenuRenderer.getRenderPass(FinalMainMenuPassIDx).scene->m_entities.get<Render>(MenuQuad).material;
 		menuPassMat->setValue("u_mousePos", m_PointerPos);
 
@@ -1061,7 +1146,7 @@ void Archo::onUpdate(float timestep)
 
 	}
 	else if (state == GameState::Paused) {
-
+		FinalQuad->setValue("u_State", 2.0f);
 		auto& pausePassMat = m_pausedRenderer.getRenderPass(FinalPausePassIDx).scene->m_entities.get<Render>(PauseQuad).material;
 		pausePassMat->setValue("u_mousePos", m_PointerPos);
 
@@ -1088,6 +1173,8 @@ void Archo::onUpdate(float timestep)
 		}
 	}
 	else if (state == GameState::InGame) {
+
+		FinalQuad->setValue("u_State", 1.0f);
 		ZoneScoped;
 		
 
@@ -1384,6 +1471,10 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 
 		m_generationRenderer.getComputePass(0).material->setValue("Seed", allTime);
 		m_generationRenderer.render();
+	}	
+	if (e.getKeyCode() == GLFW_KEY_F11) {
+
+		toggleFullscreen();
 	}
 	/*if (e.getKeyCode() == GLFW_KEY_SPACE && m_state == GameState::intro) m_state = GameState::running;
 	for (auto it = m_RelicScene->m_actors.begin(); it != m_RelicScene->m_actors.end(); ++it)
@@ -1415,6 +1506,31 @@ void Archo::onLostFocus(WindowLostFocusEvent& e)
 	focusMode = false;
 	//spdlog::info("Unfocused: {}",focusMode);
 	m_winRef.doSwitchInputTo(true);
+}
+
+void Archo::onResize(WindowResizeEvent& e)
+{
+	
+	m_winRef.m_Resizing = true;
+	m_winRef.doSwitchInputTo(true);
+
+	auto& pass = m_finalRenderer.getRenderPass(0);
+	pass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	pass.camera.projection = glm::ortho(0.f, (float)e.getWidth(), (float)e.getHeight(), 0.f);
+	pass.UBOmanager.setCachedValue("b_finalcamera2D", "u_finalprojection2D", pass.camera.projection);
+
+	auto& trans = pass.scene->m_entities.get<Transform>(finalQuad);
+
+	trans.scale = glm::vec3((float)e.getWidth(), (float)e.getHeight(), 1.0f);
+	trans.recalc();
+
+	spdlog::info("resized");
+	//m_mainRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_mainMenuRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_computeRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_backgroundRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_pausedRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_generationRenderer.updateRenderAndDepthPassSize(e.getSize());
 }
 
 void Archo::playGame()
@@ -1549,6 +1665,23 @@ void Archo::deleteGameSave()
 {
 	m_save = Game_Save();
 	Save_Game(m_save);
+}
+
+#include "windows/window.hpp"
+#include "windows/GLFW_GL_GC.hpp"
+void Archo::toggleFullscreen()
+{
+	if (m_winRef.m_isFullScreen) {
+		glfwSetWindowMonitor(((IWindow<GLFWwindow, GLFWWinDeleter, ModernGLFW_GL_GC>*) & m_winRef)->m_nativeWindow.get(), nullptr, m_winRef.getWidth() / 4, m_winRef.getHeight() / 4, m_winRef.getWidth() / 2, m_winRef.getHeight() / 2, 0);
+		m_winRef.m_isFullScreen = false;
+	}
+	else {
+		glfwSetWindowMonitor(((IWindow<GLFWwindow, GLFWWinDeleter, ModernGLFW_GL_GC>*) & m_winRef)->m_nativeWindow.get(), glfwGetPrimaryMonitor(), 0, 0, glfwGetVideoMode(glfwGetPrimaryMonitor())->width, glfwGetVideoMode(glfwGetPrimaryMonitor())->height, 0);
+
+		m_winRef.m_isFullScreen = true;
+	}
+	m_settings.s_Fullscreen = m_winRef.m_isFullScreen;
+	Save_Settings(m_settings);
 }
 
 std::vector<glm::vec2> IslandSeeder(int lines) {

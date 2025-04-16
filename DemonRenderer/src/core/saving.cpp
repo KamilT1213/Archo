@@ -16,6 +16,9 @@
 void to_json(nlohmann::json& j, const Settings_Save& sS) {
 	j = nlohmann::json{
 		{"MouseSensitivity", sS.s_MouseSensitivity}
+	};	
+	j = nlohmann::json{
+		{"Fullscreen", sS.s_Fullscreen}
 	};
 }
 
@@ -26,6 +29,13 @@ void from_json(const nlohmann::json& j, Settings_Save& sS) {
 	}
 	else {
 		sS.s_MouseSensitivity = 1.0f;
+	}
+
+	if (j.contains("Fullscreen")) {
+		j.at("Fullscreen").get_to(sS.s_Fullscreen);
+	}
+	else {
+		sS.s_Fullscreen = true;
 	}
 }
 

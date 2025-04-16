@@ -58,9 +58,10 @@ public:
 	[[nodiscard]] bool isMouseButtonPressed(int32_t mouseButton) const { Expects(m_nativeWindow); return doIsMouseButtonPressed(mouseButton); } // is the mouse button with library specfic code currently pressed?
 	[[nodiscard]] glm::vec2 getMousePosition() const { Expects(m_nativeWindow); return doGetMousePosition(); } //!< Returns the current mouse position
 	EventHandler handler; //!< Event handler
+	std::unique_ptr<Native, nativeDStor> m_nativeWindow{ nullptr }; //!< Native window
 protected:
 	GraphicsCtxt m_graphicsContext; //!< Graphics context
-	std::unique_ptr<Native, nativeDStor> m_nativeWindow{ nullptr }; //!< Native window
+
 	bool m_isFullScreen{ false }; //!< Is this window in full screen mode?
 	bool m_isVSync{ false };  //!< Is VSync enabled?
 	bool m_isHostingImGui{ false };  //!< Is this window hosting an ImGui context

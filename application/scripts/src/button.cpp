@@ -5,7 +5,7 @@
 void ButtonScript::onUpdate(float timestep)
 {
 	glm::vec2 mousePos = m_mousePosRef;
-	mousePos.y = m_winRef.getHeightf() - mousePos.y;
+	mousePos.y = initialScreenHeight - mousePos.y;
 	std::pair<glm::vec2, glm::vec2> boundingBox;
 	boundingBox.first = glm::vec2(m_transRef.translation - glm::abs(m_transRef.scale));
 	boundingBox.second = glm::vec2(m_transRef.translation + glm::abs(m_transRef.scale));
