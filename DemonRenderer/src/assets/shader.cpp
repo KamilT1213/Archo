@@ -41,7 +41,7 @@ Shader::Shader(const ShaderDescription& desc)
 	for (size_t i = 0; i < count; i++) {
 		glGetActiveUniform(m_ID, i, bufferSize, &bufferLengthUsed, &size, &type, nameBuffer.data());
 		if (type == GL_IMAGE_2D) {
-			int32_t bindPoint = 0;
+			bindPoint = 0;
 			glGetUniformiv(m_ID, i, &bindPoint);
 			UniformInfo data;
 			data.location = glGetUniformLocation(m_ID, nameBuffer.data());
@@ -105,7 +105,7 @@ void Shader::compileRateristion(const ShaderDescription& desc)
 		glAttachShader(m_ID, vertexShader);
 		glAttachShader(m_ID, fragmentShader);
 		glLinkProgram(m_ID);
-
+		
 		GLint isLinked = 0;
 		glGetProgramiv(m_ID, GL_LINK_STATUS, (int*)&isLinked);
 		if (isLinked == GL_FALSE)

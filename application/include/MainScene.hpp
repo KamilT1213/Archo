@@ -2,6 +2,9 @@
 #include <DemonRenderer.hpp>
 #include "core/saving.hpp"
 
+struct SeedingPoint {
+	glm::vec4 position = glm::vec4(-1.0f, -1.0f, -1.0f, 128.0f);
+};
 
 class Archo : public Layer
 {
@@ -16,6 +19,10 @@ private:
 	void onFocus(WindowFocusEvent& e) override;
 	void onLostFocus(WindowLostFocusEvent& e) override;
 	void onResize(WindowResizeEvent& e) override;
+	void onReset(GLFWWindowImpl& win) override;
+
+	void createLayer();
+	void resetLayer();
 
 	void playGame();
 	void mainSettings();
@@ -36,6 +43,11 @@ private:
 	void toggleFullscreen();
 	void setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Texture> working, std::shared_ptr<Shader> shader);
 
+	int seedingResolution = 22;
+	std::shared_ptr<SSBO> m_seedingSSBO;
+	std::vector<SeedingPoint> m_seedingPoints;
+
+	std::shared_ptr<Material> m_seedingFinder;
 	std::vector<std::shared_ptr<Shader>> m_generators;
 	std::vector<entt::entity> m_Relics;
 	std::shared_ptr<Scene> m_RelicScene;
@@ -76,7 +88,7 @@ private:
 	bool Flip{ true };
 	bool Fliping{ false };
 	bool Pausing{ false };
-	int Relics{ 100 };
+	int Relics{ 512 };
 	float ProgressSegmentTarget{ 0.0f };
 
 	ImVec2 imageSize = ImVec2(width / 3, height / 3);
@@ -120,6 +132,7 @@ private:
 	Renderer m_pausedRenderer;
 	Renderer m_generationRenderer;
 	Renderer m_finalRenderer;
+	Renderer m_seedingFinderRenderer;
 
 	Settings_Save m_settings;
 	Game_Save m_save;

@@ -30,7 +30,7 @@ public:
 	FBO& operator=(FBO&& other) = delete; //!< Delete move assignment operator
 	~FBO();
 	void use(); //!< Bind this framebuffer
-	void onResize(WindowResizeEvent& e); // On resize function
+	void onResize(WindowResizeEvent& e, int scale); // On resize function
 	uint32_t getID() { return m_ID; } //!< Get the API specific render ID
 	std::shared_ptr<Texture> getTarget(uint32_t index);
 

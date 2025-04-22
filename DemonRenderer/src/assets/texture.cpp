@@ -22,6 +22,7 @@ Texture::Texture(const TextureDescription& desc)
 
 Texture::~Texture()
 {
+	//spdlog::warn("deleted texture: {}", m_ID);
 	glDeleteTextures(1, &m_ID);
 }
 
@@ -38,7 +39,6 @@ void Texture::edit(uint32_t xOffset, uint32_t yOffset, uint32_t width, uint32_t 
 void Texture::init(uint32_t width, uint32_t height, uint32_t channels, unsigned char* data, bool isHDR)
 {
 	glCreateTextures(GL_TEXTURE_2D, 1, &m_ID);
-
 	glTextureParameteri(m_ID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTextureParameteri(m_ID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
@@ -74,9 +74,13 @@ void Texture::init(uint32_t width, uint32_t height, uint32_t channels, unsigned 
 
 	glGenerateTextureMipmap(m_ID);
 
+	//spdlog::info("created texture at: {}", m_ID);
+
 	m_width = width;
 	m_height = height;
 	m_channels = channels;
 	m_isHDR = isHDR;
+
+	spdlog::warn("New sizes: W:{} H:{} At new location: {}", width, height, m_ID);
 }
 

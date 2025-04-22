@@ -11,6 +11,7 @@
 struct Settings_Save {
 	float s_MouseSensitivity{ 1.0f };
 	bool s_Fullscreen{ true };
+	int s_ResolutionFract{ 1 };
 };
 
 void Save_Settings(const Settings_Save& sS);

@@ -9,7 +9,7 @@
 /**	\class Renderer
 *	\brief Holds and executes a series of render passes
 */
-
+#include "events/windowEvents.hpp"
 class Renderer
 {
 public:
@@ -20,6 +20,7 @@ public:
 	void addRenderPass(const RenderPass& renderPass); //!< Add a render pass
 	void addDepthPass(const DepthPass& renderPass); //!< Add a depth only pass
 	void addComputePass(const ComputePass& renderPass);  //!< Add a compute pass
+	void onResize(WindowResizeEvent& e, int scale);
 	RenderPass& getRenderPass(size_t index); //!< Get a render pass
 	DepthPass& getDepthPass(size_t index);  //!< Get a depth only pass
 	ComputePass& getComputePass(size_t index);  //!< Get a compute pass

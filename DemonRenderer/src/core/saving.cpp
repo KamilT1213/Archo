@@ -15,11 +15,10 @@
 
 void to_json(nlohmann::json& j, const Settings_Save& sS) {
 	j = nlohmann::json{
-		{"MouseSensitivity", sS.s_MouseSensitivity}
+		{"MouseSensitivity", sS.s_MouseSensitivity},
+		{"Fullscreen", sS.s_Fullscreen},
+		{"ResolutionFract", sS.s_ResolutionFract}
 	};	
-	j = nlohmann::json{
-		{"Fullscreen", sS.s_Fullscreen}
-	};
 }
 
 void from_json(const nlohmann::json& j, Settings_Save& sS) {
@@ -36,6 +35,13 @@ void from_json(const nlohmann::json& j, Settings_Save& sS) {
 	}
 	else {
 		sS.s_Fullscreen = true;
+	}	
+	
+	if (j.contains("ResolutionFract")) {
+		j.at("ResolutionFract").get_to(sS.s_ResolutionFract);
+	}
+	else {
+		sS.s_ResolutionFract = 1;
 	}
 }
 

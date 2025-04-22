@@ -1,25 +1,30 @@
 /* \file GLFWWindowImplImpl.cpp*/
 #include "windows/GLFWWindowImpl.hpp"
 #include "core/log.hpp"
-
+#include "core/saving.hpp"
 
 void GLFWWindowImpl::doOpen(const WindowProperties& properties)
 {
+	Settings_Save Settings = Load_Settings();
+
+	if (!properties.isResizable) glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	m_nativeWindow = std::unique_ptr<GLFWwindow, GLFWWinDeleter>(glfwCreateWindow(glfwGetVideoMode(glfwGetPrimaryMonitor())->width / Settings.s_ResolutionFract, glfwGetVideoMode(glfwGetPrimaryMonitor())->height / Settings.s_ResolutionFract, properties.title, nullptr, nullptr));
 
 
-	if (m_isFullScreen)
-	{
-		if (!properties.isResizable) glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-		glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
-		//glfwWindowHint(GLFW_WINDOW)
-		m_nativeWindow = std::unique_ptr<GLFWwindow, GLFWWinDeleter>(glfwCreateWindow(glfwGetVideoMode(glfwGetPrimaryMonitor())->width, glfwGetVideoMode(glfwGetPrimaryMonitor())->height, properties.title, glfwGetPrimaryMonitor(), nullptr));
-		//spdlog::error("Fullscreen not yet implemented");
-	}
-	else
-	{
-		if (!properties.isResizable) glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-		m_nativeWindow = std::unique_ptr<GLFWwindow, GLFWWinDeleter>(glfwCreateWindow(properties.width, properties.height, properties.title, nullptr, nullptr));
-	}
+	//if (m_isFullScreen)
+	//{
+	//	if (!properties.isResizable) glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	//	//glfwWindowHint(GLFW_WINDOW)
+	//	//m_nativeWindow = std::unique_ptr<GLFWwindow, GLFWWinDeleter>(glfwCreateWindow(glfwGetVideoMode(glfwGetPrimaryMonitor())->width / Settings.s_ResolutionFract, glfwGetVideoMode(glfwGetPrimaryMonitor())->height / Settings.s_ResolutionFract, properties.title, glfwGetPrimaryMonitor(), nullptr));
+	//	m_nativeWindow = std::unique_ptr<GLFWwindow, GLFWWinDeleter>(glfwCreateWindow(glfwGetVideoMode(glfwGetPrimaryMonitor())->width / Settings.s_ResolutionFract, glfwGetVideoMode(glfwGetPrimaryMonitor())->height / Settings.s_ResolutionFract, properties.title, nullptr, nullptr));
+
+	//	//spdlog::error("Fullscreen not yet implemented");
+	//}
+	//else
+	//{
+	//	if (!properties.isResizable) glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	//	m_nativeWindow = std::unique_ptr<GLFWwindow, GLFWWinDeleter>(glfwCreateWindow(properties.width, properties.height, properties.title, nullptr, nullptr));
+	//}
 	glfwSetWindowAspectRatio(m_nativeWindow.get(), 16, 9);
 
 	setVSync(m_isVSync);

@@ -13,7 +13,7 @@ uniform float allTime;
 uniform vec2 u_ScreenSize;
 
 float pi = 3.1415;
-float sizeOfRing = 15;
+float sizeOfRing = 0.01;
 
 vec4 Samples[9];
 
@@ -46,7 +46,7 @@ void main()
         vec2 localToMouse = (texCoords - (MousePos / u_ScreenSize));
         localToMouse.y *= ScreenPixelRatio;
         float RfromM = distance(localToMouse, vec2(0));
-        if (RfromM < ScreenPixelSize * (sizeOfRing - 7.5)) {
+        if (RfromM < (sizeOfRing * 0.75)) {
             colour = mix(colour, vec4(vec3(1), 1), 0.4f);
         }
         
@@ -88,7 +88,7 @@ void main()
     vec2 localToMouse = (texCoords - (MousePos / u_ScreenSize));
     localToMouse.y *= ScreenPixelRatio;
     float RfromM = distance(localToMouse, vec2(0));
-    if (RfromM < ScreenPixelSize * (sizeOfRing - 7.5)) {
+    if (RfromM <= (sizeOfRing * 0.75)) {
         total = mix(total, vec4(vec3(1), 1), 0.4f);
     }
 

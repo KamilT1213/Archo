@@ -10,7 +10,7 @@ uniform sampler2D u_buttons;
 uniform vec2 u_mousePos;
 uniform vec2 u_ScreenSize;
 
-float sizeOfRing = 15;
+float sizeOfRing = 0.01;
 
 void main()
 {
@@ -31,7 +31,7 @@ void main()
     vec2 localToMouse = (texCoords - (u_mousePos / u_ScreenSize));
     localToMouse.y *= ScreenPixelRatio;
     float RfromM = distance(localToMouse, vec2(0));
-    if (RfromM < ScreenPixelSize * (sizeOfRing - 7.5)) {
+    if (RfromM < (sizeOfRing * 0.75)) {
         col = mix(col, vec4(vec3(1), 1), 0.4f);
     }
 

@@ -39,9 +39,13 @@ void Application::run()
 	}
 }
 
+
 void Application::onUpdate(float timestep)
 {
 	if (m_layer) m_layer->onUpdate(timestep);
+	if (m_layer->state == GameState::Reset) {
+		m_layer->onReset(m_window);
+	}
 }
 
 void Application::onRender() const

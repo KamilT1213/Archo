@@ -4,7 +4,7 @@
 #include "events/events.hpp"
 #include "windows/GLFWWindowImpl.hpp"
 
-enum class GameState { MainMenu, InGame, Paused, Exit };
+enum class GameState { MainMenu, InGame, Paused, Exit, Reset };
 enum class PauseState { Pause, Inventory, Settings };
 enum class MenuState { Main, Settings, Save };
 
@@ -32,6 +32,7 @@ public:
 	virtual void onMouseReleased(MouseButtonReleasedEvent& e) {}; //!< Run when a Mouse Button is released
 	virtual void onMouseMoved(MouseMovedEvent& e) {}; //!< Run when the mouse is moved
 	virtual void onMouseScrolled(MouseScrolledEvent& e) {}; //!<< Run when the mouse wheel is scrolled
+	virtual void onReset(GLFWWindowImpl& win) {};
 
 	GameState state = GameState::MainMenu;
 	PauseState pauseState = PauseState::Pause;

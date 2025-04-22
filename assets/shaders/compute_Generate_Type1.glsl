@@ -49,6 +49,7 @@ void main()
 		if(dot(dir,normalize(clampCoords)) > 0.8) c = vec4(0);
 		if(dot(dir2,normalize(clampCoords)) > 0.8) c = vec4(0);
 		imageStore(ImgOut, pixel_coords, vec4(c.rgb,step(0.95,c.a)));
+		//imageStore(ImgIn, pixel_coords, vec4(c.rgb,step(0.95,c.a)));
 		//imageStore(ImgIn, pixel_coords, vec4(1.0));
 	}
 	if (Type == 1) {
@@ -56,10 +57,11 @@ void main()
 		vec3 outV = voronoi(clampCoords, fractCoords);
 		vec4 sampled = imageLoad(ImgIn, ivec2(floor((outV.xy + (pixels / 2.0)) * fraction)));
 		imageStore(ImgOut, pixel_coords, sampled);
+		//imageStore(ImgIn, pixel_coords, sampled);
 	}
 	if (Type == 2) {
 
-		int target = 150;
+		int target = int(Size.x/16.0);
 		bool reached = false;
 		for (int d = target; d > 0; d--) {
 			for (int i = 0; i <= 128; i++) {
@@ -79,6 +81,7 @@ void main()
 		
 		if (reached) {
 			imageStore(ImgOut, pixel_coords, vec4(1.0));
+			//imageStore(ImgIn, pixel_coords, vec4(1.0));
 		}
 
 	}
@@ -95,14 +98,15 @@ void main()
 		sampled.x = 1 - sampled.y;
 		sampled.a = step(0.01, sampled.y);
 		imageStore(ImgOut, pixel_coords, vec4(vec3(1.0) * sampled.a,sampled.a));
+		//imageStore(ImgIn, pixel_coords, vec4(vec3(1.0) * sampled.a,sampled.a));
 	}
 	if (Type == 4){
-		float dist = 1024.0;
+		float dist = Size.x;
 
 		float alpha = imageLoad(ImgIn, pixel_coords).a;
 
 		if(alpha > 0){
-			for(int d = 1; d < 256.0 * 2.0; d++){
+			for(int d = 1; d < Size.x/8.0 * 2.0; d++){
 				for(int i = 0; i <= 256; i++){
 					float a = float(i) / 256;
 					a *= pi * 2;
@@ -114,18 +118,20 @@ void main()
 						}
 					}
 				}
-				if(dist < 256.0){
+				if(dist < Size.x/8.0){
 					break;
 				}
 			}
 
-			dist /= 256.0;
+			dist /= Size.x/8.0;
 			//dist = distance(vec2(0),fade(vec2(dist)));
 			dist = smoothstep(0.0,1.0,dist);
 			imageStore(ImgOut, pixel_coords, vec4(1 - dist, dist, 1.0 ,1.0));
+			//imageStore(ImgIn, pixel_coords, vec4(1 - dist, dist, 1.0 ,1.0));
 		}
 		else {
 			imageStore(ImgOut, pixel_coords, vec4(0.0, 0.0, 0.0, 0.0));
+			//imageStore(ImgIn, pixel_coords, vec4(0.0, 0.0, 0.0, 0.0));
 		}
 
 

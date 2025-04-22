@@ -12,17 +12,684 @@ struct Relic {
 
 Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 {
+
+	spdlog::info("Support for multi image binding in compute: {}", glfwExtensionSupported("GL_ARB_shader_image_load_store"));
+	int ver;
+	int ver2;
+	int ver3;
+	glfwGetVersion(&ver, &ver2, &ver3);
+	spdlog::info("OpenGL Version: {}.{}.{}", ver, ver2, ver3);
+
+	GLint imgLim;
+	glGetIntegerv(GL_MAX_IMAGE_UNITS, &imgLim);
+	spdlog::info("Image Binding Units Limit: {}", imgLim);
+
+	m_seedingSSBO = std::make_shared<SSBO>(sizeof(SeedingPoint) * (seedingResolution * seedingResolution), (seedingResolution * seedingResolution));
+	m_seedingSSBO->bind(3);
+
+	
+
+	//m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
+	//for (int i = 0; i < m_seedingPoints.size(); i++) {
+	//	m_seedingPoints[i] = SeedingPoint();
+	//}
+	m_seedingPoints.reserve((seedingResolution * seedingResolution));
+	for (int i = 0; i < (seedingResolution * seedingResolution); i++) {
+		m_seedingPoints.push_back(SeedingPoint());
+	}
+
+	m_seedingSSBO->edit(0, sizeof(SeedingPoint) * m_seedingPoints.size(), m_seedingPoints.data());
+	//for (int i = 0; i < m_seedingPoints.size(); i++) {
+	//	spdlog::info("Item: {},{},{},{} , At: {}", 
+	//		m_seedingPoints[i].position.x, 
+	//		m_seedingPoints[i].position.y, 
+	//		m_seedingPoints[i].position.z, 
+	//		m_seedingPoints[i].position.w, i);
+	//}
+
+
+
+	createLayer();
+}
+
+void Archo::onImGUIRender()
+{
+	
+	// Scripts widgets
+}
+
+void Archo::onRender()
+{
+	m_backgroundRenderer.render();
+	//m_seedingFinderRenderer.render();
+	if (state == GameState::MainMenu) {
+		m_mainMenuRenderer.render();
+	}
+	else if (state == GameState::InGame) {
+		ZoneScoped;
+		m_mainRenderer.render();
+		glDisable(GL_BLEND);
+	}
+	else if (state == GameState::Paused) {
+		m_pausedRenderer.render();
+	}
+
+	m_finalRenderer.render();
+}
+
+void Archo::onUpdate(float timestep)
+{
+
+	if (m_winRef.doIsKeyPressed(GLFW_KEY_ESCAPE) && !Pausing) {
+		if (state == GameState::InGame) {
+			pauseMenu();
+		}
+		else if(state == GameState::Paused) {
+
+			pause_to_Game();
+		}
+		Pausing = true;
+	}
+	else if(!m_winRef.doIsKeyPressed(GLFW_KEY_ESCAPE) && Pausing){
+		Pausing = false;
+	}
+
+	//if (m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && !modeToggle) {
+	//	modeToggle = true;
+	//	focusMode = !focusMode;
+	//	m_winRef.doSwitchInput();
+	//}
+	//if (!m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && modeToggle) {
+	//	modeToggle = false;
+	//}
+
+
+
+
+
+
+	auto& backgroundPass = m_backgroundRenderer.getRenderPass(BackgroundPassIDx);
+	auto& BackgroundQuad = backgroundPass.scene->m_entities.get<Render>(backgroundQuad).material;
+	auto& generatePass = m_generationRenderer.getComputePass(0).material;
+
+	if (focusMode) {
+		m_PointerPos += (m_winRef.doGetMouseVector() * glm::vec2(1, -1)) / glm::min((float)backgroundPass.viewPort.width, (float)backgroundPass.viewPort.height) * 1000.0f * (1.0f / (m_settings.s_ResolutionFract * m_settings.s_ResolutionFract));
+		m_PointerPos = glm::clamp((m_PointerPos), glm::vec2(0), glm::vec2((float)backgroundPass.viewPort.width, (float)backgroundPass.viewPort.height));
+		//spdlog::info("Mouse Position: x:{}  y:{}", m_PointerPos.x, m_PointerPos.y);
+	}
+
+	allTime += timestep / 10.0f;
+
+	if (allTime > 1000) {
+		allTime = (allTime - 1000);
+	}
+
+	//generatePass->setValue("Seed", allTime);
+
+	BackgroundQuad->setValue("allTime", allTime);
+
+	auto& FinalQuad = m_finalRenderer.getRenderPass(0).scene->m_entities.get<Render>(finalQuad).material;
+
+	if (state == GameState::MainMenu) {
+		FinalQuad->setValue("u_State", 0.0f);
+		auto& menuPassMat = m_mainMenuRenderer.getRenderPass(FinalMainMenuPassIDx).scene->m_entities.get<Render>(MenuQuad).material;
+		menuPassMat->setValue("u_mousePos", m_PointerPos);
+
+		if (menuState == MenuState::Main) {
+			auto view = m_mainMenu->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+		else if (menuState == MenuState::Settings) {
+			auto view = m_mainMenu_Settings->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+		else if (menuState == MenuState::Save) {
+			auto view = m_mainMenu_Save->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+
+	}
+	else if (state == GameState::Paused) {
+		FinalQuad->setValue("u_State", 2.0f);
+		auto& pausePassMat = m_pausedRenderer.getRenderPass(FinalPausePassIDx).scene->m_entities.get<Render>(PauseQuad).material;
+		pausePassMat->setValue("u_mousePos", m_PointerPos);
+
+		if (pauseState == PauseState::Pause) {
+			auto view = m_pauseMenu->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+		else if (pauseState == PauseState::Settings) {
+			auto view = m_pauseMenu_Settings->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+		else if (pauseState == PauseState::Inventory) {
+			auto view = m_pauseMenu_Inventory->m_entities.view<ScriptComp>();
+			for (auto& entity : view) {
+				ScriptComp script = view.get<ScriptComp>(entity);
+				script.onUpdate(timestep);
+			}
+		}
+	}
+	else if (state == GameState::InGame) {
+
+		FinalQuad->setValue("u_State", 1.0f);
+		ZoneScoped;
+		
+
+		//auto& computeGroundPass = m_mainRenderer.getComputePass(GroundComputePassIDx);
+		auto& relicPass = m_mainRenderer.getRenderPass(ScreenRelicPassIDx);
+		auto& screenGroundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
+		auto& screenAAPass = m_mainRenderer.getRenderPass(AAPassIDx);
+		
+
+		//for (int i = 0; i < m_mainRenderer.getRenderPassCount(); i++) {
+		//	auto& targetPass = m_mainRenderer.getRenderPass(i);
+		//	targetPass.UBOmanager.setCachedValue("b_camera2D", "u_view2D", screenGroundPass.camera.view);
+		//	targetPass.UBOmanager.setCachedValue("b_camera2D", "u_projection2D", screenGroundPass.camera.projection);
+
+
+		//	targetPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", relicPass.camera.view);
+		//	targetPass.UBOmanager.setCachedValue("b_relicCcamera2D", "u_relicProjection2D", relicPass.camera.projection);
+		//}
+		//auto& QuadMat = screenGroundPass.scene->m_entities.get<Render>(Quad).material;
+		auto& AAQuadMat = screenAAPass.scene->m_entities.get<Render>(AAQuad).material;
+		
+
+
+		//if (!Pressed) {
+		//	glm::vec2 temp = m_PointerPos;// -(m_winRef.getSizef() * 0.5f);
+		//	if (height > width) {
+		//		float diff = (height - width)/2.0f;
+		//		temp.y -= diff;
+		//		temp /= (m_winRef.getSizef() - glm::vec2(0, diff * 2.0f));
+		//	}
+		//	else if (height < width) {
+		//		float diff = (width - height) / 2.0f;
+		//		temp.x -= diff;
+		//		temp /= (m_winRef.getSizef() - glm::vec2(diff * 2.0f, 0));
+		//	}
+
+
+
+		//	temp = glm::clamp(temp, glm::vec2(0), glm::vec2(1));
+
+		//	m_DigPos = temp;
+		//}
+
+		//float timeToDig = 1.0f;
+
+		//float Segments = 7.0f;
+		//float timePerSegment = 0.6f;
+
+		//float x = ProgressBar;
+
+		//glm::vec2 temp = m_DigPos * glm::min(width, height);
+		//float a = glm::max(width, height) - glm::min(width, height);
+		//a /= 2;
+		//if (width > height) {
+		//	temp.x += a;
+		//}
+		//else {
+		//	temp.y += a;
+		//}
+		////temp = m_DigPos;
+		//temp -= glm::vec2(0.0001f, 0.0001f);
+
+		////temp = glm::clamp(temp, glm::vec2(0), glm::vec2(width, height));
+
+		//screenGroundPass.target->use();
+		//float UVData[4];
+		//glNamedFramebufferReadBuffer(screenGroundPass.target->getID(), screenGroundPass.target->m_colAttachments[1]);
+		//glReadPixels(temp.x, temp.y, 1, 1, GL_RGBA, GL_FLOAT, &UVData);
+
+		////for (int i = 0; i < 4; i++) {
+		////	UVData[i] = glm::clamp(UVData[i], 0.0f, 1.0f);
+		////}
+
+		//gameMouseLocation = glm::vec2(UVData[0], UVData[1]);
+		////spdlog::info("mouse x: {:03.2f}, mouse y: {:03.2f}", gameMouseLocation.x, gameMouseLocation.y);
+		////spdlog::info("Relic id: {:03.5f}", glm::round(UVData[2] * (Relics + 1)));
+
+		//int RelId = (int)glm::round(UVData[2] * (Relics + 1));
+
+
+
+		//Segments = glm::ceil(UVData[3] * 6.0f) + 1.0f;
+		////spdlog::info("Relic Segments: {:03.5f}", Segments);
+
+		//bool isExtracting = (RelId != 0 && (ProgressBar == 0 || extrBegan));// m_winRef.doIsKeyPressed(GLFW_KEY_E);
+		//bool LevelComplete = false;
+
+
+
+		//if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1)) {
+		//	m_soundManager.playSoundAtPosition(sound.get(), 100, glm::vec3(0, 0, 1), glm::vec3(m_PointerPos.x - 0.5f, 0, m_PointerPos.y - 0.5f) * 500.0f);
+		//}
+
+		//if (RelicSetWave >= 1 && focusMode) {
+
+		//	if (isExtracting) {
+		//		if (!extrBegan) {
+		//			extrBegan = true;
+		//			ProgressBar = 0;
+		//		}
+
+		//		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && !finished) {
+		//			Pressed = true;
+		//			ProgressBar += timestep * ((1 / timePerSegment) / Segments);
+		//			if (ProgressBar > 1) {
+		//				finished = true;
+		//				ProgressBar = 1;
+
+		//				auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
+		//				auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
+		//				renderComp.material->setValue("u_active", 0.0f);
+		//				relicComp.Active = false;
+		//				for (int i = 0; i < Relics; i++) {
+		//					if (relicComp.Active == true) {
+		//						LevelComplete = false;
+		//						break;
+		//					}
+		//					else {
+		//						LevelComplete = true;
+		//					}
+		//				}
+		//			}
+		//		}
+		//		else {
+		//			finished = true;
+		//			ProgressBar -= timestep * 5;
+		//			if (ProgressBar < 0) {
+		//				extrBegan = false;
+		//				ProgressBar = 0;
+		//				ProgressSegmentTarget = 1;
+		//				Pressed = false;
+		//				finished = false;
+		//			}
+		//		}
+
+		//		if (ProgressBar * Segments >= ProgressSegmentTarget) {
+
+		//			int r = rand() % 4;
+
+		//			std::string s = "./assets/sounds/Extraction_soft_var";
+		//			s += char('0' + r);
+		//			s.append(".wav");
+
+		//			//m_soundManager.playSound(s.c_str());
+		//			//spdlog::info("PlaySound");
+		//			ProgressSegmentTarget++;
+		//		}
+
+		//		x = floor(ProgressBar * Segments) / Segments;
+		//	}
+		//	else {
+		//		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && !finished) {
+		//			Pressed = true;
+		//			ProgressBar += timestep / timeToDig;
+		//			if (ProgressBar > 1) {
+		//				finished = true;
+		//				ProgressBar = 1;
+		//			}
+		//			if ((RelId != 0)) {
+		//				finished = true;
+		//			}
+		//		}
+		//		else {
+		//			finished = true;
+		//			//m_computeRenderer.render();
+		//			ProgressBar -= timestep * 5;
+		//			if (ProgressBar < 0) {
+		//				ProgressBar = 0;
+		//				extrBegan = false;
+		//				ProgressSegmentTarget = 0.5;
+		//				Pressed = false;
+		//				finished = false;
+		//			}
+		//		}
+
+		//		if (ProgressBar * timeToDig >= ProgressSegmentTarget) {
+
+		//			int r = rand() % 2;
+		//			//int r2 = rand() % 4;
+
+		//			//std::string s2 = "./assets/sounds/Extraction_soft_var";
+		//			//s2 += char('0' + r2);
+		//			//s2.append(".wav");
+
+		//			//m_soundManager.playSound(s2.c_str());
+
+		//			std::string s = "./assets/sounds/Digging_soft_var";
+		//			s += char('0' + r);
+		//			s.append(".wav");
+
+
+
+		//			//m_soundManager.playSound(s.c_str());
+		//			//spdlog::info("PlaySound");
+		//			ProgressSegmentTarget++;
+		//		}
+		//	}
+		//}
+
+
+		//if (m_winRef.doIsKeyPressed(GLFW_KEY_R) || LevelComplete) {
+		//	Reseting = true;
+		//	ResetWave = 1.0f;
+		//}
+		//else {
+		//	if (Reseting) {
+		//		ResetWave -= timestep / 5;
+		//		RelicResetWave -= timestep / 20;
+
+		//		auto view = m_RelicScene->m_entities.view<Render, Transform>();
+
+		//		for (auto& relic : view) {
+		//			auto& transformComp = m_RelicScene->m_entities.get<Transform>(relic);
+		//			transformComp.scale *= glm::vec3(1.0f - (timestep / 2));
+		//			transformComp.recalc();
+
+		//		}
+		//		//spdlog::info("Reset Wave: {:03.5f}", ResetWave);
+		//		if (ResetWave <= 0) {
+		//			RelicSetWave = -0.1f;
+
+		//		}
+		//		if (!Fliping && ResetWave <= 0) {
+		//			Flip = !Flip;
+		//			Fliping = true;
+		//		}
+		//		if (ResetWave <= -0.1f) {
+		//			Reseting = false;
+		//			Fliping = false;
+		//			RelicResetWave = 1.0f;
+
+		//			for (auto& relic : view) {
+		//				m_RelicScene->m_entities.get<Relic>(relic).Active = true;
+		//				float rarity = Randomiser::uniformFloatBetween(0.01f, 6.0f);
+
+		//				auto& renderComp = m_RelicScene->m_entities.get<Render>(relic);
+		//				auto& transformComp = m_RelicScene->m_entities.get<Transform>(relic);
+
+		//				renderComp.material->setValue("u_Rarity", rarity);
+		//				//RelicMaterial->setValue("u_Id", (float)(i + 1) / (Relics + 1.0f));
+		//				renderComp.material->setValue("u_active", (float)(int)true);
+
+		//				transformComp.scale = glm::vec3(Randomiser::uniformFloatBetween(100.0f, 150.0f) * ((0.5f * ((7.0f - (1 + rarity)) / 7.0f)) + 0.5f));
+		//				transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), (1.0f - (rarity / 6.0f)) - 0.5f);
+		//				transformComp.recalc();
+
+		//			}
+		//		}
+		//	}
+		//}
+
+		//if (RelicSetWave < 1) {
+		//	RelicSetWave += timestep / 2;
+		//	if (RelicSetWave >= 1) {
+		//		RelicSetWave = 1;
+		//	}
+		//}
+
+
+		//QuadMat->setValue("MousePos", (m_PointerPos));
+		//QuadMat->setValue("DigPos", (m_DigPos));
+		//QuadMat->setValue("Progress", x);
+		//QuadMat->setValue("RelicFill", RelicSetWave);
+		//QuadMat->setValue("u_flip", (float)(int)Flip);
+
+		AAQuadMat->setValue("MousePos", m_PointerPos);
+		
+		//computeGroundPass.material->setValue("Reset", (float)(int)Reseting);
+		//computeGroundPass.material->setValue("ResetWave", glm::clamp((-glm::pow(ResetWave - 1, 2.0f)) + 1, 0.0f, 1.0f));
+		//if (ProgressBar >= 1) {
+		//	Pressed = true;
+		//}
+		//else {
+		//	Pressed = false;
+		//}
+		//float action = ProgressBar;
+		//float x2 = glm::mod(action, 1 / timeToDig);
+		//float x3 = glm::pow(x2 * timeToDig, 30) / timeToDig;
+		//float x4 = glm::floor(action * timeToDig) / timeToDig;
+		//action = x3 + x4;
+		//computeGroundPass.material->setValue("action", action);
+		//computeGroundPass.material->setValue("digging", (float)(int)(!finished && !isExtracting));
+		//computeGroundPass.material->setValue("MousePos", (m_DigPos));
+		//computeGroundPass.material->setValue("subBy", Subby);
+
+		//spdlog::info("Reset Wave: {:03.2f}", ResetWave);
+		//spdlog::info("Reseting: {:03.2f}", (float)(int)Reseting);
+	}
+}
+
+void Archo::onKeyPressed(KeyPressedEvent& e)
+{
+	if (e.getKeyCode() == GLFW_KEY_R) {
+		//spdlog::info("Seed: {}", glm::mod(allTime,1.0f));
+		m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
+		m_generationRenderer.render();
+
+		for (int i = 0; i < m_seedingPoints.size(); i++) {
+			m_seedingPoints[i] = SeedingPoint();
+		}
+		//m_seedingSSBO->edit(0, sizeof(SeedingPoint) * m_seedingPoints.size(), m_seedingPoints.data());
+
+		m_seedingFinderRenderer.render();
+
+
+		auto view = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
+
+		for (auto relic : view) {
+			Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(relic);
+			rendComp.material->setValue("u_active", (float)(int)false);
+		}
+		m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
+
+		int counter = 0;
+		//int counter2 = 0;
+		for (int i = 0; i < m_seedingPoints.size(); i++) {
+			SeedingPoint current = m_seedingPoints[i];
+			if (current.position.x > -0.5f) {
+				Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[counter]);
+				rendComp.material->setValue("u_active", (float)(int)true);
+				rendComp.material->setValue("u_Rarity", 6.0f);
+
+				Transform& transComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[counter]);
+				transComp.translation = glm::vec3(glm::vec2(current.position) * 16.0f, -0.5f);
+				transComp.scale = glm::vec3(4096.f / current.position.w);
+				transComp.recalc();
+
+				//counter2 = 0;
+				counter++;
+				//for (auto& obj : view) {
+				//	if (counter == counter2) {
+				//		Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(obj);
+				//		rendComp.material->setValue("u_active", (float)(int)true);
+
+				//		Transform& transComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(obj);
+				//		transComp.translation = glm::vec3(glm::vec2(current.position) * 16.0f, -0.5f);
+				//		transComp.scale = glm::vec3(4096.f / current.position.w);
+				//		transComp.recalc();
+
+				//		counter2 = 0;
+				//		counter++;
+				//	}
+				//	else {
+				//		counter2++;
+				//	}
+				//}
+
+			}
+		}
+	}
+	if (e.getKeyCode() == GLFW_KEY_F11) {
+
+		toggleFullscreen();
+	}
+	//if (e.getKeyCode() == GLFW_KEY_R) {
+
+	//	state = GameState::Reset;
+	//}
+	/*if (e.getKeyCode() == GLFW_KEY_SPACE && m_state == GameState::intro) m_state = GameState::running;
+	for (auto it = m_RelicScene->m_actors.begin(); it != m_RelicScene->m_actors.end(); ++it)
+	{
+		it->onKeyPress(e);
+	}*/
+	//if (e.getKeyCode() == GLFW_KEY_O)
+	//{
+	//	if (m_wireframe) {
+	//		m_wireframe = false;
+	//		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	//	}
+	//	else {
+	//		m_wireframe = true;
+	//		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	//	}
+	//}
+}
+
+void Archo::onFocus(WindowFocusEvent& e)
+{
+	focusMode = true;
+	//spdlog::info("Focused: {}", focusMode);
+	m_winRef.doSwitchInputTo(false);
+}
+
+void Archo::onLostFocus(WindowLostFocusEvent& e)
+{
+	focusMode = false;
+	//spdlog::info("Unfocused: {}",focusMode);
+	m_winRef.doSwitchInputTo(true);
+}
+
+void Archo::onResize(WindowResizeEvent& e)
+{
+	
+	m_winRef.m_Resizing = true;
+	m_winRef.doSwitchInputTo(true);
+
+	auto& pass = m_finalRenderer.getRenderPass(0);
+	pass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	pass.camera.projection = glm::ortho(0.f, (float)e.getWidth(), (float)e.getHeight(), 0.f);
+	pass.UBOmanager.setCachedValue("b_finalcamera2D", "u_finalprojection2D", pass.camera.projection);
+
+	auto& trans = pass.scene->m_entities.get<Transform>(finalQuad);
+
+	trans.scale = glm::vec3((float)e.getWidth(), (float)e.getHeight(), 1.0f);
+	trans.recalc();
+
+	/*m_mainRenderer.onResize(e,m_settings.s_ResolutionFract);
+	m_mainMenuRenderer.onResize(e, m_settings.s_ResolutionFract);
+	m_computeRenderer.onResize(e, m_settings.s_ResolutionFract);
+	m_backgroundRenderer.onResize(e, m_settings.s_ResolutionFract);
+	m_pausedRenderer.onResize(e, m_settings.s_ResolutionFract);
+	m_generationRenderer.onResize(e, m_settings.s_ResolutionFract);
+	m_finalRenderer.onResize(e, m_settings.s_ResolutionFract);
+
+	auto& pausePass = m_pausedRenderer.getRenderPass(FinalPausePassIDx);
+	auto& finalPass = m_finalRenderer.getRenderPass(0);
+	auto& menuPass = m_mainMenuRenderer.getRenderPass(FinalMainMenuPassIDx);
+	auto& groundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
+	auto& aaPass = m_mainRenderer.getRenderPass(AAPassIDx);
+	auto& bgPass = m_backgroundRenderer.getRenderPass(BackgroundPassIDx);
+	auto& pauseBtPass = m_pausedRenderer.getRenderPass(PauseButtonPassIDx);
+	auto& mainBtPass = m_mainMenuRenderer.getRenderPass(ButtonPassIDx);
+	auto& relicPass = m_mainRenderer.getRenderPass(ScreenRelicPassIDx);
+
+	auto& pRenderMat = pausePass.scene->m_entities.get<Render>(PauseQuad).material;
+	pRenderMat->setValue("u_background", bgPass.target->getTarget(0));
+	pRenderMat->setValue("u_buttons", pauseBtPass.target->getTarget(0));
+	pRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));
+
+	auto& fRenderMat = finalPass.scene->m_entities.get<Render>(finalQuad).material;
+	fRenderMat->setValue("u_PausedIn", pausePass.target->getTarget(0));
+	fRenderMat->setValue("u_MainMenuIn", menuPass.target->getTarget(0));
+	fRenderMat->setValue("u_InGameIn", aaPass.target->getTarget(0));
+
+	auto& mmRenderMat = menuPass.scene->m_entities.get<Render>(MenuQuad).material;
+	mmRenderMat->setValue("u_background", bgPass.target->getTarget(0));
+	mmRenderMat->setValue("u_buttons", mainBtPass.target->getTarget(0));
+	mmRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));
+	
+	auto& sRenderMat = groundPass.scene->m_entities.get<Render>(Quad).material;
+	sRenderMat->setValue("u_RelicTexture", relicPass.target->getTarget(0));
+	sRenderMat->setValue("u_RelicDataTexture", relicPass.target->getTarget(1));
+	sRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));
+
+	auto& aaRenderMat = aaPass.scene->m_entities.get<Render>(AAQuad).material;
+	aaRenderMat->setValue("u_inputTexture", groundPass.target->getTarget(0));
+	aaRenderMat->setValue("u_background", bgPass.target->getTarget(0));
+	aaRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));*/
+	
+
+	//spdlog::info("resized");
+	//m_mainRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_mainMenuRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_computeRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_backgroundRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_pausedRenderer.updateRenderAndDepthPassSize(e.getSize());
+	//m_generationRenderer.updateRenderAndDepthPassSize(e.getSize());
+}
+
+void Archo::onReset(GLFWWindowImpl& win)
+{
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	// Unbind textures
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+	// Unbind VAO, VBO, EBO
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	// Unbind framebuffer and shader program
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glUseProgram(0);
+
+
+	state = GameState::MainMenu;
+	resetLayer();
+	createLayer();
+}
+
+void Archo::createLayer()
+{
 	m_settings = Load_Settings();
 	m_save = Load_Game();
 
-	const char* soundFile = "./assets/sounds/Extraction_soft_var0.wav";
-	sound = (std::shared_ptr<Mix_Chunk>)Mix_LoadWAV(soundFile);
-	if (!sound) {
-		std::cerr << "Failed to load sound: " << Mix_GetError() << "\n";
-		Mix_CloseAudio();
-		SDL_Quit();
-		//return;
-	}
+	//const char* soundFile = "./assets/sounds/Extraction_soft_var0.wav";
+	//sound = (std::shared_ptr<Mix_Chunk>)Mix_LoadWAV(soundFile);
+	//if (!sound) {
+	//	std::cerr << "Failed to load sound: " << Mix_GetError() << "\n";
+	//	Mix_CloseAudio();
+	//	SDL_Quit();
+	//	//return;
+	//}
 
 	m_winRef.setVSync(false);
 	m_RelicScene.reset(new Scene);
@@ -48,8 +715,8 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	std::shared_ptr<Texture> settingsButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SettingsButton.png");
 
 	TextureDescription groundTextureDesc;
-	groundTextureDesc.height = 4096.0f / 2.0f;
-	groundTextureDesc.width = 4096.0f / 2.0f;
+	groundTextureDesc.height = 256.0f;//4096.0f / 2.0f;
+	groundTextureDesc.width = 256.0f;//4096.0f / 2.0f;
 	groundTextureDesc.channels = 4;
 	groundTextureDesc.isHDR = true;
 
@@ -66,6 +733,16 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	compute_Generator_Type1_ShaderDesc.type = ShaderType::compute;
 	compute_Generator_Type1_ShaderDesc.computeSrcPath = "./assets/shaders/compute_Generate_Type1.glsl";
 	m_generators.push_back(std::make_shared<Shader>(compute_Generator_Type1_ShaderDesc));
+
+
+	//Locate Seeding points
+	ShaderDescription compute_FindSeedingLocations_ShaderDesc;
+	compute_FindSeedingLocations_ShaderDesc.type = ShaderType::compute;
+	compute_FindSeedingLocations_ShaderDesc.computeSrcPath = "./assets/shaders/compute_FindSeedingLocations.glsl";
+
+	//m_generators.push_back(std::make_shared<Shader>(compute_FindSeedingLocations_ShaderDesc));
+	m_seedingFinder = std::make_shared<Material>(std::make_shared<Shader>(compute_FindSeedingLocations_ShaderDesc));
+	m_seedingFinder->setValue("Size", glm::vec2(groundTexture->getWidthf(), groundTexture->getHeightf()));
 
 	//Final screen post processing pass (screen effects) material
 	ShaderDescription screenQuadShaderDesc;
@@ -119,8 +796,8 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	std::shared_ptr<Shader> screenAAQuadShader = std::make_shared<Shader>(screenAAQuadShaderDesc);
 	std::shared_ptr<Material> screenAAQuadMaterial = std::make_shared<Material>(screenAAQuadShader);
 
-	screenAAQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);	
-	
+	screenAAQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
+
 
 	//final screen pass mat
 	ShaderDescription finalQuadShaderDesc;
@@ -240,8 +917,8 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	screenAAQuadVAO->addVertexBuffer(screenAAVertices, {
 		{GL_FLOAT, 3},  // position
 		{GL_FLOAT, 2}   // UV
-		});	
-	
+		});
+
 	std::shared_ptr<VAO> FinalQuadVAO;
 	FinalQuadVAO = std::make_shared<VAO>(screenIndices);
 	FinalQuadVAO->addVertexBuffer(FinalVertices, {
@@ -273,7 +950,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	*  Main Menu Buttons
 	**************************/
 
-	float widthRatio = 1.0f /( width / height);
+	float widthRatio = 1.0f / (width / height);
 
 	{
 		entt::entity startButton = m_mainMenu->m_entities.create();
@@ -281,17 +958,17 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 		Render& renderComp = m_mainMenu->m_entities.emplace<Render>(startButton);
 		Transform& transformComp = m_mainMenu->m_entities.emplace<Transform>(startButton);
 		ScriptComp& scriptComp = m_mainMenu->m_entities.emplace<ScriptComp>(startButton);
-		
+
 
 		renderComp.geometry = buttonQuadVAO;
 
 		std::shared_ptr<Material> startButtonMat = std::make_shared<Material>(buttonQuadShader);
 		startButtonMat->setValue("u_ButtonTexture", playButtonTexture);
-		
+
 		renderComp.material = startButtonMat;
 
 		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
-		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(-(width / 5.f) * widthRatio,0,0);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(-(width / 5.f) * widthRatio, 0, 0);
 
 		transformComp.recalc();
 
@@ -366,7 +1043,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 		renderComp.material = exitButtonMat;
 
 		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
-		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) +glm::vec3(0, height / 5.f, 0);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(0, height / 5.f, 0);
 
 		transformComp.recalc();
 
@@ -666,7 +1343,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 		RelicMaterial->setValue("u_RelicTexture", testRelicTexture);
 		RelicMaterial->setValue("u_Rarity", rarity);
 		RelicMaterial->setValue("u_Id", (float)(i + 1) / (Relics + 1.0f));
-		RelicMaterial->setValue("u_active", (float)(int)true);
+		RelicMaterial->setValue("u_active", (float)(int)false);
 
 		transformComp.scale = glm::vec3(Randomiser::uniformFloatBetween(100.0f, 150.0f) * ((0.5f * ((7.0f - (1 + rarity)) / 7.0f)) + 0.5f));
 
@@ -709,6 +1386,22 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	**************************/
 
 	setupGenerator(m_generationRenderer, groundTexture, groundTextureTemp, m_generators.at(0));
+
+	ComputePass SeedingComputePass;
+	SeedingComputePass.material = m_seedingFinder;
+	SeedingComputePass.workgroups = { seedingResolution,seedingResolution,1 };// { seedingResolution, seedingResolution, 1 };
+	SeedingComputePass.barrier = MemoryBarrier::ShaderImageAccess;
+
+	Image InImg;
+	InImg.mipLevel = 0;
+	InImg.layered = false;
+	InImg.texture = groundTexture;
+	InImg.imageUnit = 0;
+	InImg.access = TextureAccess::ReadOnly;
+
+	SeedingComputePass.images.push_back(InImg);
+
+	m_seedingFinderRenderer.addComputePass(SeedingComputePass);
 
 	//Terrain:
 
@@ -763,7 +1456,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 
 
-	
+
 
 
 	//AAquad.translation = glm::vec3(500.9f,0,0);
@@ -847,6 +1540,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	m_pausedRenderer.addRenderPass(PauseMenuPass);
 
+
 	finalQuadMaterial->setValue("u_PausedIn", PauseMenuPass.target->getTarget(0));
 
 	/*************************
@@ -870,6 +1564,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 
 	m_screenScene.reset(new Scene);
+
 
 	menuQuadMaterial->setValue("u_background", BackgroundPass.target->getTarget(0));
 	menuQuadMaterial->setValue("u_buttons", ButtonPass.target->getTarget(0));
@@ -897,6 +1592,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	FinalMainMenuPassIDx = m_mainMenuRenderer.getSumPassCount();
 
 	m_mainMenuRenderer.addRenderPass(MainMenuPass);
+
 
 	finalQuadMaterial->setValue("u_MainMenuIn", MainMenuPass.target->getTarget(0));
 
@@ -928,6 +1624,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 
 	screenQuadMaterial->setValue("u_GroundDepthTexture", groundTexture);
+
 	screenQuadMaterial->setValue("u_RelicTexture", ScreenRelicPass.target->getTarget(0));
 	screenQuadMaterial->setValue("u_RelicDataTexture", ScreenRelicPass.target->getTarget(1));
 
@@ -969,6 +1666,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	*  AA Render Pass
 	**************************/
 
+
 	screenAAQuadMaterial->setValue("u_inputTexture", ScreenGroundPass.target->getTarget(0));
 	screenAAQuadMaterial->setValue("u_background", BackgroundPass.target->getTarget(0));
 
@@ -986,7 +1684,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	RenderPass ScreenAAPass;
 	ScreenAAPass.scene = m_screenScene;
 	ScreenAAPass.parseScene();
-	ScreenAAPass.target = std::make_shared<FBO>(m_winRef.getSize(),defaultPassLayout);
+	ScreenAAPass.target = std::make_shared<FBO>(m_winRef.getSize(), defaultPassLayout);
 	ScreenAAPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
 	ScreenAAPass.isScreen = true;
 
@@ -996,6 +1694,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	AAPassIDx = m_mainRenderer.getSumPassCount();
 	m_mainRenderer.addRenderPass(ScreenAAPass);
+
 
 	finalQuadMaterial->setValue("u_InGameIn", ScreenAAPass.target->getTarget(0));
 
@@ -1036,506 +1735,16 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 
 
-
 }
 
-void Archo::onImGUIRender()
-{
-	
-	// Scripts widgets
-}
-
-void Archo::onRender()
-{
-	m_backgroundRenderer.render();
-
-	if (state == GameState::MainMenu) {
-		m_mainMenuRenderer.render();
-	}
-	else if (state == GameState::InGame) {
-		ZoneScoped;
-		m_mainRenderer.render();
-		glDisable(GL_BLEND);
-	}
-	else if (state == GameState::Paused) {
-		m_pausedRenderer.render();
-	}
-
-	m_finalRenderer.render();
-}
-
-void Archo::onUpdate(float timestep)
+void Archo::resetLayer()
 {
 
-	if (m_winRef.doIsKeyPressed(GLFW_KEY_ESCAPE) && !Pausing) {
-		if (state == GameState::InGame) {
-			pauseMenu();
-		}
-		else if(state == GameState::Paused) {
-
-			pause_to_Game();
-		}
-		Pausing = true;
-	}
-	else if(!m_winRef.doIsKeyPressed(GLFW_KEY_ESCAPE) && Pausing){
-		Pausing = false;
-	}
-
-	//if (m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && !modeToggle) {
-	//	modeToggle = true;
-	//	focusMode = !focusMode;
-	//	m_winRef.doSwitchInput();
-	//}
-	//if (!m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && modeToggle) {
-	//	modeToggle = false;
-	//}
-
-
-
-
-
-
-	auto& backgroundPass = m_backgroundRenderer.getRenderPass(BackgroundPassIDx);
-	auto& BackgroundQuad = backgroundPass.scene->m_entities.get<Render>(backgroundQuad).material;
-	auto& generatePass = m_generationRenderer.getComputePass(0).material;
-
-	if (focusMode) {
-		m_PointerPos += (m_winRef.doGetMouseVector() * glm::vec2(1, -1)) / glm::min((float)backgroundPass.viewPort.width, (float)backgroundPass.viewPort.height) * 1000.0f;
-		m_PointerPos = glm::clamp((m_PointerPos), glm::vec2(0), glm::vec2((float)backgroundPass.viewPort.width, (float)backgroundPass.viewPort.height));
-		//spdlog::info("Mouse Position: x:{}  y:{}", m_PointerPos.x, m_PointerPos.y);
-	}
-
-	allTime += timestep / 10.0f;
-
-	if (allTime > 1000) {
-		allTime = (allTime - 1000);
-	}
-
-	//generatePass->setValue("Seed", allTime);
-
-	BackgroundQuad->setValue("allTime", allTime);
-
-	auto& FinalQuad = m_finalRenderer.getRenderPass(0).scene->m_entities.get<Render>(finalQuad).material;
-
-	if (state == GameState::MainMenu) {
-		FinalQuad->setValue("u_State", 0.0f);
-		auto& menuPassMat = m_mainMenuRenderer.getRenderPass(FinalMainMenuPassIDx).scene->m_entities.get<Render>(MenuQuad).material;
-		menuPassMat->setValue("u_mousePos", m_PointerPos);
-
-		if (menuState == MenuState::Main) {
-			auto view = m_mainMenu->m_entities.view<ScriptComp>();
-			for (auto& entity : view) {
-				ScriptComp script = view.get<ScriptComp>(entity);
-				script.onUpdate(timestep);
-			}
-		}
-		else if (menuState == MenuState::Settings) {
-			auto view = m_mainMenu_Settings->m_entities.view<ScriptComp>();
-			for (auto& entity : view) {
-				ScriptComp script = view.get<ScriptComp>(entity);
-				script.onUpdate(timestep);
-			}
-		}
-		else if (menuState == MenuState::Save) {
-			auto view = m_mainMenu_Save->m_entities.view<ScriptComp>();
-			for (auto& entity : view) {
-				ScriptComp script = view.get<ScriptComp>(entity);
-				script.onUpdate(timestep);
-			}
-		}
-
-	}
-	else if (state == GameState::Paused) {
-		FinalQuad->setValue("u_State", 2.0f);
-		auto& pausePassMat = m_pausedRenderer.getRenderPass(FinalPausePassIDx).scene->m_entities.get<Render>(PauseQuad).material;
-		pausePassMat->setValue("u_mousePos", m_PointerPos);
-
-		if (pauseState == PauseState::Pause) {
-			auto view = m_pauseMenu->m_entities.view<ScriptComp>();
-			for (auto& entity : view) {
-				ScriptComp script = view.get<ScriptComp>(entity);
-				script.onUpdate(timestep);
-			}
-		}
-		else if (pauseState == PauseState::Settings) {
-			auto view = m_pauseMenu_Settings->m_entities.view<ScriptComp>();
-			for (auto& entity : view) {
-				ScriptComp script = view.get<ScriptComp>(entity);
-				script.onUpdate(timestep);
-			}
-		}
-		else if (pauseState == PauseState::Inventory) {
-			auto view = m_pauseMenu_Inventory->m_entities.view<ScriptComp>();
-			for (auto& entity : view) {
-				ScriptComp script = view.get<ScriptComp>(entity);
-				script.onUpdate(timestep);
-			}
-		}
-	}
-	else if (state == GameState::InGame) {
-
-		FinalQuad->setValue("u_State", 1.0f);
-		ZoneScoped;
-		
-
-		//auto& computeGroundPass = m_mainRenderer.getComputePass(GroundComputePassIDx);
-		auto& relicPass = m_mainRenderer.getRenderPass(ScreenRelicPassIDx);
-		auto& screenGroundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
-		auto& screenAAPass = m_mainRenderer.getRenderPass(AAPassIDx);
-		
-
-		//for (int i = 0; i < m_mainRenderer.getRenderPassCount(); i++) {
-		//	auto& targetPass = m_mainRenderer.getRenderPass(i);
-		//	targetPass.UBOmanager.setCachedValue("b_camera2D", "u_view2D", screenGroundPass.camera.view);
-		//	targetPass.UBOmanager.setCachedValue("b_camera2D", "u_projection2D", screenGroundPass.camera.projection);
-
-
-		//	targetPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", relicPass.camera.view);
-		//	targetPass.UBOmanager.setCachedValue("b_relicCcamera2D", "u_relicProjection2D", relicPass.camera.projection);
-		//}
-		//auto& QuadMat = screenGroundPass.scene->m_entities.get<Render>(Quad).material;
-		auto& AAQuadMat = screenAAPass.scene->m_entities.get<Render>(AAQuad).material;
-		
-
-
-		if (!Pressed) {
-			glm::vec2 temp = m_PointerPos;// -(m_winRef.getSizef() * 0.5f);
-			if (height > width) {
-				float diff = (height - width)/2.0f;
-				temp.y -= diff;
-				temp /= (m_winRef.getSizef() - glm::vec2(0, diff * 2.0f));
-			}
-			else if (height < width) {
-				float diff = (width - height) / 2.0f;
-				temp.x -= diff;
-				temp /= (m_winRef.getSizef() - glm::vec2(diff * 2.0f, 0));
-			}
-
-
-
-			temp = glm::clamp(temp, glm::vec2(0), glm::vec2(1));
-
-			m_DigPos = temp;
-		}
-
-		float timeToDig = 1.0f;
-
-		float Segments = 7.0f;
-		float timePerSegment = 0.6f;
-
-		float x = ProgressBar;
-
-		glm::vec2 temp = m_DigPos * glm::min(width, height);
-		float a = glm::max(width, height) - glm::min(width, height);
-		a /= 2;
-		if (width > height) {
-			temp.x += a;
-		}
-		else {
-			temp.y += a;
-		}
-		//temp = m_DigPos;
-		temp -= glm::vec2(0.0001f, 0.0001f);
-
-		//temp = glm::clamp(temp, glm::vec2(0), glm::vec2(width, height));
-
-		screenGroundPass.target->use();
-		float UVData[4];
-		glNamedFramebufferReadBuffer(screenGroundPass.target->getID(), screenGroundPass.target->m_colAttachments[1]);
-		glReadPixels(temp.x, temp.y, 1, 1, GL_RGBA, GL_FLOAT, &UVData);
-
-		//for (int i = 0; i < 4; i++) {
-		//	UVData[i] = glm::clamp(UVData[i], 0.0f, 1.0f);
-		//}
-
-		gameMouseLocation = glm::vec2(UVData[0], UVData[1]);
-		//spdlog::info("mouse x: {:03.2f}, mouse y: {:03.2f}", gameMouseLocation.x, gameMouseLocation.y);
-		//spdlog::info("Relic id: {:03.5f}", glm::round(UVData[2] * (Relics + 1)));
-
-		int RelId = (int)glm::round(UVData[2] * (Relics + 1));
-
-
-
-		Segments = glm::ceil(UVData[3] * 6.0f) + 1.0f;
-		//spdlog::info("Relic Segments: {:03.5f}", Segments);
-
-		bool isExtracting = (RelId != 0 && (ProgressBar == 0 || extrBegan));// m_winRef.doIsKeyPressed(GLFW_KEY_E);
-		bool LevelComplete = false;
-
-
-
-		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1)) {
-			m_soundManager.playSoundAtPosition(sound.get(), 100, glm::vec3(0, 0, 1), glm::vec3(m_PointerPos.x - 0.5f, 0, m_PointerPos.y - 0.5f) * 500.0f);
-		}
-
-		if (RelicSetWave >= 1 && focusMode) {
-
-			if (isExtracting) {
-				if (!extrBegan) {
-					extrBegan = true;
-					ProgressBar = 0;
-				}
-
-				if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && !finished) {
-					Pressed = true;
-					ProgressBar += timestep * ((1 / timePerSegment) / Segments);
-					if (ProgressBar > 1) {
-						finished = true;
-						ProgressBar = 1;
-
-						auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
-						auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
-						renderComp.material->setValue("u_active", 0.0f);
-						relicComp.Active = false;
-						for (int i = 0; i < Relics; i++) {
-							if (relicComp.Active == true) {
-								LevelComplete = false;
-								break;
-							}
-							else {
-								LevelComplete = true;
-							}
-						}
-					}
-				}
-				else {
-					finished = true;
-					ProgressBar -= timestep * 5;
-					if (ProgressBar < 0) {
-						extrBegan = false;
-						ProgressBar = 0;
-						ProgressSegmentTarget = 1;
-						Pressed = false;
-						finished = false;
-					}
-				}
-
-				if (ProgressBar * Segments >= ProgressSegmentTarget) {
-
-					int r = rand() % 4;
-
-					std::string s = "./assets/sounds/Extraction_soft_var";
-					s += char('0' + r);
-					s.append(".wav");
-
-					//m_soundManager.playSound(s.c_str());
-					//spdlog::info("PlaySound");
-					ProgressSegmentTarget++;
-				}
-
-				x = floor(ProgressBar * Segments) / Segments;
-			}
-			else {
-				if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && !finished) {
-					Pressed = true;
-					ProgressBar += timestep / timeToDig;
-					if (ProgressBar > 1) {
-						finished = true;
-						ProgressBar = 1;
-					}
-					if ((RelId != 0)) {
-						finished = true;
-					}
-				}
-				else {
-					finished = true;
-					//m_computeRenderer.render();
-					ProgressBar -= timestep * 5;
-					if (ProgressBar < 0) {
-						ProgressBar = 0;
-						extrBegan = false;
-						ProgressSegmentTarget = 0.5;
-						Pressed = false;
-						finished = false;
-					}
-				}
-
-				if (ProgressBar * timeToDig >= ProgressSegmentTarget) {
-
-					int r = rand() % 2;
-					//int r2 = rand() % 4;
-
-					//std::string s2 = "./assets/sounds/Extraction_soft_var";
-					//s2 += char('0' + r2);
-					//s2.append(".wav");
-
-					//m_soundManager.playSound(s2.c_str());
-
-					std::string s = "./assets/sounds/Digging_soft_var";
-					s += char('0' + r);
-					s.append(".wav");
-
-
-
-					//m_soundManager.playSound(s.c_str());
-					//spdlog::info("PlaySound");
-					ProgressSegmentTarget++;
-				}
-			}
-		}
-
-
-		if (m_winRef.doIsKeyPressed(GLFW_KEY_R) || LevelComplete) {
-			Reseting = true;
-			ResetWave = 1.0f;
-		}
-		else {
-			if (Reseting) {
-				ResetWave -= timestep / 5;
-				RelicResetWave -= timestep / 20;
-
-				auto view = m_RelicScene->m_entities.view<Render, Transform>();
-
-				for (auto& relic : view) {
-					auto& transformComp = m_RelicScene->m_entities.get<Transform>(relic);
-					transformComp.scale *= glm::vec3(1.0f - (timestep / 2));
-					transformComp.recalc();
-
-				}
-				//spdlog::info("Reset Wave: {:03.5f}", ResetWave);
-				if (ResetWave <= 0) {
-					RelicSetWave = -0.1f;
-
-				}
-				if (!Fliping && ResetWave <= 0) {
-					Flip = !Flip;
-					Fliping = true;
-				}
-				if (ResetWave <= -0.1f) {
-					Reseting = false;
-					Fliping = false;
-					RelicResetWave = 1.0f;
-
-					for (auto& relic : view) {
-						m_RelicScene->m_entities.get<Relic>(relic).Active = true;
-						float rarity = Randomiser::uniformFloatBetween(0.01f, 6.0f);
-
-						auto& renderComp = m_RelicScene->m_entities.get<Render>(relic);
-						auto& transformComp = m_RelicScene->m_entities.get<Transform>(relic);
-
-						renderComp.material->setValue("u_Rarity", rarity);
-						//RelicMaterial->setValue("u_Id", (float)(i + 1) / (Relics + 1.0f));
-						renderComp.material->setValue("u_active", (float)(int)true);
-
-						transformComp.scale = glm::vec3(Randomiser::uniformFloatBetween(100.0f, 150.0f) * ((0.5f * ((7.0f - (1 + rarity)) / 7.0f)) + 0.5f));
-						transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), (1.0f - (rarity / 6.0f)) - 0.5f);
-						transformComp.recalc();
-
-					}
-				}
-			}
-		}
-
-		if (RelicSetWave < 1) {
-			RelicSetWave += timestep / 2;
-			if (RelicSetWave >= 1) {
-				RelicSetWave = 1;
-			}
-		}
-
-
-		//QuadMat->setValue("MousePos", (m_PointerPos));
-		//QuadMat->setValue("DigPos", (m_DigPos));
-		//QuadMat->setValue("Progress", x);
-		//QuadMat->setValue("RelicFill", RelicSetWave);
-		//QuadMat->setValue("u_flip", (float)(int)Flip);
-
-		AAQuadMat->setValue("MousePos", m_PointerPos);
-		
-		//computeGroundPass.material->setValue("Reset", (float)(int)Reseting);
-		//computeGroundPass.material->setValue("ResetWave", glm::clamp((-glm::pow(ResetWave - 1, 2.0f)) + 1, 0.0f, 1.0f));
-		//if (ProgressBar >= 1) {
-		//	Pressed = true;
-		//}
-		//else {
-		//	Pressed = false;
-		//}
-		float action = ProgressBar;
-		float x2 = glm::mod(action, 1 / timeToDig);
-		float x3 = glm::pow(x2 * timeToDig, 30) / timeToDig;
-		float x4 = glm::floor(action * timeToDig) / timeToDig;
-		action = x3 + x4;
-		//computeGroundPass.material->setValue("action", action);
-		//computeGroundPass.material->setValue("digging", (float)(int)(!finished && !isExtracting));
-		//computeGroundPass.material->setValue("MousePos", (m_DigPos));
-		//computeGroundPass.material->setValue("subBy", Subby);
-
-		//spdlog::info("Reset Wave: {:03.2f}", ResetWave);
-		//spdlog::info("Reseting: {:03.2f}", (float)(int)Reseting);
-	}
-}
-
-void Archo::onKeyPressed(KeyPressedEvent& e)
-{
-	if (e.getKeyCode() == GLFW_KEY_R) {
-
-		m_generationRenderer.getComputePass(0).material->setValue("Seed", allTime);
-		m_generationRenderer.render();
-	}	
-	if (e.getKeyCode() == GLFW_KEY_F11) {
-
-		toggleFullscreen();
-	}
-	/*if (e.getKeyCode() == GLFW_KEY_SPACE && m_state == GameState::intro) m_state = GameState::running;
-	for (auto it = m_RelicScene->m_actors.begin(); it != m_RelicScene->m_actors.end(); ++it)
-	{
-		it->onKeyPress(e);
-	}*/
-	//if (e.getKeyCode() == GLFW_KEY_O)
-	//{
-	//	if (m_wireframe) {
-	//		m_wireframe = false;
-	//		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	//	}
-	//	else {
-	//		m_wireframe = true;
-	//		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	//	}
-	//}
-}
-
-void Archo::onFocus(WindowFocusEvent& e)
-{
-	focusMode = true;
-	//spdlog::info("Focused: {}", focusMode);
-	m_winRef.doSwitchInputTo(false);
-}
-
-void Archo::onLostFocus(WindowLostFocusEvent& e)
-{
-	focusMode = false;
-	//spdlog::info("Unfocused: {}",focusMode);
-	m_winRef.doSwitchInputTo(true);
-}
-
-void Archo::onResize(WindowResizeEvent& e)
-{
-	
-	m_winRef.m_Resizing = true;
-	m_winRef.doSwitchInputTo(true);
-
-	auto& pass = m_finalRenderer.getRenderPass(0);
-	pass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
-	pass.camera.projection = glm::ortho(0.f, (float)e.getWidth(), (float)e.getHeight(), 0.f);
-	pass.UBOmanager.setCachedValue("b_finalcamera2D", "u_finalprojection2D", pass.camera.projection);
-
-	auto& trans = pass.scene->m_entities.get<Transform>(finalQuad);
-
-	trans.scale = glm::vec3((float)e.getWidth(), (float)e.getHeight(), 1.0f);
-	trans.recalc();
-
-	spdlog::info("resized");
-	//m_mainRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_mainMenuRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_computeRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_backgroundRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_pausedRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_generationRenderer.updateRenderAndDepthPassSize(e.getSize());
 }
 
 void Archo::playGame()
 {
-	m_generationRenderer.getComputePass(0).material->setValue("Seed", allTime);
+	m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
 	//spdlog::info("dispatched with: {}",allTime);
 	m_generationRenderer.render();
 	state = GameState::InGame;
@@ -1672,7 +1881,7 @@ void Archo::deleteGameSave()
 void Archo::toggleFullscreen()
 {
 	if (m_winRef.m_isFullScreen) {
-		glfwSetWindowMonitor(((IWindow<GLFWwindow, GLFWWinDeleter, ModernGLFW_GL_GC>*) & m_winRef)->m_nativeWindow.get(), nullptr, m_winRef.getWidth() / 4, m_winRef.getHeight() / 4, m_winRef.getWidth() / 2, m_winRef.getHeight() / 2, 0);
+		glfwSetWindowMonitor(((IWindow<GLFWwindow, GLFWWinDeleter, ModernGLFW_GL_GC>*) & m_winRef)->m_nativeWindow.get(), nullptr, (glfwGetVideoMode(glfwGetPrimaryMonitor())->width / (m_settings.s_ResolutionFract)) * 0.05f, (glfwGetVideoMode(glfwGetPrimaryMonitor())->height / (m_settings.s_ResolutionFract)) * 0.05f, glfwGetVideoMode(glfwGetPrimaryMonitor())->width / (m_settings.s_ResolutionFract * 1.1f), glfwGetVideoMode(glfwGetPrimaryMonitor())->height / (m_settings.s_ResolutionFract * 1.1f), 0);
 		m_winRef.m_isFullScreen = false;
 	}
 	else {
@@ -1703,7 +1912,7 @@ void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, 
 {
 
 
-	std::vector<int> Layers{ 0,1,1,2,1,1,1,2,4,3,4,3,4,3,4,3,4 };//1,2,3,2,3,1,2,3,2,4,2 };
+	std::vector<int> Layers{ 0, 1, 1, 2, 1, 1, 1, 2, 4 , 3, 4, 3, 4, 3, 4, 3, 4};//1,2,3,2,3,1,2,3,2,4,2 };
 
 	std::shared_ptr<Texture> flipper[2]{ working, target };
 
@@ -1726,14 +1935,14 @@ void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, 
 		InImg.mipLevel = 0;
 		InImg.layered = false;
 		InImg.texture = flipper[(int)isWorking];
-		InImg.imageUnit = ComputePass.material->m_shader->m_imageBindingPoints["ImgIn"];
+		InImg.imageUnit = 0;//ComputePass.material->m_shader->m_imageBindingPoints["ImgIn"];
 		InImg.access = TextureAccess::ReadWrite;
 
 		Image OutImg;
 		OutImg.mipLevel = 0;
 		OutImg.layered = false;
 		OutImg.texture = flipper[(int)(!isWorking)];;
-		OutImg.imageUnit = ComputePass.material->m_shader->m_imageBindingPoints["ImgOut"];
+		OutImg.imageUnit = 1;//ComputePass.material->m_shader->m_imageBindingPoints["ImgOut"];
 		OutImg.access = TextureAccess::ReadWrite;
 
 		ComputePass.images.push_back(InImg);

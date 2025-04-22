@@ -86,8 +86,13 @@ void main()
         colour = mix(colour, vec4(vec3(1), 1), 0.4f);
     }
 
-    if (colourout.a <= 0.6) discard;
+    if (colourout.a <= 0.6 && c.a < 0.1) discard;
     colour = colourout;
+    if(c.a > 0.1){
+        colour = mix(colour,c,c.a);
+        return;
+    }
+
 }
 
 vec2 hash2(vec2 p)

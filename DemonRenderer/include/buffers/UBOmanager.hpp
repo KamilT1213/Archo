@@ -22,7 +22,7 @@ public:
 	bool setCachedValue(const std::string& blockName, const std::string& uniformName, T value); //!< Set a single cached value
 	void uploadCachedValues() const; //!< Upload all cached values
 
-
+	
 
 private:
 	std::unordered_map<std::string, size_t> m_UBOMap; //!< Map of UBO names

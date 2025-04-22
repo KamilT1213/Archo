@@ -7,6 +7,7 @@
 #include "components/transform.hpp"
 #include "components/collidable.hpp"
 
+
 struct RenderHasher
 {
 	size_t operator()(const InstacedRender& rc) const
@@ -52,6 +53,16 @@ void Renderer::addComputePass(const ComputePass& pass)
 {
 	m_renderOrder.push_back(std::pair<PassType, size_t>(PassType::compute, m_computePasses.size()));
 	m_computePasses.push_back(pass);
+}
+
+void Renderer::onResize(WindowResizeEvent& e, int scale)
+{
+	for (auto& Rpass : m_renderPasses) {
+		Rpass.target->onResize(e,scale);
+	}
+	for (auto& Rpass : m_depthPasses) {
+		Rpass.target->onResize(e, scale);
+	}
 }
 
 

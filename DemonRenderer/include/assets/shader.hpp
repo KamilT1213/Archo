@@ -59,6 +59,7 @@ class Shader
 {
 public:
 	Shader() = delete; //!< No default constructor - a description MUST be provided
+	~Shader() { glDeleteProgram(m_ID); };
 	explicit Shader(const ShaderDescription& desc); //!< Only contrustor, take a description
 	inline ShaderType getType() const noexcept { return m_type; } //!< Returns the type of shader
 	inline uint32_t getID() const noexcept { return m_ID; } //! Returns the ID of the shader on the device
@@ -91,7 +92,7 @@ private:
 private:
 	ShaderType m_type{ShaderType::uninitailised}; //!< Type of the shader
 	uint32_t m_ID; //!< Device side ID of the shader program
-
+	int32_t bindPoint; //!< Working Bind point to avoid curruption
 };
 
 
