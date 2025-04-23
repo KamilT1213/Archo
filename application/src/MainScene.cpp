@@ -488,7 +488,7 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 		for (int i = 0; i < m_seedingPoints.size(); i++) {
 			m_seedingPoints[i] = SeedingPoint();
 		}
-		//m_seedingSSBO->edit(0, sizeof(SeedingPoint) * m_seedingPoints.size(), m_seedingPoints.data());
+		m_seedingSSBO->edit(0, sizeof(SeedingPoint) * m_seedingPoints.size(), m_seedingPoints.data());
 
 		m_seedingFinderRenderer.render();
 
@@ -511,29 +511,11 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 				rendComp.material->setValue("u_Rarity", 6.0f);
 
 				Transform& transComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[counter]);
-				transComp.translation = glm::vec3(glm::vec2(current.position) * 16.0f, -0.5f);
-				transComp.scale = glm::vec3(4096.f / current.position.w);
+				transComp.translation = glm::vec3(glm::vec2(current.position) * float(m_mainRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height / m_generationRenderer.getComputePass(0).images[0].texture->getHeight()), -0.5f);
+				transComp.scale = glm::vec3(4096.f / (current.position.w / 2.0f));
 				transComp.recalc();
 
-				//counter2 = 0;
 				counter++;
-				//for (auto& obj : view) {
-				//	if (counter == counter2) {
-				//		Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(obj);
-				//		rendComp.material->setValue("u_active", (float)(int)true);
-
-				//		Transform& transComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(obj);
-				//		transComp.translation = glm::vec3(glm::vec2(current.position) * 16.0f, -0.5f);
-				//		transComp.scale = glm::vec3(4096.f / current.position.w);
-				//		transComp.recalc();
-
-				//		counter2 = 0;
-				//		counter++;
-				//	}
-				//	else {
-				//		counter2++;
-				//	}
-				//}
 
 			}
 		}
@@ -715,8 +697,8 @@ void Archo::createLayer()
 	std::shared_ptr<Texture> settingsButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SettingsButton.png");
 
 	TextureDescription groundTextureDesc;
-	groundTextureDesc.height = 256.0f;//4096.0f / 2.0f;
-	groundTextureDesc.width = 256.0f;//4096.0f / 2.0f;
+	groundTextureDesc.height = 512.0f;//4096.0f / 2.0f;
+	groundTextureDesc.width = 512.0f;//4096.0f / 2.0f;
 	groundTextureDesc.channels = 4;
 	groundTextureDesc.isHDR = true;
 

@@ -21,7 +21,7 @@ void main()
     vec4 col = texture(u_buttons, texCoords);
 
     if (col.a <= 0.95) {
-        col = texture(u_game, ((floor(texCoords * (u_ScreenSize / 3.0)) + 0.5) / (u_ScreenSize / 3.0)));
+        col = texture(u_game, ((floor(texCoords * (u_ScreenSize / 5.0)) + 0.5) / (u_ScreenSize / 5.0)));
     }
 
     if (col.a <= 0.1) {

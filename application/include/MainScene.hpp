@@ -3,7 +3,7 @@
 #include "core/saving.hpp"
 
 struct SeedingPoint {
-	glm::vec4 position = glm::vec4(-1.0f, -1.0f, -1.0f, 128.0f);
+	glm::vec4 position = glm::vec4(-1.0f, -1.0f, -1.0f, 256.0f);
 };
 
 class Archo : public Layer
@@ -43,7 +43,7 @@ private:
 	void toggleFullscreen();
 	void setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Texture> working, std::shared_ptr<Shader> shader);
 
-	int seedingResolution = 22;
+	int seedingResolution = 32;
 	std::shared_ptr<SSBO> m_seedingSSBO;
 	std::vector<SeedingPoint> m_seedingPoints;
 

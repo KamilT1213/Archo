@@ -1,5 +1,5 @@
 #version 460 core
-layout(local_size_x = 12, local_size_y = 12) in;
+layout(local_size_x = 16, local_size_y = 16) in;
 layout(binding = 0, rgba16f) uniform image2D ImgIn;
 
 struct SeedingPoint {
@@ -22,7 +22,7 @@ void main()
 
 	vec4 currentPos = seedingPoints[index].position;
 
-	//if(currentPos.x < 0){
+	if(currentPos.x < 0){
 	
 		float currentSize = Size.x / (currentPos.w * 2);
 		vec4 sam = imageLoad(ImgIn, pixel_coords);
@@ -37,7 +37,7 @@ void main()
 			seedingPoints[index].position = vec4(vec2(-100), dist, currentPos.w);
 		}
 		
-	//}
+	}
 	//seedingPoints[index].position = vec4(vec2(gl_WorkGroupID.xy) * 12,1, currentPos.w);
 
 }
