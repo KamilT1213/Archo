@@ -4,5 +4,7 @@
 out/
 # Prevent default CMake command line build dir
 build/
+# Prevent default CMake command line build dir
+${workspaceFolder}/build/
 # Prevent imui.ini
 imgui.ini
