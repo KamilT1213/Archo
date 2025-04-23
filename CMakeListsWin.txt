@@ -39,9 +39,9 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT $
 set_target_properties(${APPLICATION_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Visual Studio filters
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/application/src" PREFIX "src" FILES ${PROJECT_SOURCE_FILES})
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/application/include" PREFIX "include" FILES ${PROJECT_HEADER_FILES})
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/application/scripts" PREFIX "gameScripts" FILES ${SCRIPT_HEADER_FILES} ${SCRIPT_SOURCE_FILES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}../application/src" PREFIX "src" FILES ${PROJECT_SOURCE_FILES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}../application/include" PREFIX "include" FILES ${PROJECT_HEADER_FILES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}../application/scripts" PREFIX "gameScripts" FILES ${SCRIPT_HEADER_FILES} ${SCRIPT_SOURCE_FILES})
 
 set(RENDERER_NAME "DemonRenderer")
 
@@ -72,9 +72,9 @@ set (RENDERER_HEADER_FILES
 	"DemonRenderer/include/buffers/VBO.hpp"
 	"DemonRenderer/include/buffers/IBO.hpp"
 	"DemonRenderer/include/buffers/VAO.hpp"
-	"DemonRenderer/include/buffers/VBOlayout.hpp"
+	"DemonRenderer/include/buffers/VBOLayout.hpp"
 	"DemonRenderer/include/buffers/UBO.hpp"
-	"DemonRenderer/include/buffers/UBOlayout.hpp"
+	"DemonRenderer/include/buffers/UBOLayout.hpp"
 	"DemonRenderer/include/buffers/UBOmanager.hpp"
 	"DemonRenderer/include/buffers/FBO.hpp"
 	"DemonRenderer/include/buffers/FBOlayout.hpp"
@@ -115,9 +115,9 @@ set (RENDERER_SOURCE_FILES
 	"DemonRenderer/src/buffers/VBO.cpp"
 	"DemonRenderer/src/buffers/IBO.cpp"
 	"DemonRenderer/src/buffers/VAO.cpp"
-	"DemonRenderer/src/buffers/VBOlayout.cpp"
+	"DemonRenderer/src/buffers/VBOLayout.cpp"
 	"DemonRenderer/src/buffers/UBO.cpp"
-	"DemonRenderer/src/buffers/UBOlayout.cpp"
+	"DemonRenderer/src/buffers/UBOLayout.cpp"
 	"DemonRenderer/src/buffers/UBOmanager.cpp"
 	"DemonRenderer/src/buffers/FBO.cpp"
 	"DemonRenderer/src/buffers/RBO.cpp"
@@ -139,8 +139,8 @@ set (RENDERER_SOURCE_FILES
 add_library(${RENDERER_NAME} ${RENDERER_SOURCE_FILES} ${RENDERER_HEADER_FILES})
 target_include_directories(${RENDERER_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/DemonRenderer/include")
 # Visual Studio filters
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/DemonRenderer/src" PREFIX "src" FILES ${RENDERER_SOURCE_FILES})
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/DemonRenderer/include" PREFIX "include" FILES ${RENDERER_HEADER_FILES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}../DemonRenderer/src" PREFIX "src" FILES ${RENDERER_SOURCE_FILES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}../DemonRenderer/include" PREFIX "include" FILES ${RENDERER_HEADER_FILES})
 
 # Add external libraries
 include(FetchContent)
@@ -372,7 +372,7 @@ target_link_libraries(${APPLICATION_NAME} PRIVATE nlohmann_json::nlohmann_json)
 set_target_properties(glad PROPERTIES FOLDER "Glad")
 
 set_target_properties(assimp PROPERTIES FOLDER "Assimp")
-#set_target_properties(UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER "Assimp")
+set_target_properties(UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER "Assimp")
 set_target_properties(zlibstatic PROPERTIES FOLDER "Assimp")
 
 set_target_properties(imgui_glfw PROPERTIES FOLDER "GLFW3")
@@ -385,5 +385,5 @@ set_target_properties(stb_image_impl PROPERTIES FOLDER "stb_image")
 
 set_target_properties(TracyClient PROPERTIES FOLDER "tracy")
 
-set_target_properties(SDL2 SDL2-static sdl_headers_copy SDL2_test SDL2main uninstall SDL2_mixer PROPERTIES FOLDER "SDL2")
+set_target_properties(SDL2 SDL2-static ogg opus opusfile sdl_headers_copy SDL2_test SDL2main uninstall wavpack xmp_shared SDL2_mixer PROPERTIES FOLDER "SDL2")
 

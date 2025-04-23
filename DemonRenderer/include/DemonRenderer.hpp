@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstdint>
+#include <limits>
+//#include <iostream>
+
 #include "core/application.hpp"
 #include "core/layer.hpp"
 #include "core/log.hpp"
@@ -15,16 +19,16 @@
 #include "assets/textureUnitManager.hpp"
 
 #include "buffers/FBO.hpp"
-#include "buffers/FBOLayout.hpp"
+#include "buffers/FBOlayout.hpp"
 #include "buffers/IBO.hpp"
 #include "buffers/RBO.hpp"
 #include "buffers/SSBO.hpp"
 #include "buffers/UBO.hpp"
-#include "buffers/UBOLayout.hpp"
+#include "buffers/UBOlayout.hpp"
 #include "buffers/UBOmanager.hpp"
 #include "buffers/VAO.hpp"
 #include "buffers/VBO.hpp"
-#include "buffers/VBOLayout.hpp"
+#include "buffers/VBOlayout.hpp"
 
 #include "events/events.hpp"
 #include "events/eventHandler.hpp"

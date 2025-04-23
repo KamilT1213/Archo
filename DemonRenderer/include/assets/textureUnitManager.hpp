@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <stdint.h>
 
 /** \class TextureUnitManager
 *  \brief A class which controls which textures are bound to which GPU texture slot.

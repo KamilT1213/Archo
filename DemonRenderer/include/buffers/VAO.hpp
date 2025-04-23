@@ -3,6 +3,7 @@
 
 #include "IBO.hpp"
 #include "VBO.hpp"
+#include <limits>
 
 /**	\class VAO
 *	\brief A Vertex array object. Linke VBOs to an IBO

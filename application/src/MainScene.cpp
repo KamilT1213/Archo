@@ -763,7 +763,7 @@ void Archo::createLayer()
 	ShaderDescription backgroundQuadShaderDesc;
 	backgroundQuadShaderDesc.type = ShaderType::rasterization;
 	backgroundQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
-	backgroundQuadShaderDesc.fragmentSrcPath = "./assets/shaders/BackgroundFrag.glsl";
+	backgroundQuadShaderDesc.fragmentSrcPath = "./assets/shaders/BackGroundFrag.glsl";
 	std::shared_ptr<Shader> backgroundQuadShader = std::make_shared<Shader>(backgroundQuadShaderDesc);
 	std::shared_ptr<Material> backgroundQuadMaterial = std::make_shared<Material>(backgroundQuadShader);
 
@@ -1818,7 +1818,7 @@ void Archo::exitGame()
 {
 	Save_Game(m_save);
 	Save_Settings(m_settings);
-	_sleep(1000);
+	//_sleep(1000);
 	state = GameState::Exit;
 }
 

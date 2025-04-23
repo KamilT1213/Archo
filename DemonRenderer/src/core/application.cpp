@@ -1,7 +1,7 @@
 ﻿/** \file application.cpp */
 
 #include "core/application.hpp"
-#include "tracy/tracy.hpp"
+//#include "tracy/tracy.hpp"
 
 Application::Application(const WindowProperties& winProps)
 {

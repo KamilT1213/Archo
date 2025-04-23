@@ -2,6 +2,7 @@
 
 #pragma once
 #include <vector>
+#include <cstdint>
 
 /** \struct VBOLayoutElement
 *	\brief A set of data needed to define one element of a VBO */
