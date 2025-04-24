@@ -27,7 +27,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	m_seedingSSBO = std::make_shared<SSBO>(sizeof(SeedingPoint) * (seedingResolution * seedingResolution), (seedingResolution * seedingResolution));
 	m_seedingSSBO->bind(3);
 
-	
+
 
 	//m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
 	//for (int i = 0; i < m_seedingPoints.size(); i++) {
@@ -54,7 +54,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 void Archo::onImGUIRender()
 {
-	
+
 	// Scripts widgets
 }
 
@@ -84,13 +84,13 @@ void Archo::onUpdate(float timestep)
 		if (state == GameState::InGame) {
 			pauseMenu();
 		}
-		else if(state == GameState::Paused) {
+		else if (state == GameState::Paused) {
 
 			pause_to_Game();
 		}
 		Pausing = true;
 	}
-	else if(!m_winRef.doIsKeyPressed(GLFW_KEY_ESCAPE) && Pausing){
+	else if (!m_winRef.doIsKeyPressed(GLFW_KEY_ESCAPE) && Pausing) {
 		Pausing = false;
 	}
 
@@ -189,31 +189,35 @@ void Archo::onUpdate(float timestep)
 
 		FinalQuad->setValue("u_State", 1.0f);
 		ZoneScoped;
-		
+
 
 		//auto& computeGroundPass = m_mainRenderer.getComputePass(GroundComputePassIDx);
 		auto& relicPass = m_mainRenderer.getRenderPass(ScreenRelicPassIDx);
 		auto& screenGroundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
 		auto& screenAAPass = m_mainRenderer.getRenderPass(AAPassIDx);
-		
+
 		auto& QuadMat = screenGroundPass.scene->m_entities.get<Render>(Quad).material;
 		auto& AAQuadMat = screenAAPass.scene->m_entities.get<Render>(AAQuad).material;
-		
-		float sHeight, sWidth;
-		sHeight = m_winRef.getHeightf();
-		sWidth = m_winRef.getWidthf();
 
-		if (!Pressed) {
-			glm::vec2 temp = m_PointerPos;// -(m_winRef.getSizef() * 0.5f);
+		float sHeight, sWidth;
+		sHeight = backgroundPass.viewPort.height;
+		sWidth = backgroundPass.viewPort.width;
+
+		if (m_interactionState == InteractionState::Idle) {
+			glm::vec2 temp = m_PointerPos; //-(m_winRef.getSizef() * 0.5f);
+			//temp /= glm::vec2(sHeight, sWidth);
+
 			if (sHeight > sWidth) {
-				float diff = (sHeight - sWidth)/2.0f;
+				float diff = (sHeight - sWidth) / 2.0f;
 				temp.y -= diff;
-				temp /= (m_winRef.getSizef() - glm::vec2(0, diff * 2.0f));
+				temp /= (glm::vec2(sWidth, sHeight) - glm::vec2(0, diff * 2.0f));
 			}
 			else if (sHeight < sWidth) {
 				float diff = (sWidth - sHeight) / 2.0f;
 				temp.x -= diff;
-				temp /= (m_winRef.getSizef() - glm::vec2(diff * 2.0f, 0));
+
+				temp /= (glm::vec2(sWidth, sHeight) - glm::vec2(diff * 2.0f, 0));
+				//spdlog::info("MousePos: x:{} , y:{}", temp.x, temp.y);
 			}
 
 
@@ -225,7 +229,7 @@ void Archo::onUpdate(float timestep)
 
 		float timeToDig = 1.0f;
 
-		float Segments = 7.0f;
+		float Segments = 1.0f;
 		float timePerSegment = 0.6f;
 
 		float x = ProgressBar;
@@ -240,7 +244,7 @@ void Archo::onUpdate(float timestep)
 			temp.y += a;
 		}
 		//temp = m_DigPos;
-		temp -= glm::vec2(0.001f, 0.001f);
+		temp -= glm::clamp(temp, 0.01f, 0.99f);
 
 		//temp = glm::clamp(temp, glm::vec2(0), glm::vec2(width, height));
 
@@ -259,34 +263,175 @@ void Archo::onUpdate(float timestep)
 
 		int RelId = (int)glm::round(UVData[2] * (Relics + 1));
 
+		//spdlog::info("ID: {}", RelId - 1);
+
 		if (m_interactionState == InteractionState::Idle) {
 			if (RelId != 0) m_interactionType = InteractionType::Extraction;
 			else m_interactionType = InteractionType::Digging;
 		}
 
 
-		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1)) {
+		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && UVData[3] > 0) {
 			Pressed = true;
-			ProgressBar += timestep;
+
 		}
 		else {
 			Pressed = false;
-			ProgressBar = 0;
 		}
 
-		if (m_interactionType == InteractionType::Digging) {
+		if (ProgressBar != 0) {
+			m_interactionState = InteractionState::InProgress;
+		}
+		else {
+			m_interactionState = InteractionState::Idle;
+		}
 
+		bool LevelComplete = false;
+
+		if (m_interactionType == InteractionType::Digging) {
+			if (Pressed) {
+				if (!finished) {
+					Pressed = true;
+					ProgressBar += timestep / timeToDig;
+					if (ProgressBar > 1) {
+						finished = true;
+						ProgressBar = 1;
+					}
+					if ((RelId != 0)) {
+						finished = true;
+					}
+				}
+				else {
+					finished = true;
+					//m_computeRenderer.render();
+					ProgressBar -= timestep * 5;
+					if (ProgressBar < 0) {
+						ProgressBar = 0;
+						extrBegan = false;
+						ProgressSegmentTarget = 0.5;
+						Pressed = false;
+						finished = false;
+					}
+				}
+
+				if (ProgressBar * timeToDig >= ProgressSegmentTarget) {
+
+					//int r = rand() % 2;
+					//int r2 = rand() % 4;
+
+					//std::string s2 = "./assets/sounds/Extraction_soft_var";
+					//s2 += char('0' + r2);
+					//s2.append(".wav");
+
+					//m_soundManager.playSound(s2.c_str());
+
+					//std::string s = "./assets/sounds/Digging_soft_var";
+					//s += char('0' + r);
+					//s.append(".wav");
+
+
+
+					//m_soundManager.playSound(s.c_str());
+					//spdlog::info("PlaySound");
+					ProgressSegmentTarget++;
+				}
+			}
+			else {
+				finished = true;
+				//m_computeRenderer.render();
+				ProgressBar -= timestep * 5;
+				if (ProgressBar < 0) {
+					ProgressBar = 0;
+					extrBegan = false;
+					ProgressSegmentTarget = 0.5;
+					Pressed = false;
+					finished = false;
+				}
+			}
 		}
 		else if (m_interactionType == InteractionType::Extraction) {
 
+			if (!extrBegan) {
+				extrBegan = true;
+				ProgressBar = 0;
+			}
+
+			if (Pressed) {
+
+				if (!finished) {
+					Pressed = true;
+					ProgressBar += timestep * ((1 / timePerSegment) / Segments);
+					if (ProgressBar > 1) {
+						finished = true;
+						ProgressBar = 1;
+
+						auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
+						auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
+						renderComp.material->setValue("u_active", 0.0f);
+						relicComp.Active = false;
+						for (int i = 0; i < Relics; i++) {
+							if (relicComp.Active == true) {
+								LevelComplete = false;
+								break;
+							}
+							else {
+								LevelComplete = true;
+							}
+						}
+					}
+				}
+				else {
+					finished = true;
+					ProgressBar -= timestep * 5;
+					if (ProgressBar < 0) {
+						extrBegan = false;
+						ProgressBar = 0;
+						ProgressSegmentTarget = 1;
+						Pressed = false;
+						finished = false;
+					}
+				}
+
+				if (ProgressBar * Segments >= ProgressSegmentTarget) {
+
+					//int r = rand() % 4;
+
+					//std::string s = "./assets/sounds/Extraction_soft_var";
+					//s += char('0' + r);
+					//s.append(".wav");
+
+					//m_soundManager.playSound(s.c_str());
+					//spdlog::info("PlaySound");
+					ProgressSegmentTarget++;
+				}
+
+				x = floor(ProgressBar * Segments) / Segments;
+			}
+			else {
+				finished = true;
+				//m_computeRenderer.render();
+				ProgressBar -= timestep * 5;
+				if (ProgressBar < 0) {
+					ProgressBar = 0;
+					extrBegan = false;
+					ProgressSegmentTarget = 0.5;
+					Pressed = false;
+					finished = false;
+				}
+			}
+
 		}
 
+
+		if (ProgressBar < 0) {
+			ProgressBar = 0;
+		}
 		//bool isExtracting = (RelId != 0 && (ProgressBar == 0 || extrBegan));// m_winRef.doIsKeyPressed(GLFW_KEY_E);
 
 		//Segments = glm::ceil(UVData[3] * 6.0f) + 1.0f;
 		////spdlog::info("Relic Segments: {:03.5f}", Segments);
 
-		
+
 		//bool LevelComplete = false;
 
 
@@ -298,59 +443,59 @@ void Archo::onUpdate(float timestep)
 		//if (RelicSetWave >= 1 && focusMode) {
 
 		//	if (isExtracting) {
-		//		if (!extrBegan) {
-		//			extrBegan = true;
-		//			ProgressBar = 0;
-		//		}
+				//if (!extrBegan) {
+				//	extrBegan = true;
+				//	ProgressBar = 0;
+				//}
 
-		//		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && !finished) {
-		//			Pressed = true;
-		//			ProgressBar += timestep * ((1 / timePerSegment) / Segments);
-		//			if (ProgressBar > 1) {
-		//				finished = true;
-		//				ProgressBar = 1;
+				//if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && !finished) {
+				//	Pressed = true;
+				//	ProgressBar += timestep * ((1 / timePerSegment) / Segments);
+				//	if (ProgressBar > 1) {
+				//		finished = true;
+				//		ProgressBar = 1;
 
-		//				auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
-		//				auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
-		//				renderComp.material->setValue("u_active", 0.0f);
-		//				relicComp.Active = false;
-		//				for (int i = 0; i < Relics; i++) {
-		//					if (relicComp.Active == true) {
-		//						LevelComplete = false;
-		//						break;
-		//					}
-		//					else {
-		//						LevelComplete = true;
-		//					}
-		//				}
-		//			}
-		//		}
-		//		else {
-		//			finished = true;
-		//			ProgressBar -= timestep * 5;
-		//			if (ProgressBar < 0) {
-		//				extrBegan = false;
-		//				ProgressBar = 0;
-		//				ProgressSegmentTarget = 1;
-		//				Pressed = false;
-		//				finished = false;
-		//			}
-		//		}
+				//		auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
+				//		auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
+				//		renderComp.material->setValue("u_active", 0.0f);
+				//		relicComp.Active = false;
+				//		for (int i = 0; i < Relics; i++) {
+				//			if (relicComp.Active == true) {
+				//				LevelComplete = false;
+				//				break;
+				//			}
+				//			else {
+				//				LevelComplete = true;
+				//			}
+				//		}
+				//	}
+				//}
+				//else {
+				//	finished = true;
+				//	ProgressBar -= timestep * 5;
+				//	if (ProgressBar < 0) {
+				//		extrBegan = false;
+				//		ProgressBar = 0;
+				//		ProgressSegmentTarget = 1;
+				//		Pressed = false;
+				//		finished = false;
+				//	}
+				//}
 
-		//		if (ProgressBar * Segments >= ProgressSegmentTarget) {
+				//if (ProgressBar * Segments >= ProgressSegmentTarget) {
 
-		//			int r = rand() % 4;
+				//	int r = rand() % 4;
 
-		//			std::string s = "./assets/sounds/Extraction_soft_var";
-		//			s += char('0' + r);
-		//			s.append(".wav");
+				//	std::string s = "./assets/sounds/Extraction_soft_var";
+				//	s += char('0' + r);
+				//	s.append(".wav");
 
-		//			//m_soundManager.playSound(s.c_str());
-		//			//spdlog::info("PlaySound");
-		//			ProgressSegmentTarget++;
-		//		}
+				//	//m_soundManager.playSound(s.c_str());
+				//	//spdlog::info("PlaySound");
+				//	ProgressSegmentTarget++;
+				//}
 
-		//		x = floor(ProgressBar * Segments) / Segments;
+				//x = floor(ProgressBar * Segments) / Segments;
 		//	}
 		//	else {
 		//		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && !finished) {
@@ -468,7 +613,7 @@ void Archo::onUpdate(float timestep)
 		QuadMat->setValue("u_flip", (float)(int)Flip);
 
 		AAQuadMat->setValue("MousePos", m_PointerPos);
-		
+
 		//computeGroundPass.material->setValue("Reset", (float)(int)Reseting);
 		//computeGroundPass.material->setValue("ResetWave", glm::clamp((-glm::pow(ResetWave - 1, 2.0f)) + 1, 0.0f, 1.0f));
 		//if (ProgressBar >= 1) {
@@ -543,10 +688,10 @@ void Archo::onLostFocus(WindowLostFocusEvent& e)
 
 void Archo::onResize(WindowResizeEvent& e)
 {
-	
+
 	m_winRef.m_Resizing = true;
 	m_winRef.doSwitchInputTo(true);
-	
+
 	auto& pass = m_finalRenderer.getRenderPass(0);
 	pass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
 	pass.camera.projection = glm::ortho(0.f, (float)e.getWidth(), (float)e.getHeight(), 0.f);
@@ -589,7 +734,7 @@ void Archo::onResize(WindowResizeEvent& e)
 	mmRenderMat->setValue("u_background", bgPass.target->getTarget(0));
 	mmRenderMat->setValue("u_buttons", mainBtPass.target->getTarget(0));
 	mmRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));
-	
+
 	auto& sRenderMat = groundPass.scene->m_entities.get<Render>(Quad).material;
 	sRenderMat->setValue("u_RelicTexture", relicPass.target->getTarget(0));
 	sRenderMat->setValue("u_RelicDataTexture", relicPass.target->getTarget(1));
@@ -599,7 +744,7 @@ void Archo::onResize(WindowResizeEvent& e)
 	aaRenderMat->setValue("u_inputTexture", groundPass.target->getTarget(0));
 	aaRenderMat->setValue("u_background", bgPass.target->getTarget(0));
 	aaRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));*/
-	
+
 
 	//spdlog::info("resized");
 	//m_mainRenderer.updateRenderAndDepthPassSize(e.getSize());
@@ -921,7 +1066,6 @@ void Archo::createLayer()
 		Render& renderComp = m_mainMenu->m_entities.emplace<Render>(startButton);
 		Transform& transformComp = m_mainMenu->m_entities.emplace<Transform>(startButton);
 		ScriptComp& scriptComp = m_mainMenu->m_entities.emplace<ScriptComp>(startButton);
-
 
 		renderComp.geometry = buttonQuadVAO;
 
@@ -1878,7 +2022,7 @@ void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, 
 {
 
 
-	std::vector<int> Layers{ 0, 1, 1, 2, 1, 1, 1, 2, 4 , 3, 4, 3, 4, 3, 4, 3, 4};//1,2,3,2,3,1,2,3,2,4,2 };
+	std::vector<int> Layers{ 0, 1, 1, 2, 1, 1, 1, 2, 4 , 3, 4, 3, 4, 3, 4, 3, 4 };//1,2,3,2,3,1,2,3,2,4,2 };
 
 	std::shared_ptr<Texture> flipper[2]{ working, target };
 
@@ -1894,7 +2038,7 @@ void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, 
 
 		ComputePass ComputePass;
 		ComputePass.material = mat;
-		ComputePass.workgroups = { glm::max(target->getWidth() / 32, (unsigned)1),glm::max(target->getHeight() / 32, (unsigned)1),1};
+		ComputePass.workgroups = { glm::max(target->getWidth() / 32, (unsigned)1),glm::max(target->getHeight() / 32, (unsigned)1),1 };
 		ComputePass.barrier = MemoryBarrier::ShaderImageAccess;
 
 		Image InImg;
