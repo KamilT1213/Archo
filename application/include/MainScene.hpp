@@ -2,6 +2,9 @@
 #include <DemonRenderer.hpp>
 #include "core/saving.hpp"
 
+enum class InteractionType { Digging, Extraction };
+enum class InteractionState { Idle, InProgress };
+
 struct SeedingPoint {
 	glm::vec4 position = glm::vec4(-1.0f, -1.0f, -1.0f, 256.0f);
 };
@@ -42,6 +45,9 @@ private:
 	void deleteGameSave();
 	void toggleFullscreen();
 	void setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Texture> working, std::shared_ptr<Shader> shader);
+
+	std::vector<SeedingPoint> getSeedingPoints();
+	void placeRelics();
 
 	int seedingResolution = 32;
 	std::shared_ptr<SSBO> m_seedingSSBO;
@@ -88,7 +94,7 @@ private:
 	bool Flip{ true };
 	bool Fliping{ false };
 	bool Pausing{ false };
-	int Relics{ 512 };
+	int Relics{ 32 };//512};
 	float ProgressSegmentTarget{ 0.0f };
 
 	ImVec2 imageSize = ImVec2(width / 3, height / 3);
@@ -98,6 +104,7 @@ private:
 	glm::vec2 gameMouseLocation{ 0,0 };
 
 	float ProgressBar{ 0.0f };
+
 	float allTime{ 0.0f };
 	float factor{ 1.0f };
 	float ResetWave{ 1.0f };
@@ -136,6 +143,9 @@ private:
 
 	Settings_Save m_settings;
 	Game_Save m_save;
+
+	InteractionType m_interactionType;
+	InteractionState m_interactionState;
 
 	// Actor positions for ease of use and to avoid additonal magic numbers
 

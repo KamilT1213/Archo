@@ -27,7 +27,7 @@ float tpTex(vec3 normal, vec3 pos, float factor);
 void main()
 {
     float ScreenPixelSize = 1.0/min(u_ScreenSize.x, u_ScreenSize.y);
-    float groundDepth = texture(u_GroundDepthTexture, texCoords).r;
+    float groundDepth = texture(u_GroundDepthTexture, texCoords).r + texture(u_GroundDepthTexture, texCoords).g;
     vec4 colourout = texture(u_GroundDepthTexture, texCoords);
     float groundDepthAtDig = texture(u_GroundDepthTexture, DigPos).r;
     vec2 dir = normalize(vec2(1,-1));
@@ -86,8 +86,8 @@ void main()
         colour = mix(colour, vec4(vec3(1), 1), 0.4f);
     }
 
-    if (colourout.a <= 0.6 && c.a < 0.1) discard;
-    colour = colourout;
+    if ((colourout.a <= 0.6 || colourout.g <= 0.0) && c.a < 0.1) discard;
+    //colour = colourout;
     if(c.a > 0.1){
         colour = mix(colour,c,c.a);
         return;

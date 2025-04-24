@@ -196,66 +196,58 @@ void Archo::onUpdate(float timestep)
 		auto& screenGroundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
 		auto& screenAAPass = m_mainRenderer.getRenderPass(AAPassIDx);
 		
-
-		//for (int i = 0; i < m_mainRenderer.getRenderPassCount(); i++) {
-		//	auto& targetPass = m_mainRenderer.getRenderPass(i);
-		//	targetPass.UBOmanager.setCachedValue("b_camera2D", "u_view2D", screenGroundPass.camera.view);
-		//	targetPass.UBOmanager.setCachedValue("b_camera2D", "u_projection2D", screenGroundPass.camera.projection);
-
-
-		//	targetPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", relicPass.camera.view);
-		//	targetPass.UBOmanager.setCachedValue("b_relicCcamera2D", "u_relicProjection2D", relicPass.camera.projection);
-		//}
-		//auto& QuadMat = screenGroundPass.scene->m_entities.get<Render>(Quad).material;
+		auto& QuadMat = screenGroundPass.scene->m_entities.get<Render>(Quad).material;
 		auto& AAQuadMat = screenAAPass.scene->m_entities.get<Render>(AAQuad).material;
 		
+		float sHeight, sWidth;
+		sHeight = m_winRef.getHeightf();
+		sWidth = m_winRef.getWidthf();
+
+		if (!Pressed) {
+			glm::vec2 temp = m_PointerPos;// -(m_winRef.getSizef() * 0.5f);
+			if (sHeight > sWidth) {
+				float diff = (sHeight - sWidth)/2.0f;
+				temp.y -= diff;
+				temp /= (m_winRef.getSizef() - glm::vec2(0, diff * 2.0f));
+			}
+			else if (sHeight < sWidth) {
+				float diff = (sWidth - sHeight) / 2.0f;
+				temp.x -= diff;
+				temp /= (m_winRef.getSizef() - glm::vec2(diff * 2.0f, 0));
+			}
 
 
-		//if (!Pressed) {
-		//	glm::vec2 temp = m_PointerPos;// -(m_winRef.getSizef() * 0.5f);
-		//	if (height > width) {
-		//		float diff = (height - width)/2.0f;
-		//		temp.y -= diff;
-		//		temp /= (m_winRef.getSizef() - glm::vec2(0, diff * 2.0f));
-		//	}
-		//	else if (height < width) {
-		//		float diff = (width - height) / 2.0f;
-		//		temp.x -= diff;
-		//		temp /= (m_winRef.getSizef() - glm::vec2(diff * 2.0f, 0));
-		//	}
 
+			temp = glm::clamp(temp, glm::vec2(0), glm::vec2(1));
 
+			m_DigPos = temp;
+		}
 
-		//	temp = glm::clamp(temp, glm::vec2(0), glm::vec2(1));
+		float timeToDig = 1.0f;
 
-		//	m_DigPos = temp;
-		//}
+		float Segments = 7.0f;
+		float timePerSegment = 0.6f;
 
-		//float timeToDig = 1.0f;
+		float x = ProgressBar;
 
-		//float Segments = 7.0f;
-		//float timePerSegment = 0.6f;
+		glm::vec2 temp = m_DigPos * glm::min(width, height);
+		float a = glm::max(width, height) - glm::min(width, height);
+		a /= 2;
+		if (width > height) {
+			temp.x += a;
+		}
+		else {
+			temp.y += a;
+		}
+		//temp = m_DigPos;
+		temp -= glm::vec2(0.001f, 0.001f);
 
-		//float x = ProgressBar;
+		//temp = glm::clamp(temp, glm::vec2(0), glm::vec2(width, height));
 
-		//glm::vec2 temp = m_DigPos * glm::min(width, height);
-		//float a = glm::max(width, height) - glm::min(width, height);
-		//a /= 2;
-		//if (width > height) {
-		//	temp.x += a;
-		//}
-		//else {
-		//	temp.y += a;
-		//}
-		////temp = m_DigPos;
-		//temp -= glm::vec2(0.0001f, 0.0001f);
-
-		////temp = glm::clamp(temp, glm::vec2(0), glm::vec2(width, height));
-
-		//screenGroundPass.target->use();
-		//float UVData[4];
-		//glNamedFramebufferReadBuffer(screenGroundPass.target->getID(), screenGroundPass.target->m_colAttachments[1]);
-		//glReadPixels(temp.x, temp.y, 1, 1, GL_RGBA, GL_FLOAT, &UVData);
+		screenGroundPass.target->use();
+		float UVData[4];
+		glNamedFramebufferReadBuffer(screenGroundPass.target->getID(), screenGroundPass.target->m_colAttachments[1]);
+		glReadPixels(temp.x, temp.y, 1, 1, GL_RGBA, GL_FLOAT, &UVData);
 
 		////for (int i = 0; i < 4; i++) {
 		////	UVData[i] = glm::clamp(UVData[i], 0.0f, 1.0f);
@@ -265,14 +257,36 @@ void Archo::onUpdate(float timestep)
 		////spdlog::info("mouse x: {:03.2f}, mouse y: {:03.2f}", gameMouseLocation.x, gameMouseLocation.y);
 		////spdlog::info("Relic id: {:03.5f}", glm::round(UVData[2] * (Relics + 1)));
 
-		//int RelId = (int)glm::round(UVData[2] * (Relics + 1));
+		int RelId = (int)glm::round(UVData[2] * (Relics + 1));
+
+		if (m_interactionState == InteractionState::Idle) {
+			if (RelId != 0) m_interactionType = InteractionType::Extraction;
+			else m_interactionType = InteractionType::Digging;
+		}
 
 
+		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1)) {
+			Pressed = true;
+			ProgressBar += timestep;
+		}
+		else {
+			Pressed = false;
+			ProgressBar = 0;
+		}
+
+		if (m_interactionType == InteractionType::Digging) {
+
+		}
+		else if (m_interactionType == InteractionType::Extraction) {
+
+		}
+
+		//bool isExtracting = (RelId != 0 && (ProgressBar == 0 || extrBegan));// m_winRef.doIsKeyPressed(GLFW_KEY_E);
 
 		//Segments = glm::ceil(UVData[3] * 6.0f) + 1.0f;
 		////spdlog::info("Relic Segments: {:03.5f}", Segments);
 
-		//bool isExtracting = (RelId != 0 && (ProgressBar == 0 || extrBegan));// m_winRef.doIsKeyPressed(GLFW_KEY_E);
+		
 		//bool LevelComplete = false;
 
 
@@ -447,11 +461,11 @@ void Archo::onUpdate(float timestep)
 		//}
 
 
-		//QuadMat->setValue("MousePos", (m_PointerPos));
-		//QuadMat->setValue("DigPos", (m_DigPos));
-		//QuadMat->setValue("Progress", x);
-		//QuadMat->setValue("RelicFill", RelicSetWave);
-		//QuadMat->setValue("u_flip", (float)(int)Flip);
+		QuadMat->setValue("MousePos", (m_PointerPos));
+		QuadMat->setValue("DigPos", (m_DigPos));
+		QuadMat->setValue("Progress", x);
+		QuadMat->setValue("RelicFill", RelicSetWave);
+		QuadMat->setValue("u_flip", (float)(int)Flip);
 
 		AAQuadMat->setValue("MousePos", m_PointerPos);
 		
@@ -485,40 +499,7 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 		m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
 		m_generationRenderer.render();
 
-		for (int i = 0; i < m_seedingPoints.size(); i++) {
-			m_seedingPoints[i] = SeedingPoint();
-		}
-		m_seedingSSBO->edit(0, sizeof(SeedingPoint) * m_seedingPoints.size(), m_seedingPoints.data());
-
-		m_seedingFinderRenderer.render();
-
-
-		auto view = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
-
-		for (auto relic : view) {
-			Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(relic);
-			rendComp.material->setValue("u_active", (float)(int)false);
-		}
-		m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
-
-		int counter = 0;
-		//int counter2 = 0;
-		for (int i = 0; i < m_seedingPoints.size(); i++) {
-			SeedingPoint current = m_seedingPoints[i];
-			if (current.position.x > -0.5f) {
-				Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[counter]);
-				rendComp.material->setValue("u_active", (float)(int)true);
-				rendComp.material->setValue("u_Rarity", 6.0f);
-
-				Transform& transComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[counter]);
-				transComp.translation = glm::vec3(glm::vec2(current.position) * float(m_mainRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height / m_generationRenderer.getComputePass(0).images[0].texture->getHeight()), -0.5f);
-				transComp.scale = glm::vec3(4096.f / (current.position.w / 2.0f));
-				transComp.recalc();
-
-				counter++;
-
-			}
-		}
+		placeRelics();
 	}
 	if (e.getKeyCode() == GLFW_KEY_F11) {
 
@@ -565,7 +546,7 @@ void Archo::onResize(WindowResizeEvent& e)
 	
 	m_winRef.m_Resizing = true;
 	m_winRef.doSwitchInputTo(true);
-
+	
 	auto& pass = m_finalRenderer.getRenderPass(0);
 	pass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
 	pass.camera.projection = glm::ortho(0.f, (float)e.getWidth(), (float)e.getHeight(), 0.f);
@@ -1729,6 +1710,9 @@ void Archo::playGame()
 	m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
 	//spdlog::info("dispatched with: {}",allTime);
 	m_generationRenderer.render();
+
+	placeRelics();
+
 	state = GameState::InGame;
 	pauseState = PauseState::Pause;
 }
@@ -1936,6 +1920,78 @@ void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, 
 	}
 
 
+}
+
+std::vector<SeedingPoint> Archo::getSeedingPoints()
+{
+	for (int i = 0; i < m_seedingPoints.size(); i++) {
+		m_seedingPoints[i] = SeedingPoint();
+	}
+	m_seedingSSBO->edit(0, sizeof(SeedingPoint) * m_seedingPoints.size(), m_seedingPoints.data());
+
+	m_seedingFinderRenderer.render();
+
+
+	auto view = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
+
+	for (auto relic : view) {
+		Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(relic);
+		rendComp.material->setValue("u_active", (float)(int)false);
+	}
+	m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
+
+	std::vector<SeedingPoint> outputPoints;
+
+	int counter = 0;
+	for (int i = 0; i < m_seedingPoints.size(); i++) {
+		SeedingPoint current = m_seedingPoints[i];
+		if (current.position.x > -0.5f) {
+
+			outputPoints.push_back(current);
+
+			if (false) {
+				Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[counter]);
+				rendComp.material->setValue("u_active", (float)(int)true);
+				rendComp.material->setValue("u_Rarity", 6.0f);
+
+				Transform& transComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[counter]);
+				transComp.translation = glm::vec3(glm::vec2(current.position) * float(m_mainRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height / m_generationRenderer.getComputePass(0).images[0].texture->getHeight()), -0.5f);
+				transComp.scale = glm::vec3(4096.f / (current.position.w / 2.0f));
+				transComp.recalc();
+
+				counter++;
+			}
+		}
+	}
+
+	return outputPoints;
+}
+
+void Archo::placeRelics()
+{
+	std::vector<SeedingPoint> points = getSeedingPoints();
+
+	auto view = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
+	for (int i = 0; i < view.size(); i++) {
+		Render& renderComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[i]);
+		Transform& transComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[i]);
+
+		if (points.size() > 0) {
+			int random = std::rand() % points.size();
+			renderComp.material->setValue("u_active", (float)(int)true);
+			transComp.translation = glm::vec3(glm::vec2(points[random].position) *
+				float(m_mainRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height
+					/ m_generationRenderer.getComputePass(0).images[0].texture->getHeight()),
+				-0.5f);
+			transComp.scale = glm::vec3(4096.f / (points[random].position.w / 2.0f));
+			transComp.recalc();
+
+			points.erase(points.begin() + random);
+		}
+		else {
+			renderComp.material->setValue("u_active", (float)(int)false);
+		}
+	}
 }
 
 
