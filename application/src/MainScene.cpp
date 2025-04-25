@@ -229,7 +229,7 @@ void Archo::onUpdate(float timestep)
 
 		float timeToDig = 1.0f;
 
-		float Segments = 1.0f;
+		float Segments = 3.0f;
 		float timePerSegment = 0.6f;
 
 		float x = ProgressBar;
@@ -290,6 +290,9 @@ void Archo::onUpdate(float timestep)
 
 		if (m_interactionType == InteractionType::Digging) {
 			if (Pressed) {
+				compute_GroundMaterial->setValue("Mode", 1.0f);
+				compute_GroundMaterial->setValue("DigPos", m_DigPos);
+				
 				if (!finished) {
 					Pressed = true;
 					ProgressBar += timestep / timeToDig;
@@ -300,6 +303,7 @@ void Archo::onUpdate(float timestep)
 					if ((RelId != 0)) {
 						finished = true;
 					}
+					compute_GroundMaterial->setValue("Factor", 1.0f - ProgressBar);
 				}
 				else {
 					finished = true;
@@ -337,6 +341,7 @@ void Archo::onUpdate(float timestep)
 				}
 			}
 			else {
+				compute_GroundMaterial->setValue("Mode", 1.5f);
 				finished = true;
 				//m_computeRenderer.render();
 				ProgressBar -= timestep * 5;
@@ -346,8 +351,11 @@ void Archo::onUpdate(float timestep)
 					ProgressSegmentTarget = 0.5;
 					Pressed = false;
 					finished = false;
+
 				}
 			}
+
+			m_groundComputeRenderer.render();
 		}
 		else if (m_interactionType == InteractionType::Extraction) {
 
@@ -357,7 +365,6 @@ void Archo::onUpdate(float timestep)
 			}
 
 			if (Pressed) {
-
 				if (!finished) {
 					Pressed = true;
 					ProgressBar += timestep * ((1 / timePerSegment) / Segments);
@@ -645,6 +652,9 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 		m_generationRenderer.render();
 
 		placeRelics();
+
+		compute_GroundMaterial->setValue("Mode",0.0f);
+		m_groundComputeRenderer.render();
 	}
 	if (e.getKeyCode() == GLFW_KEY_F11) {
 
@@ -823,8 +833,8 @@ void Archo::createLayer()
 	std::shared_ptr<Texture> settingsButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SettingsButton.png");
 
 	TextureDescription groundTextureDesc;
-	groundTextureDesc.height = 512.0f;//4096.0f / 2.0f;
-	groundTextureDesc.width = 512.0f;//4096.0f / 2.0f;
+	groundTextureDesc.height = 1024.f;//512.0f;//4096.0f / 2.0f;
+	groundTextureDesc.width = 1024.f;//512.0f;//4096.0f / 2.0f;
 	groundTextureDesc.channels = 4;
 	groundTextureDesc.isHDR = true;
 
@@ -932,11 +942,14 @@ void Archo::createLayer()
 	std::shared_ptr<Shader> buttonQuadShader = std::make_shared<Shader>(buttonQuadShaderDesc);
 	//std::shared_ptr<Material> buttonQuadMaterial = std::make_shared<Material>(buttonQuadShader);
 
-	//ShaderDescription compute_GroundShaderDesc;
-	//compute_GroundShaderDesc.type = ShaderType::compute;
-	//compute_GroundShaderDesc.computeSrcPath = "./assets/shaders/compute_Ground.glsl";
-	//std::shared_ptr<Shader> compute_GroundShader = std::make_shared<Shader>(compute_GroundShaderDesc);
-	//std::shared_ptr<Material> compute_GroundMaterial = std::make_shared<Material>(compute_GroundShader);
+	ShaderDescription compute_GroundShaderDesc;
+	compute_GroundShaderDesc.type = ShaderType::compute;
+	compute_GroundShaderDesc.computeSrcPath = "./assets/shaders/compute_Ground.glsl";
+	std::shared_ptr<Shader> compute_GroundShader = std::make_shared<Shader>(compute_GroundShaderDesc);
+	compute_GroundMaterial = std::make_shared<Material>(compute_GroundShader);
+	compute_GroundMaterial->setValue("Size", glm::vec2(groundTexture->getWidthf(), groundTexture->getHeightf()));
+	compute_GroundMaterial->setValue("DigStyle", glm::vec4(10.0f,0.1f,0.0f,0.0f));
+	compute_GroundMaterial->setValue("Mode", 0.0f);
 
 	//ShaderDescription compute_GroundNormalShaderDesc;
 	//compute_GroundNormalShaderDesc.type = ShaderType::compute;
@@ -1513,30 +1526,30 @@ void Archo::createLayer()
 	//Terrain:
 
 	//Terrain Normals Compute Pass
-	//ComputePass GroundComputePass;
-	//GroundComputePass.material = compute_GroundMaterial;
-	//GroundComputePass.workgroups = { 128 / 2,128 / 2,1 };
-	//GroundComputePass.barrier = MemoryBarrier::ShaderImageAccess;
+	ComputePass GroundComputePass;
+	GroundComputePass.material = compute_GroundMaterial;
+	GroundComputePass.workgroups = { glm::max(groundTexture->getWidth() / 32, (unsigned)1),glm::max(groundTexture->getHeight() / 32, (unsigned)1),1 };
+	GroundComputePass.barrier = MemoryBarrier::ShaderImageAccess;
 
-	//Image GroundImg;
-	//GroundImg.mipLevel = 0;
-	//GroundImg.layered = false;
-	//GroundImg.texture = groundTexture;
-	//GroundImg.imageUnit = GroundComputePass.material->m_shader->m_imageBindingPoints["GroundImg"];
-	//GroundImg.access = TextureAccess::ReadWrite;
+	Image GroundImg;
+	GroundImg.mipLevel = 0;
+	GroundImg.layered = false;
+	GroundImg.texture = groundTexture;
+	GroundImg.imageUnit = 0;
+	GroundImg.access = TextureAccess::ReadWrite;
 
-	//Image GroundImgTemp;
-	//GroundImgTemp.mipLevel = 0;
-	//GroundImgTemp.layered = false;
-	//GroundImgTemp.texture = groundTextureTemp;
-	//GroundImgTemp.imageUnit = GroundComputePass.material->m_shader->m_imageBindingPoints["GroundImgHold"];
-	//GroundImgTemp.access = TextureAccess::ReadWrite;
+	Image GroundImgTemp;
+	GroundImgTemp.mipLevel = 0;
+	GroundImgTemp.layered = false;
+	GroundImgTemp.texture = groundTextureTemp;
+	GroundImgTemp.imageUnit = 1;
+	GroundImgTemp.access = TextureAccess::ReadWrite;
 
-	//GroundComputePass.images.push_back(GroundImg);
-	//GroundComputePass.images.push_back(GroundImgTemp);
+	GroundComputePass.images.push_back(GroundImg);
+	GroundComputePass.images.push_back(GroundImgTemp);
 
-	//GroundComputePassIDx = m_mainRenderer.getSumPassCount();
-	//m_mainRenderer.addComputePass(GroundComputePass);
+	GroundComputePassIDx = m_groundComputeRenderer.getSumPassCount();
+	m_groundComputeRenderer.addComputePass(GroundComputePass);
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1856,6 +1869,9 @@ void Archo::playGame()
 	m_generationRenderer.render();
 
 	placeRelics();
+
+	compute_GroundMaterial->setValue("Mode",0.0f);
+	m_groundComputeRenderer.render();
 
 	state = GameState::InGame;
 	pauseState = PauseState::Pause;

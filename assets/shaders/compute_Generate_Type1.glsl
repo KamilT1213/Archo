@@ -126,7 +126,7 @@ void main()
 			dist /= Size.x/8.0;
 			//dist = distance(vec2(0),fade(vec2(dist)));
 			dist = smoothstep(0.0,1.0,dist);
-			imageStore(ImgOut, pixel_coords, vec4(1 - dist, dist, 1.0 ,1.0));
+			imageStore(ImgOut, pixel_coords, vec4((1 - dist)/2.0, dist, 1.0 ,1.0));
 			//imageStore(ImgIn, pixel_coords, vec4(1 - dist, dist, 1.0 ,1.0));
 		}
 		else {

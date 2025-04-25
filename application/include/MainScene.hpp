@@ -54,6 +54,7 @@ private:
 	std::vector<SeedingPoint> m_seedingPoints;
 
 	std::shared_ptr<Material> m_seedingFinder;
+	std::shared_ptr<Material> compute_GroundMaterial;
 	std::vector<std::shared_ptr<Shader>> m_generators;
 	std::vector<entt::entity> m_Relics;
 	std::shared_ptr<Scene> m_RelicScene;
@@ -140,6 +141,7 @@ private:
 	Renderer m_generationRenderer;
 	Renderer m_finalRenderer;
 	Renderer m_seedingFinderRenderer;
+	Renderer m_groundComputeRenderer;
 
 	Settings_Save m_settings;
 	Game_Save m_save;

@@ -36,7 +36,7 @@ void main()
     float n1 = texture(u_GroundDepthTexture, texCoords + (vec2(-1,0) * (1.0 / u_ScreenSize))).r;
     float n2 = texture(u_GroundDepthTexture, texCoords + (vec2(-1,0) * (1.0 / u_ScreenSize))).r;
     float n3 = texture(u_GroundDepthTexture, texCoords + (vec2(0,1) * (1.0 / u_ScreenSize))).r;
-    float n4 = texture(u_GroundDepthTexture, texCoords + (vec2(0,-1) * (1.0 / u_ScreenSize))).r;
+    float n4 = texture(u_GroundDepthTexture, texCoords + (vec2(0,-1) * (1.0 / u_ScreenSize))).r + texture(u_GroundDepthTexture, texCoords + (vec2(0,-1) * (1.0 / u_ScreenSize))).g;
 
     float dif1 = n1 - n2;
     float dif2 = n3 - n4;
@@ -59,18 +59,20 @@ void main()
     colour += vec4(vec3(-noiseDis), 0.0);
 
     colour.xyz = ((floor(colour.xyz * 20) + 0.5) / 20);
+    
+    data = vec4(vec3(0.0),1.0);
 
     vec4 c = texture(u_RelicTexture,texCoords);
     vec4 d = texture(u_RelicDataTexture,texCoords);
-    if(c.a >= 1 && clamp(d.x,-0.1,RelicFill) > groundDepth){
-    colour = c;
-    data.z = d.y;
-    data.a = (1 - d.x) ;
+    if(c.a >= 1 && (clamp(d.x,-0.1,RelicFill) > groundDepth || colourout.g <= 0.0)){
+        colour = c;
+        data.z = d.y;
+        data.a = (1 - d.x) ;
+    
     }
     //data = vec4(texCoords,  d.y, 1);
-    //data.z = d.y;
+    //colour = data;
 
-    
     vec2 localToMouse = (texCoords - DigPos);
     float RfromM = distance(localToMouse, vec2(0));
     if (RfromM < ScreenPixelSize * sizeOfRing && RfromM > ScreenPixelSize * (sizeOfRing - 5) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
@@ -88,10 +90,10 @@ void main()
 
     if ((colourout.a <= 0.6 || colourout.g <= 0.0) && c.a < 0.1) discard;
     //colour = colourout;
-    if(c.a > 0.1){
-        colour = mix(colour,c,c.a);
-        return;
-    }
+    // if(c.a > 0.1){
+    //     colour = mix(colour,c,c.a);
+    //     return;
+    // }
 
 }
 

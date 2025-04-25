@@ -1,99 +1,125 @@
 #version 460 core
 layout(local_size_x = 32, local_size_y = 32) in;
-layout(binding = 0, rgba16f) uniform image2D GroundImg;
-layout(binding = 1, rgba16f) uniform image2D GroundImgHold;
+layout(binding = 0, rgba16f) uniform image2D VisibleLayer;
+layout(binding = 1, rgba16f) uniform image2D HiddenLayer;
 
-uniform float Reset;
-uniform float ResetWave;
-uniform vec2 MousePos;
-uniform float action;
-uniform float subBy;
-uniform float digging;
+uniform vec2 Size;
+uniform vec2 DigPos;
 
-vec2 hash2(vec2 p);
-float noise(in vec2 p);
+uniform vec4 DigStyle;
+
+uniform float Factor;
+uniform float Mode;
+
+float hash(vec2 p);
+vec2 randvec2(vec2 p);
+vec2 fade(vec2 t);
+float perlin(vec2 p, vec2 fp);
+vec3 voronoi(vec2 p, vec2 fp);
+
+float Seed = 0.51765;
+float pi = 3.1415926;
 
 void main()
 {
-	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
-	vec4 sampled = imageLoad(GroundImg, pixel_coords);
-	ivec2 texCoords = ivec2(4096 / 2 * MousePos.x, 4096 / 2 * MousePos.y);
-	vec4 middleSampled = imageLoad(GroundImg, texCoords);
+	ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
 
-	if (Reset > 0) {
-		float noiseLevel = noise(vec2(pixel_coords.x, pixel_coords.y) / 250);
-		noiseLevel /= 1;
-		noiseLevel += 1;
-		noiseLevel /= 10;
-		sampled.x = clamp(sampled.x, 0, ResetWave - (noiseLevel * (1 - ResetWave)));
-		sampled.z = 1;
-		sampled.a = 1;
-		if (ResetWave <= 0) {
-			sampled.x = 1 - (noiseLevel/2);
-			imageStore(GroundImgHold, pixel_coords, sampled);
-		}
+	if(Mode == 0.0){
+		vec4 Visible = imageLoad(VisibleLayer,coords);
+		imageStore(HiddenLayer, coords, Visible);
 	}
-	else {
-		if (action > 0 && action < 1 && digging > 0) {
-			
-			float Size = (4096.0 / 15.0 / 2);
-			float dist = distance(pixel_coords, texCoords) / Size;
-
-			float noiseLevel = noise(vec2(pixel_coords.x + 5812, pixel_coords.y + 321) / 200);
-			noiseLevel /= 1;
-			noiseLevel += 1;
-			noiseLevel /= 2;
-
-			float noiseLevel2 = noise(vec2(pixel_coords.x + 5812, pixel_coords.y + 321) / 50);
-			noiseLevel2 /= 1;
-			noiseLevel2 += 1;
-			noiseLevel2 /= 2;
-
-			float arcs = acos(dist + (noiseLevel2 /4.0));
-			float distBetweenCentre = distance(sampled.x, middleSampled.x);
-			arcs = sin(arcs);// *Size;
-			//arcs -= (Size - 1);
-			if (dist < Size && !isnan(arcs) && distBetweenCentre < 0.2) {
-
-				//noiseLevel *= (distBetweenCentre * 2);
-				//noiseLevel = clamp(noiseLevel, 0, 1);
-				sampled.x = imageLoad(GroundImgHold, pixel_coords).x - (arcs * action *  ( 1 - distBetweenCentre ) * subBy * noiseLevel);
-				sampled.x = clamp(sampled.x, 0, 1);
+	else if(Mode == 1.0){
+		if(Factor > 0.0){
+			float radii = Size.x/DigStyle.x;
+			if(distance(DigPos * Size,coords) <= radii){
+				vec4 Hidden = imageLoad(HiddenLayer,coords);
+				Hidden.y = mix(Hidden.y - DigStyle.y, Hidden.y, Factor);
+				imageStore(VisibleLayer, coords, Hidden);
 			}
-
-
 		}
-		else if (action >= 1 && digging > 0) {
-			imageStore(GroundImgHold, pixel_coords, sampled);
+		if(Factor <= 0.0 || Factor >= 1.0){
+			vec4 Visible = imageLoad(VisibleLayer,coords);
+			imageStore(HiddenLayer, coords, Visible);
 		}
-		if (action > 0 && digging <= 0) {
-			imageStore(GroundImgHold, pixel_coords, sampled);
+
+	}
+	else if(Mode == 1.5){
+		vec4 Visible = imageLoad(VisibleLayer,coords);
+		imageStore(HiddenLayer, coords, Visible);
+	}
+	else if(Mode == 2.0){
+		vec4 Visible = imageLoad(VisibleLayer,coords);
+		Visible.y = clamp(Visible.y,0.0,Factor);
+		imageStore(VisibleLayer, coords, Visible);
+	}
+
+	vec4 Visible = imageLoad(VisibleLayer,coords);
+	vec4 Hidden = imageLoad(HiddenLayer,coords);
+
+	imageStore(VisibleLayer, coords, Visible);
+	imageStore(HiddenLayer, coords, Hidden);
+}
+
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 78.233 + Seed);	
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+vec2 randvec2(vec2 p){
+	float r = hash(p) * pi * 47283.0;
+	return vec2(cos(r),sin(r));
+}
+
+vec2 fade(vec2 t) {
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+float perlin(vec2 p, vec2 fp){
+	float a = dot(randvec2(p + vec2(0,0)),(fp + vec2(0.5,0.5)));
+	float b = dot(randvec2(p + vec2(0,1)),(fp + vec2(0.5,-0.5)));
+	float c = dot(randvec2(p + vec2(1,0)),(fp + vec2(-0.5,0.5)));
+	float d = dot(randvec2(p + vec2(1,1)),(fp - vec2(0.5,0.5)));
+
+	vec2 t = fade(fp + 0.5);
+
+	float r1 = mix(a,b,t.y);
+	float r2 = mix(c,d,t.y);
+
+	float r3 = mix(r1,r2, t.x);
+
+	return r3;
+}
+
+vec3 voronoi(vec2 p, vec2 fp){
+	int s = 15;
+	int s2 = 7;
+	vec2 points[225];
+
+	for(int x = -s2; x <= s2; x++){
+		for(int y = -s2; y <= s2; y++){
+			int index = (x + s2) + ((y + s2) * s);
+			points[index] = vec2(x,y);
 		}
 	}
 
+	vec2 closest;
+	float dist = 9999.0;
+	vec2 point;
 
+	for(int i = 0; i < 225; i++){
+		point = (points[i]) + (randvec2(p + points[i]) * 1.0);
+		float tdist = distance(fp,point);
+		if(tdist < dist){
+			dist = tdist;
+			closest = p + points[i];
+		}
+	}
 
-
-	imageStore(GroundImg, pixel_coords, sampled);
+	return vec3(closest,dist * 0.75);
 }
 
-vec2 hash2(vec2 p)
-{
-	p = vec2(dot(p, vec2(127.1, 311.7)),
-		dot(p, vec2(269.5, 183.3)));
-
-	return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
-}
-
-float noise(in vec2 p)
-{
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-
-	vec2 u = f * f * (3.0 - 2.0 * f);
-
-	return mix(mix(dot(hash2(i + vec2(0.0, 0.0)), f - vec2(0.0, 0.0)),
-		dot(hash2(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0)), u.x),
-		mix(dot(hash2(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0)),
-			dot(hash2(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0)), u.x), u.y);
+mat2 rotate2d(float _angle) {
+	return mat2(cos(_angle), -sin(_angle),
+		sin(_angle), cos(_angle));
 }
