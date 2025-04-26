@@ -31,10 +31,41 @@ void main()
 	else if(Mode == 1.0){
 		if(Factor > 0.0){
 			float radii = Size.x/DigStyle.x;
-			if(distance(DigPos * Size,coords) <= radii){
+			float dist = distance(coords, DigPos * Size) / radii;
+
+			vec2 NoiseS1 = vec2(coords) / 3.125;
+
+			float noiseLevel = perlin(floor(NoiseS1),fract(NoiseS1) - 0.5);
+			noiseLevel += 1;
+			noiseLevel /= 2;
+
+			vec2 NoiseS2 = vec2(coords) / 6.25;
+
+			float noiseLevel2 = perlin(floor(NoiseS2),fract(NoiseS2) - 0.5);
+			noiseLevel2 += 1;
+			noiseLevel2 /= 2;
+
+			vec4 sampled = imageLoad(VisibleLayer,coords);
+			vec4 middleSampled = imageLoad(VisibleLayer,ivec2(DigPos * Size));
+
+			float arcs = acos(dist + (noiseLevel2 /4.0));
+			float distBetweenCentre = distance(sampled.x + sampled.y, middleSampled.x + middleSampled.y);
+			arcs = sin(arcs);// *Size;
+
+			if (dist < radii && !isnan(arcs) && distBetweenCentre < 0.2) {
+
 				vec4 Hidden = imageLoad(HiddenLayer,coords);
-				Hidden.y = mix(Hidden.y - DigStyle.y, Hidden.y, Factor);
+				//Hidden.y = mix(Hidden.y - DigStyle.y, Hidden.y, Factor);
+				//Hidden.z = mix(Hidden.z + DigStyle.y, Hidden.z, Factor);				
+				
+				Hidden.y = mix(Hidden.y - (arcs *  ( 1 - distBetweenCentre ) * DigStyle.y * noiseLevel), Hidden.y, Factor);
+				Hidden.z = mix(Hidden.z + (arcs *  ( 1 - distBetweenCentre ) * DigStyle.y * noiseLevel), Hidden.z, Factor);				
+				
+				//Hidden.y = mix(Hidden.y - (noiseLevel * DigStyle.y ), Hidden.y, Factor);
+				//Hidden.z = mix(Hidden.z + (noiseLevel * DigStyle.y ), Hidden.z, Factor);
+
 				imageStore(VisibleLayer, coords, Hidden);
+
 			}
 		}
 		if(Factor <= 0.0 || Factor >= 1.0){

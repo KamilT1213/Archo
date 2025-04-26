@@ -10,6 +10,24 @@ struct Relic {
 	bool Active;
 };
 
+float DigCurve1(float t, float s, float o) {
+	float d = glm::floor(t * s) / s;
+	t = glm::mod(t * s, 1.0f);
+	t = glm::pow(t, o);
+	t /= s;
+	t += d;
+	return t;
+}
+
+float DigCurve2(float t, float s) {
+	float d = glm::floor(t * s) / s;
+	t = glm::mod(t * s, 1.0f);
+	t = (-glm::sqrt(1.0f - glm::pow(t, 2.0f))) + 1.0f;
+	t /= s;
+	t += d;
+	return t;
+}
+
 Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 {
 
@@ -253,6 +271,8 @@ void Archo::onUpdate(float timestep)
 		glNamedFramebufferReadBuffer(screenGroundPass.target->getID(), screenGroundPass.target->m_colAttachments[1]);
 		glReadPixels(temp.x, temp.y, 1, 1, GL_RGBA, GL_FLOAT, &UVData);
 
+		//spdlog::info("Data Layer info: [0]:{} [1]:{} [2]:{} [3]:{}", UVData[0], UVData[1], UVData[2], UVData[3]);
+
 		////for (int i = 0; i < 4; i++) {
 		////	UVData[i] = glm::clamp(UVData[i], 0.0f, 1.0f);
 		////}
@@ -268,6 +288,7 @@ void Archo::onUpdate(float timestep)
 		if (m_interactionState == InteractionState::Idle) {
 			if (RelId != 0) m_interactionType = InteractionType::Extraction;
 			else m_interactionType = InteractionType::Digging;
+			//spdlog::info("Digging?: {}", m_interactionType == InteractionType::Digging);
 		}
 
 
@@ -289,7 +310,7 @@ void Archo::onUpdate(float timestep)
 		bool LevelComplete = false;
 
 		if (m_interactionType == InteractionType::Digging) {
-			if (Pressed) {
+			if (Pressed && UVData[3] > 0.0f) {
 				compute_GroundMaterial->setValue("Mode", 1.0f);
 				compute_GroundMaterial->setValue("DigPos", m_DigPos);
 				
@@ -302,11 +323,14 @@ void Archo::onUpdate(float timestep)
 					}
 					if ((RelId != 0)) {
 						finished = true;
+
 					}
-					compute_GroundMaterial->setValue("Factor", 1.0f - ProgressBar);
+					compute_GroundMaterial->setValue("Factor", 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f));
 				}
 				else {
 					finished = true;
+					compute_GroundMaterial->setValue("Mode", 1.5f);
+					m_interactionType == InteractionType::Extraction;
 					//m_computeRenderer.render();
 					ProgressBar -= timestep * 5;
 					if (ProgressBar < 0) {
@@ -433,214 +457,16 @@ void Archo::onUpdate(float timestep)
 		if (ProgressBar < 0) {
 			ProgressBar = 0;
 		}
-		//bool isExtracting = (RelId != 0 && (ProgressBar == 0 || extrBegan));// m_winRef.doIsKeyPressed(GLFW_KEY_E);
-
-		//Segments = glm::ceil(UVData[3] * 6.0f) + 1.0f;
-		////spdlog::info("Relic Segments: {:03.5f}", Segments);
-
-
-		//bool LevelComplete = false;
-
-
-
-		//if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1)) {
-		//	m_soundManager.playSoundAtPosition(sound.get(), 100, glm::vec3(0, 0, 1), glm::vec3(m_PointerPos.x - 0.5f, 0, m_PointerPos.y - 0.5f) * 500.0f);
-		//}
-
-		//if (RelicSetWave >= 1 && focusMode) {
-
-		//	if (isExtracting) {
-				//if (!extrBegan) {
-				//	extrBegan = true;
-				//	ProgressBar = 0;
-				//}
-
-				//if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && !finished) {
-				//	Pressed = true;
-				//	ProgressBar += timestep * ((1 / timePerSegment) / Segments);
-				//	if (ProgressBar > 1) {
-				//		finished = true;
-				//		ProgressBar = 1;
-
-				//		auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
-				//		auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
-				//		renderComp.material->setValue("u_active", 0.0f);
-				//		relicComp.Active = false;
-				//		for (int i = 0; i < Relics; i++) {
-				//			if (relicComp.Active == true) {
-				//				LevelComplete = false;
-				//				break;
-				//			}
-				//			else {
-				//				LevelComplete = true;
-				//			}
-				//		}
-				//	}
-				//}
-				//else {
-				//	finished = true;
-				//	ProgressBar -= timestep * 5;
-				//	if (ProgressBar < 0) {
-				//		extrBegan = false;
-				//		ProgressBar = 0;
-				//		ProgressSegmentTarget = 1;
-				//		Pressed = false;
-				//		finished = false;
-				//	}
-				//}
-
-				//if (ProgressBar * Segments >= ProgressSegmentTarget) {
-
-				//	int r = rand() % 4;
-
-				//	std::string s = "./assets/sounds/Extraction_soft_var";
-				//	s += char('0' + r);
-				//	s.append(".wav");
-
-				//	//m_soundManager.playSound(s.c_str());
-				//	//spdlog::info("PlaySound");
-				//	ProgressSegmentTarget++;
-				//}
-
-				//x = floor(ProgressBar * Segments) / Segments;
-		//	}
-		//	else {
-		//		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && !finished) {
-		//			Pressed = true;
-		//			ProgressBar += timestep / timeToDig;
-		//			if (ProgressBar > 1) {
-		//				finished = true;
-		//				ProgressBar = 1;
-		//			}
-		//			if ((RelId != 0)) {
-		//				finished = true;
-		//			}
-		//		}
-		//		else {
-		//			finished = true;
-		//			//m_computeRenderer.render();
-		//			ProgressBar -= timestep * 5;
-		//			if (ProgressBar < 0) {
-		//				ProgressBar = 0;
-		//				extrBegan = false;
-		//				ProgressSegmentTarget = 0.5;
-		//				Pressed = false;
-		//				finished = false;
-		//			}
-		//		}
-
-		//		if (ProgressBar * timeToDig >= ProgressSegmentTarget) {
-
-		//			int r = rand() % 2;
-		//			//int r2 = rand() % 4;
-
-		//			//std::string s2 = "./assets/sounds/Extraction_soft_var";
-		//			//s2 += char('0' + r2);
-		//			//s2.append(".wav");
-
-		//			//m_soundManager.playSound(s2.c_str());
-
-		//			std::string s = "./assets/sounds/Digging_soft_var";
-		//			s += char('0' + r);
-		//			s.append(".wav");
-
-
-
-		//			//m_soundManager.playSound(s.c_str());
-		//			//spdlog::info("PlaySound");
-		//			ProgressSegmentTarget++;
-		//		}
-		//	}
-		//}
-
-
-		//if (m_winRef.doIsKeyPressed(GLFW_KEY_R) || LevelComplete) {
-		//	Reseting = true;
-		//	ResetWave = 1.0f;
-		//}
-		//else {
-		//	if (Reseting) {
-		//		ResetWave -= timestep / 5;
-		//		RelicResetWave -= timestep / 20;
-
-		//		auto view = m_RelicScene->m_entities.view<Render, Transform>();
-
-		//		for (auto& relic : view) {
-		//			auto& transformComp = m_RelicScene->m_entities.get<Transform>(relic);
-		//			transformComp.scale *= glm::vec3(1.0f - (timestep / 2));
-		//			transformComp.recalc();
-
-		//		}
-		//		//spdlog::info("Reset Wave: {:03.5f}", ResetWave);
-		//		if (ResetWave <= 0) {
-		//			RelicSetWave = -0.1f;
-
-		//		}
-		//		if (!Fliping && ResetWave <= 0) {
-		//			Flip = !Flip;
-		//			Fliping = true;
-		//		}
-		//		if (ResetWave <= -0.1f) {
-		//			Reseting = false;
-		//			Fliping = false;
-		//			RelicResetWave = 1.0f;
-
-		//			for (auto& relic : view) {
-		//				m_RelicScene->m_entities.get<Relic>(relic).Active = true;
-		//				float rarity = Randomiser::uniformFloatBetween(0.01f, 6.0f);
-
-		//				auto& renderComp = m_RelicScene->m_entities.get<Render>(relic);
-		//				auto& transformComp = m_RelicScene->m_entities.get<Transform>(relic);
-
-		//				renderComp.material->setValue("u_Rarity", rarity);
-		//				//RelicMaterial->setValue("u_Id", (float)(i + 1) / (Relics + 1.0f));
-		//				renderComp.material->setValue("u_active", (float)(int)true);
-
-		//				transformComp.scale = glm::vec3(Randomiser::uniformFloatBetween(100.0f, 150.0f) * ((0.5f * ((7.0f - (1 + rarity)) / 7.0f)) + 0.5f));
-		//				transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), (1.0f - (rarity / 6.0f)) - 0.5f);
-		//				transformComp.recalc();
-
-		//			}
-		//		}
-		//	}
-		//}
-
-		//if (RelicSetWave < 1) {
-		//	RelicSetWave += timestep / 2;
-		//	if (RelicSetWave >= 1) {
-		//		RelicSetWave = 1;
-		//	}
-		//}
+		
 
 
 		QuadMat->setValue("MousePos", (m_PointerPos));
 		QuadMat->setValue("DigPos", (m_DigPos));
 		QuadMat->setValue("Progress", x);
-		QuadMat->setValue("RelicFill", RelicSetWave);
-		QuadMat->setValue("u_flip", (float)(int)Flip);
+		//QuadMat->setValue("RelicFill", RelicSetWave);
+		//QuadMat->setValue("u_flip", (float)(int)Flip);
 
 		AAQuadMat->setValue("MousePos", m_PointerPos);
-
-		//computeGroundPass.material->setValue("Reset", (float)(int)Reseting);
-		//computeGroundPass.material->setValue("ResetWave", glm::clamp((-glm::pow(ResetWave - 1, 2.0f)) + 1, 0.0f, 1.0f));
-		//if (ProgressBar >= 1) {
-		//	Pressed = true;
-		//}
-		//else {
-		//	Pressed = false;
-		//}
-		//float action = ProgressBar;
-		//float x2 = glm::mod(action, 1 / timeToDig);
-		//float x3 = glm::pow(x2 * timeToDig, 30) / timeToDig;
-		//float x4 = glm::floor(action * timeToDig) / timeToDig;
-		//action = x3 + x4;
-		//computeGroundPass.material->setValue("action", action);
-		//computeGroundPass.material->setValue("digging", (float)(int)(!finished && !isExtracting));
-		//computeGroundPass.material->setValue("MousePos", (m_DigPos));
-		//computeGroundPass.material->setValue("subBy", Subby);
-
-		//spdlog::info("Reset Wave: {:03.2f}", ResetWave);
-		//spdlog::info("Reseting: {:03.2f}", (float)(int)Reseting);
 	}
 }
 
@@ -833,8 +659,8 @@ void Archo::createLayer()
 	std::shared_ptr<Texture> settingsButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SettingsButton.png");
 
 	TextureDescription groundTextureDesc;
-	groundTextureDesc.height = 1024.f;//512.0f;//4096.0f / 2.0f;
-	groundTextureDesc.width = 1024.f;//512.0f;//4096.0f / 2.0f;
+	groundTextureDesc.height = 512.0f;//4096.0f / 2.0f;
+	groundTextureDesc.width = 512.0f;//4096.0f / 2.0f;
 	groundTextureDesc.channels = 4;
 	groundTextureDesc.isHDR = true;
 
@@ -948,7 +774,7 @@ void Archo::createLayer()
 	std::shared_ptr<Shader> compute_GroundShader = std::make_shared<Shader>(compute_GroundShaderDesc);
 	compute_GroundMaterial = std::make_shared<Material>(compute_GroundShader);
 	compute_GroundMaterial->setValue("Size", glm::vec2(groundTexture->getWidthf(), groundTexture->getHeightf()));
-	compute_GroundMaterial->setValue("DigStyle", glm::vec4(10.0f,0.1f,0.0f,0.0f));
+	compute_GroundMaterial->setValue("DigStyle", glm::vec4(25.0f,0.05f,0.0f,0.0f));
 	compute_GroundMaterial->setValue("Mode", 0.0f);
 
 	//ShaderDescription compute_GroundNormalShaderDesc;
