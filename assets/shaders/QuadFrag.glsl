@@ -7,6 +7,7 @@ in vec2 texCoords;
 
 uniform vec2 MousePos;
 uniform vec2 DigPos;
+uniform vec4 DigStyle;
 uniform float Progress;
 uniform float RelicFill;
 
@@ -18,7 +19,7 @@ uniform sampler2D u_RelicDataTexture;
 uniform float u_flip;
 
 float pi = 3.1415;
-float sizeOfRing = 15;
+float sizeOfRing = 5;
 
 vec2 hash2(vec2 p);
 float noise(in vec2 p);
@@ -90,19 +91,20 @@ void main()
     vec2 localToMouse = (texCoords - DigPos);
     float ui = 0.0;
     float RfromM = distance(localToMouse, vec2(0));
-    if (RfromM < ScreenPixelSize * sizeOfRing && RfromM > ScreenPixelSize * (sizeOfRing - 5) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
-        colour = vec4(vec3(1), 1);
+    float size = u_ScreenSize.x/(DigStyle.x * 2);
+    if (RfromM < ScreenPixelSize * (size + sizeOfRing) && RfromM > ScreenPixelSize * (size) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
+        colour = mix(colour,vec4(vec3(1), 1),0.7);
         ui = 1.0;
     }
     if (RfromM < ScreenPixelSize * (sizeOfRing - 5)) {
-        colour = mix(colour, vec4(vec3(1), 1), 0.7f);
-        ui = 1.0;
+        //colour = mix(colour, vec4(vec3(1), 1), 0.7f);
+        //ui = 1.0;
     }
 
     localToMouse = (texCoords - MousePos);
     RfromM = distance(localToMouse, vec2(0));
     if (RfromM < ScreenPixelSize * (sizeOfRing - 7.5)) {
-        colour = mix(colour, vec4(vec3(1), 1), 0.4f);
+        colour = mix(colour, vec4(vec3(1), 1), 0.4);
         ui = 1.0;
     }
 

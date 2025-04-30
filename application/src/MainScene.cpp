@@ -463,6 +463,7 @@ void Archo::onUpdate(float timestep)
 		QuadMat->setValue("MousePos", (m_PointerPos));
 		QuadMat->setValue("DigPos", (m_DigPos));
 		QuadMat->setValue("Progress", x);
+		QuadMat->setValue("DigStyle", glm::vec4(25.0f,0.05f,0.0f,0.0f));
 		//QuadMat->setValue("RelicFill", RelicSetWave);
 		//QuadMat->setValue("u_flip", (float)(int)Flip);
 

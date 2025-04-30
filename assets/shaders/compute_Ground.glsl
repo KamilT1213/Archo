@@ -39,7 +39,7 @@ void main()
 			noiseLevel += 1;
 			noiseLevel /= 2;
 
-			vec2 NoiseS2 = vec2(coords) / 6.25;
+			vec2 NoiseS2 = vec2(coords + (DigPos * 421)) / 6.25;
 
 			float noiseLevel2 = perlin(floor(NoiseS2),fract(NoiseS2) - 0.5);
 			noiseLevel2 += 1;
