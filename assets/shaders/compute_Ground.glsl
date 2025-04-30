@@ -30,6 +30,11 @@ void main()
 	}
 	else if(Mode == 1.0){
 		if(Factor > 0.0){
+
+			Seed = DigPos.x / 2134.041;
+			Seed = DigPos.y / 8715.230;
+			Seed = mod(Seed,1.0);
+
 			float radii = Size.x/DigStyle.x;
 			float dist = distance(coords, DigPos * Size) / radii;
 
