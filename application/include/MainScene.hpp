@@ -96,6 +96,7 @@ private:
 	bool Fliping{ false };
 	bool Pausing{ false };
 	int Relics{ 32 };//512};
+	int RemainingRelics{ 0 };
 	float ProgressSegmentTarget{ 0.0f };
 
 	ImVec2 imageSize = ImVec2(width / 3, height / 3);

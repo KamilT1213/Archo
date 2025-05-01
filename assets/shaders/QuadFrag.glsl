@@ -8,6 +8,7 @@ in vec2 texCoords;
 uniform vec2 MousePos;
 uniform vec2 DigPos;
 uniform vec4 DigStyle;
+uniform float isDigging;
 uniform float Progress;
 uniform float RelicFill;
 
@@ -76,9 +77,10 @@ void main()
 
     vec4 c = texture(u_RelicTexture,texCoords);
     vec4 d = texture(u_RelicDataTexture,texCoords);
-    if(c.a >= 1 && ((clamp(d.x,0.0,1.0) * (colourout.g + colourout.z)) + colourout.r > groundDepth || colourout.g <= 0.0)){
+    if(c.a >= 1 && ((clamp(d.x,-0.1,1.0) * (colourout.g + colourout.z)) + colourout.r > groundDepth || colourout.g <= 0.0)){
         colour = c;
         data.z = d.y;
+        data.x = 1.0 - d.x;
         data.a = ceil(1 - d.x) ;
     
     }
@@ -92,14 +94,27 @@ void main()
     float ui = 0.0;
     float RfromM = distance(localToMouse, vec2(0));
     float size = u_ScreenSize.x/(DigStyle.x * 2);
-    if (RfromM < ScreenPixelSize * (size + sizeOfRing) && RfromM > ScreenPixelSize * (size) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
-        colour = mix(colour,vec4(vec3(1), 1),0.7);
-        ui = 1.0;
+    if(isDigging > 0.0){
+        if (RfromM < ScreenPixelSize * (size + sizeOfRing) && RfromM > ScreenPixelSize * (size) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
+            colour = mix(colour,vec4(vec3(1), 1),0.7);
+            ui = 1.0;
+        }
+        if (RfromM < ScreenPixelSize * (sizeOfRing - 5)) {
+            //colour = mix(colour, vec4(vec3(1), 1), 0.7f);
+            //ui = 1.0;
+        }
     }
-    if (RfromM < ScreenPixelSize * (sizeOfRing - 5)) {
-        //colour = mix(colour, vec4(vec3(1), 1), 0.7f);
-        //ui = 1.0;
+    else{
+        if (RfromM < ScreenPixelSize * (size ) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
+            colour = mix(colour,vec4(vec3(1), 1),0.7);
+            ui = 1.0;
+        }
+        if (RfromM < ScreenPixelSize * (sizeOfRing - 5)) {
+            //colour = mix(colour, vec4(vec3(1), 1), 0.7f);
+            //ui = 1.0;
+        }
     }
+
 
     localToMouse = (texCoords - MousePos);
     RfromM = distance(localToMouse, vec2(0));

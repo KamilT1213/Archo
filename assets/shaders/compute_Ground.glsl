@@ -44,7 +44,7 @@ void main()
 			noiseLevel += 1;
 			noiseLevel /= 2;
 
-			vec2 NoiseS2 = vec2(coords + (DigPos * 421)) / 6.25;
+			vec2 NoiseS2 = vec2(coords + (DigPos * 421)) / 1.25;
 
 			float noiseLevel2 = perlin(floor(NoiseS2),fract(NoiseS2) - 0.5);
 			noiseLevel2 += 1;
@@ -57,14 +57,14 @@ void main()
 			float distBetweenCentre = distance(sampled.x + sampled.y, middleSampled.x + middleSampled.y);
 			arcs = sin(arcs);// *Size;
 
-			if (dist < radii && !isnan(arcs) && distBetweenCentre < 0.2) {
+			if (dist < 1.0 && !isnan(arcs) && distBetweenCentre < 0.2) {
 
 				vec4 Hidden = imageLoad(HiddenLayer,coords);
 				//Hidden.y = mix(Hidden.y - DigStyle.y, Hidden.y, Factor);
 				//Hidden.z = mix(Hidden.z + DigStyle.y, Hidden.z, Factor);				
 				
-				Hidden.y = mix(Hidden.y - (arcs *  ( 1 - distBetweenCentre ) * DigStyle.y * noiseLevel), Hidden.y, Factor);
-				Hidden.z = mix(Hidden.z + (arcs *  ( 1 - distBetweenCentre ) * DigStyle.y * noiseLevel), Hidden.z, Factor);				
+				Hidden.y = mix(Hidden.y - (arcs *  ( 1 - dist ) * DigStyle.y * ( 1 - (noiseLevel * dist))), Hidden.y, Factor);
+				Hidden.z = mix(Hidden.z + (arcs *  ( 1 - dist ) * DigStyle.y * (1 - (noiseLevel * dist))), Hidden.z, Factor);				
 				
 				//Hidden.y = mix(Hidden.y - (noiseLevel * DigStyle.y ), Hidden.y, Factor);
 				//Hidden.z = mix(Hidden.z + (noiseLevel * DigStyle.y ), Hidden.z, Factor);

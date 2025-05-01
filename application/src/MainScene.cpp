@@ -8,6 +8,8 @@
 
 struct Relic {
 	bool Active;
+	int Type;
+
 };
 
 float DigCurve1(float t, float s, float o) {
@@ -245,10 +247,7 @@ void Archo::onUpdate(float timestep)
 			m_DigPos = temp;
 		}
 
-		float timeToDig = 1.0f;
 
-		float Segments = 3.0f;
-		float timePerSegment = 0.6f;
 
 		float x = ProgressBar;
 
@@ -282,6 +281,14 @@ void Archo::onUpdate(float timestep)
 		////spdlog::info("Relic id: {:03.5f}", glm::round(UVData[2] * (Relics + 1)));
 
 		int RelId = (int)glm::round(UVData[2] * (Relics + 1));
+		int Rarity = (int)glm::round(UVData[0] * 6.0f);
+
+		//spdlog::info("Rarity: {}", Rarity);
+
+		float timeToDig = 1.0f;
+
+		float Segments = (Rarity * Rarity) + 5.0f;
+		float timePerSegment = 0.2f;
 
 		//spdlog::info("ID: {}", RelId - 1);
 
@@ -400,15 +407,25 @@ void Archo::onUpdate(float timestep)
 						auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
 						renderComp.material->setValue("u_active", 0.0f);
 						relicComp.Active = false;
-						for (int i = 0; i < Relics; i++) {
-							if (relicComp.Active == true) {
-								LevelComplete = false;
-								break;
-							}
-							else {
-								LevelComplete = true;
-							}
+						RemainingRelics--;
+						if(RemainingRelics <= 0){
+							m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
+							m_generationRenderer.render();
+					
+							placeRelics();
+					
+							compute_GroundMaterial->setValue("Mode",0.0f);
+							m_groundComputeRenderer.render();
 						}
+						// for (int i = 0; i < Relics; i++) {
+						// 	if (relicComp.Active == true) {
+						// 		LevelComplete = false;
+						// 		break;
+						// 	}
+						// 	else {
+						// 		LevelComplete = true;
+						// 	}
+						// }
 					}
 				}
 				else {
@@ -464,6 +481,7 @@ void Archo::onUpdate(float timestep)
 		QuadMat->setValue("DigPos", (m_DigPos));
 		QuadMat->setValue("Progress", x);
 		QuadMat->setValue("DigStyle", glm::vec4(25.0f,0.05f,0.0f,0.0f));
+		QuadMat->setValue("isDigging", (float)(int)(m_interactionType == InteractionType::Digging));
 		//QuadMat->setValue("RelicFill", RelicSetWave);
 		//QuadMat->setValue("u_flip", (float)(int)Flip);
 
@@ -775,7 +793,7 @@ void Archo::createLayer()
 	std::shared_ptr<Shader> compute_GroundShader = std::make_shared<Shader>(compute_GroundShaderDesc);
 	compute_GroundMaterial = std::make_shared<Material>(compute_GroundShader);
 	compute_GroundMaterial->setValue("Size", glm::vec2(groundTexture->getWidthf(), groundTexture->getHeightf()));
-	compute_GroundMaterial->setValue("DigStyle", glm::vec4(25.0f,0.05f,0.0f,0.0f));
+	compute_GroundMaterial->setValue("DigStyle", glm::vec4(25.0f,0.25f,0.0f,0.0f));
 	compute_GroundMaterial->setValue("Mode", 0.0f);
 
 	//ShaderDescription compute_GroundNormalShaderDesc;
@@ -1972,6 +1990,8 @@ void Archo::placeRelics()
 				-0.5f);
 			transComp.scale = glm::vec3(4096.f / (points[random].position.w / 2.0f));
 			transComp.recalc();
+
+			RemainingRelics++;
 
 			points.erase(points.begin() + random);
 		}
