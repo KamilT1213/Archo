@@ -3,6 +3,7 @@
 #pragma once
 //#include "DemonRenderer.hpp"
 #include <vector>
+#include <utility>
 
 //* * * * * * * * * * * * * * * * * * * * 
 // Settings Serialization and Saving
@@ -22,8 +23,9 @@ Settings_Save Load_Settings();
 // Game Save Serialization and Saving
 //* * * * * * * * * * * * * * * * * * * * 
 
+
 struct Game_Save {
-	std::vector<int> s_Items;
+	std::vector<std::pair<int,int>> s_Items;
 };
 
 void Save_Game(const Game_Save& sS);

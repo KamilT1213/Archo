@@ -287,7 +287,7 @@ void Archo::onUpdate(float timestep)
 
 		float timeToDig = 1.0f;
 
-		float Segments = (Rarity * Rarity) + 5.0f;
+		float Segments = ((Rarity + 1) * (Rarity + 1)) + 5.0f;
 		float timePerSegment = 0.2f;
 
 		//spdlog::info("ID: {}", RelId - 1);
@@ -406,6 +406,21 @@ void Archo::onUpdate(float timestep)
 						auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
 						auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
 						renderComp.material->setValue("u_active", 0.0f);
+
+						bool found = false;
+						for(auto& item : m_save.s_Items){
+							if(item.first == Rarity){
+								item.second++;
+								found = true;
+								break;
+							}
+						}
+						if(!found){
+							m_save.s_Items.emplace_back(std::pair<int,int>(Rarity,1));
+						}
+
+						saveGame();
+
 						relicComp.Active = false;
 						RemainingRelics--;
 						if(RemainingRelics <= 0){

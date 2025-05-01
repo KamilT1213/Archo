@@ -106,7 +106,7 @@ void from_json(const nlohmann::json& j, Game_Save& gS) {
 		j.at("Items").get_to(gS.s_Items);
 	}
 	else {
-		gS.s_Items = std::vector<int>();
+		gS.s_Items = std::vector<std::pair<int,int>>();
 	}
 }
 
