@@ -56,7 +56,10 @@ private:
 	std::shared_ptr<Material> m_seedingFinder;
 	std::shared_ptr<Material> compute_GroundMaterial;
 	std::vector<std::shared_ptr<Shader>> m_generators;
+
 	std::vector<entt::entity> m_Relics;
+	std::vector<entt::entity> m_Sceneries;
+
 	std::shared_ptr<Scene> m_RelicScene;
 	std::shared_ptr<Scene> m_screenScene;
 	std::shared_ptr<Scene> m_mainMenu;
@@ -65,6 +68,7 @@ private:
 	std::shared_ptr<Scene> m_pauseMenu;
 	std::shared_ptr<Scene> m_pauseMenu_Settings;
 	std::shared_ptr<Scene> m_pauseMenu_Inventory;
+	std::shared_ptr<Scene> m_SceneryScene;
 
 	float initialRatio;
 
@@ -143,6 +147,8 @@ private:
 	Renderer m_finalRenderer;
 	Renderer m_seedingFinderRenderer;
 	Renderer m_groundComputeRenderer;
+	Renderer m_relicRenderer;
+	Renderer m_sceneryRenderer;
 
 	Settings_Save m_settings;
 	Game_Save m_save;
@@ -184,6 +190,13 @@ private:
 	};
 
 	FBOLayout relicScreenPassLayout = {
+		{AttachmentType::ColourHDR,true},
+		{AttachmentType::ColourHDR,true},
+		{AttachmentType::Depth,true}
+
+	};
+
+	FBOLayout sceneryPassLayout = {
 		{AttachmentType::ColourHDR,true},
 		{AttachmentType::ColourHDR,true},
 		{AttachmentType::Depth,true}

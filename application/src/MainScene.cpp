@@ -80,6 +80,7 @@ void Archo::onImGUIRender()
 
 void Archo::onRender()
 {
+	m_sceneryRenderer.render();
 	m_backgroundRenderer.render();
 	//m_seedingFinderRenderer.render();
 	if (state == GameState::MainMenu) {
@@ -212,7 +213,7 @@ void Archo::onUpdate(float timestep)
 
 
 		//auto& computeGroundPass = m_mainRenderer.getComputePass(GroundComputePassIDx);
-		auto& relicPass = m_mainRenderer.getRenderPass(ScreenRelicPassIDx);
+		auto& relicPass = m_relicRenderer.getRenderPass(ScreenRelicPassIDx);
 		auto& screenGroundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
 		auto& screenAAPass = m_mainRenderer.getRenderPass(AAPassIDx);
 
@@ -279,7 +280,6 @@ void Archo::onUpdate(float timestep)
 		//gameMouseLocation = glm::vec2(UVData[0], UVData[1]);
 		////spdlog::info("mouse x: {:03.2f}, mouse y: {:03.2f}", gameMouseLocation.x, gameMouseLocation.y);
 		////spdlog::info("Relic id: {:03.5f}", glm::round(UVData[2] * (Relics + 1)));
-
 		int RelId = (int)glm::round(UVData[2] * (Relics + 1));
 		int Rarity = (int)glm::round(UVData[0] * 6.0f);
 
@@ -406,6 +406,8 @@ void Archo::onUpdate(float timestep)
 						auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
 						auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
 						renderComp.material->setValue("u_active", 0.0f);
+
+						m_relicRenderer.render();
 
 						bool found = false;
 						for(auto& item : m_save.s_Items){
@@ -678,6 +680,7 @@ void Archo::createLayer()
 	m_pauseMenu.reset(new Scene);
 	m_pauseMenu_Settings.reset(new Scene);
 	m_pauseMenu_Inventory.reset(new Scene);
+	m_SceneryScene.reset(new Scene);
 
 	initialRatio = width / height;
 
@@ -691,6 +694,7 @@ void Archo::createLayer()
 	std::shared_ptr<Texture> saveButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SaveButton.png");
 	std::shared_ptr<Texture> deleteSaveButtonTexture = std::make_shared<Texture>("./assets/textures/UI/DeleteSaveButton.png");
 	std::shared_ptr<Texture> settingsButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SettingsButton.png");
+	std::shared_ptr<Texture> scenery_ArchTexture = std::make_shared<Texture>("./assets/textures/Scenery/Arch/ArchTexture.png");
 
 	TextureDescription groundTextureDesc;
 	groundTextureDesc.height = 512.0f;//4096.0f / 2.0f;
@@ -792,7 +796,13 @@ void Archo::createLayer()
 	RelicShaderDesc.vertexSrcPath = "./assets/shaders/RelicVert.glsl";
 	RelicShaderDesc.fragmentSrcPath = "./assets/shaders/RelicFrag.glsl";
 	std::shared_ptr<Shader> RelicShader = std::make_shared<Shader>(RelicShaderDesc);
-	//std::shared_ptr<Material> RelicMaterial = std::make_shared<Material>(RelicShader);
+
+	ShaderDescription Scenery_ShaderDesc;
+	Scenery_ShaderDesc.type = ShaderType::rasterization;
+	Scenery_ShaderDesc.vertexSrcPath = "./assets/shaders/SceneryVert.glsl";
+	Scenery_ShaderDesc.fragmentSrcPath = "./assets/shaders/SceneryFrag.glsl";
+	std::shared_ptr<Shader> Scenery_Shader = std::make_shared<Shader>(Scenery_ShaderDesc);
+
 
 	//Menu Button material
 	ShaderDescription buttonQuadShaderDesc;
@@ -922,7 +932,23 @@ void Archo::createLayer()
 	RelicVAO->addVertexBuffer(RelicVertices, {
 		{GL_FLOAT,3},  // position
 		{GL_FLOAT,2}   // UV
-		});
+	});
+
+
+	VBOLayout archLayout = {
+		{GL_FLOAT, 3},
+		{GL_FLOAT, 3},
+		{GL_FLOAT, 2}
+	};
+
+	uint32_t archAttributeTypes = Model::VertexFlags::positions |
+	Model::VertexFlags::normals |
+	Model::VertexFlags::uvs;
+	//Arch
+	Model archModel("./assets/models/Scenery/Arch/Arch1.obj", archAttributeTypes);
+	std::shared_ptr<VAO> archVAO;
+	archVAO = std::make_shared<VAO>(archModel.m_meshes[0].indices);
+	archVAO->addVertexBuffer(archModel.m_meshes[0].vertices, archLayout);
 
 	//Actors ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1335,6 +1361,37 @@ void Archo::createLayer()
 		transformComp.recalc();
 	}
 
+	/*************************
+	*  Scenery
+	**************************/
+
+	for(int i = 0; i < 300; i++){
+		entt::entity arch = m_SceneryScene->m_entities.create();
+		m_Sceneries.push_back(arch);
+
+		Render& renderComp = m_SceneryScene->m_entities.emplace<Render>(arch);
+		Transform& transformComp = m_SceneryScene->m_entities.emplace<Transform>(arch);
+
+		renderComp.geometry = archVAO;
+		renderComp.depthGeometry = archVAO;
+
+		std::shared_ptr<Material> archmat = std::make_shared<Material>(Scenery_Shader);
+		archmat->setValue("u_SceneryTexture",scenery_ArchTexture);
+		archmat->setValue("u_Id",(float)i/30.f);
+		archmat->setValue("u_active",1.f);
+
+		renderComp.material = archmat;
+		renderComp.depthMaterial = archmat;
+
+		transformComp.scale = glm::vec3(Randomiser::uniformFloatBetween(20.0f, 75.0f));
+		//transformComp.rotation = glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f));
+		transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
+
+		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(0.f,4096.f), Randomiser::uniformFloatBetween(0.f,4096.f), 10.5f);
+		transformComp.recalc();
+
+	}
+
 	//Particles
 	//Actor particles;
 
@@ -1598,15 +1655,46 @@ void Archo::createLayer()
 	//	render.material->setValue("u_relicProjection2D", ScreenRelicPass.camera.projection);
 	//}
 
-	ScreenRelicPassIDx = m_mainRenderer.getSumPassCount();
-	m_mainRenderer.addRenderPass(ScreenRelicPass);
-
+	ScreenRelicPassIDx = m_relicRenderer.getSumPassCount();
+	m_relicRenderer.addRenderPass(ScreenRelicPass);
+	m_relicRenderer.render();
 
 
 	screenQuadMaterial->setValue("u_GroundDepthTexture", groundTexture);
 
 	screenQuadMaterial->setValue("u_RelicTexture", ScreenRelicPass.target->getTarget(0));
 	screenQuadMaterial->setValue("u_RelicDataTexture", ScreenRelicPass.target->getTarget(1));
+
+	/*************************
+	*  Scenery Render Pass
+	**************************/
+
+	RenderPass SceneryPass;
+	SceneryPass.scene = m_SceneryScene;
+	SceneryPass.parseScene();
+	SceneryPass.target = std::make_shared<FBO>(glm::ivec2(4096, 4096), sceneryPassLayout);
+	SceneryPass.viewPort = { 0,0,4096, 4096 };
+
+	SceneryPass.camera.projection = glm::ortho(0.f, 4096.0f, 4096.0f, 0.f);
+
+	SceneryPass.UBOmanager.setCachedValue("b_sceneryCamera2D", "u_sceneryView2D", SceneryPass.camera.view);
+	SceneryPass.UBOmanager.setCachedValue("b_sceneryCamera2D", "u_sceneryProjection2D", SceneryPass.camera.projection);
+
+	//entt::basic_view view = m_RelicScene->m_entities.view<Render>();
+	//for (auto& rel : view) {
+	//	Render render = m_RelicScene->m_entities.get<Render>(rel);
+	//	render.material->setValue("u_relicView2D", ScreenRelicPass.camera.view);
+	//	render.material->setValue("u_relicProjection2D", ScreenRelicPass.camera.projection);
+	//}
+
+	//ScreenRelicPassIDx = m_sceneryRenderer.getSumPassCount();
+	m_sceneryRenderer.addRenderPass(SceneryPass);
+	m_sceneryRenderer.render();
+
+
+	screenQuadMaterial->setValue("u_SceneryTexture", SceneryPass.target->getTarget(1));
+	//screenQuadMaterial->setValue("u_SceneryDataTexture", ScreenRelicPass.target->getTarget(1));
+
 
 	m_screenScene.reset(new Scene);
 
@@ -1952,10 +2040,10 @@ std::vector<SeedingPoint> Archo::getSeedingPoints()
 	m_seedingFinderRenderer.render();
 
 
-	auto view = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
+	auto view = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
 
 	for (auto relic : view) {
-		Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(relic);
+		Render& rendComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(relic);
 		rendComp.material->setValue("u_active", (float)(int)false);
 	}
 	m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
@@ -1970,12 +2058,12 @@ std::vector<SeedingPoint> Archo::getSeedingPoints()
 			outputPoints.push_back(current);
 
 			if (false) {
-				Render& rendComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[counter]);
+				Render& rendComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[counter]);
 				rendComp.material->setValue("u_active", (float)(int)true);
 				rendComp.material->setValue("u_Rarity", 6.0f);
 
-				Transform& transComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[counter]);
-				transComp.translation = glm::vec3(glm::vec2(current.position) * float(m_mainRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height / m_generationRenderer.getComputePass(0).images[0].texture->getHeight()), -0.5f);
+				Transform& transComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[counter]);
+				transComp.translation = glm::vec3(glm::vec2(current.position) * float(m_relicRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height / m_generationRenderer.getComputePass(0).images[0].texture->getHeight()), -0.5f);
 				transComp.scale = glm::vec3(4096.f / (current.position.w / 2.0f));
 				transComp.recalc();
 
@@ -1991,16 +2079,16 @@ void Archo::placeRelics()
 {
 	std::vector<SeedingPoint> points = getSeedingPoints();
 
-	auto view = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
+	auto view = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
 	for (int i = 0; i < view.size(); i++) {
-		Render& renderComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[i]);
-		Transform& transComp = m_mainRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[i]);
+		Render& renderComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[i]);
+		Transform& transComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[i]);
 
 		if (points.size() > 0) {
 			int random = std::rand() % points.size();
 			renderComp.material->setValue("u_active", (float)(int)true);
 			transComp.translation = glm::vec3(glm::vec2(points[random].position) *
-				float(m_mainRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height
+				float(m_relicRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height
 					/ m_generationRenderer.getComputePass(0).images[0].texture->getHeight()),
 				-0.5f);
 			transComp.scale = glm::vec3(4096.f / (points[random].position.w / 2.0f));
@@ -2014,6 +2102,7 @@ void Archo::placeRelics()
 			renderComp.material->setValue("u_active", (float)(int)false);
 		}
 	}
+	m_relicRenderer.render();
 }
 
 

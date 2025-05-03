@@ -16,6 +16,8 @@ uniform vec2 u_ScreenSize;
 uniform sampler2D u_GroundDepthTexture;
 uniform sampler2D u_RelicTexture;
 uniform sampler2D u_RelicDataTexture;
+uniform sampler2D u_SceneryTexture;
+uniform sampler2D u_SceneryDataTexture;
 
 uniform float u_flip;
 
@@ -84,6 +86,7 @@ void main()
         data.a = ceil(1 - d.x) ;
     
     }
+
     //data = vec4(texCoords,  d.y, 1);
     //colour = data;
     //colour = vec4(vec3((groundDepth + colourout.z) - groundDepth),1.0);
@@ -123,8 +126,16 @@ void main()
         ui = 1.0;
     }
 
-    if ((colourout.a <= 0.6 || colourout.g <= 0.0) && c.a < 0.1 && ui <= 0.0) discard;
-    else if(colourout.g > 0)data.a = 1.0;
+    vec4 depthMap = texture(u_SceneryTexture,texCoords);
+
+    float n = 1.0; // camera z near
+    float f = 1000.0; // camera z far
+    float z =  depthMap.x;
+    float dep = ((2.0 * n) / (f + n - z * (f - n)));
+
+    //if ((colourout.a <= 0.6 || colourout.g <= 0.0) && c.a < 0.1 && ui <= 0.0 && depthMap.x >= 1.0) discard;
+    //else if(colourout.g > 0)data.a = 1.0;
+    colour = vec4(depthMap.xyz,1.0);
     //colour = colourout;
     // if(c.a > 0.1){
     //     colour = mix(colour,c,c.a);
