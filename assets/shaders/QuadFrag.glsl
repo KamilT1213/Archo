@@ -62,6 +62,9 @@ void main()
     noiseDis /= 10;
 
 
+    float cHeight = colourout.r + colourout.g;
+
+
     colour = vec4(vec3(groundDepth),1.0);
     if(groundDepth > 0.5) colour = mix( vec4(0.302, 0.247, 0.302, 1.0),vec4(0.0, 1.0, 0.0, 1.0), (groundDepth * 2.0) - 1.0);
     if(groundDepth < 0.5) colour = mix( vec4(1.0, 0.0, 1.0, 1.0),vec4(0.302, 0.247, 0.302, 1.0), (groundDepth * 2.0));
@@ -71,7 +74,13 @@ void main()
 
     colour += vec4(vec3(-noiseDis), 0.0);
 
-    colour.xyz = ((floor(colour.xyz * 20) + 0.5) / 20);
+    vec4 depthMap = texture(u_SceneryTexture, texCoords);
+
+    if (cHeight < 1 - depthMap.x) {
+        colour = depthMap;
+    }
+
+
 
     if(colourout.z < 0.01) colour.xyz += vec3(hash(floor(texCoords * 1024)) / 20.0);
     
@@ -86,6 +95,7 @@ void main()
         data.a = ceil(1 - d.x) ;
     
     }
+
 
     //data = vec4(texCoords,  d.y, 1);
     //colour = data;
@@ -126,16 +136,12 @@ void main()
         ui = 1.0;
     }
 
-    //vec4 depthMap = texture(u_SceneryTexture,texCoords);
 
-    //float n = 1.0; // camera z near
-    //float f = 1000.0; // camera z far
-    //float z =  depthMap.x;
-    //float dep = ((2.0 * n) / (f + n - z * (f - n)));
 
-    if ((colourout.a <= 0.6 || colourout.g <= 0.0) && c.a < 0.1 && ui <= 0.0) discard;
+    if ((colourout.a <= 0.6 || colourout.g <= 0.0) && c.a < 0.1 && ui <= 0.0 && 1 - depthMap.x <= 0) discard;
     else if(colourout.g > 0)data.a = 1.0;
-    //colour = vec4(depthMap.xyz,1.0);
+    colour.xyz = ((floor(colour.xyz * 20) + 0.5) / 20);
+    //colour = vec4(vec3(1 - depthMap.x), 1.0);
     //colour = colourout;
     // if(c.a > 0.1){
     //     colour = mix(colour,c,c.a);

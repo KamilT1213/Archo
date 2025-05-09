@@ -1365,7 +1365,7 @@ void Archo::createLayer()
 	*  Scenery
 	**************************/
 
-	for(int i = 0; i < 300; i++){
+	for(int i = 0; i < 10; i++){
 		entt::entity arch = m_SceneryScene->m_entities.create();
 		m_Sceneries.push_back(arch);
 
@@ -1377,17 +1377,19 @@ void Archo::createLayer()
 
 		std::shared_ptr<Material> archmat = std::make_shared<Material>(Scenery_Shader);
 		archmat->setValue("u_SceneryTexture",scenery_ArchTexture);
-		archmat->setValue("u_Id",(float)i/30.f);
+		archmat->setValue("u_Id",(float)i/1.f);
 		archmat->setValue("u_active",1.f);
 
 		renderComp.material = archmat;
 		renderComp.depthMaterial = archmat;
 
-		transformComp.scale = glm::vec3(Randomiser::uniformFloatBetween(20.0f, 75.0f));
-		//transformComp.rotation = glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f));
-		transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
+		float r = Randomiser::uniformFloatBetween(-0.52359878f, 0.52359878f);
+		transformComp.rotation = glm::vec3(0,0,r);
 
-		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(0.f,4096.f), Randomiser::uniformFloatBetween(0.f,4096.f), 10.5f);
+		float s = Randomiser::uniformFloatBetween(100.0f, 300.0f);
+		transformComp.scale = glm::vec3(s,s,1.0f);
+		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
+		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(0.f, 4096.0f), Randomiser::uniformFloatBetween(0.f, 4096.0f), -1.0f);
 		transformComp.recalc();
 
 	}
@@ -1675,7 +1677,7 @@ void Archo::createLayer()
 	SceneryPass.target = std::make_shared<FBO>(glm::ivec2(4096, 4096), sceneryPassLayout);
 	SceneryPass.viewPort = { 0,0,4096, 4096 };
 
-	SceneryPass.camera.projection = glm::ortho(0.f, 4096.0f, 4096.0f, 0.f);
+	SceneryPass.camera.projection = glm::ortho(0.f, 4096.0f, 4096.0f, 0.f,0.0f,1.0f);
 
 	SceneryPass.UBOmanager.setCachedValue("b_sceneryCamera2D", "u_sceneryView2D", SceneryPass.camera.view);
 	SceneryPass.UBOmanager.setCachedValue("b_sceneryCamera2D", "u_sceneryProjection2D", SceneryPass.camera.projection);
@@ -1692,7 +1694,7 @@ void Archo::createLayer()
 	m_sceneryRenderer.render();
 
 
-	screenQuadMaterial->setValue("u_SceneryTexture", SceneryPass.target->getTarget(1));
+	screenQuadMaterial->setValue("u_SceneryTexture", SceneryPass.target->getTarget(2));
 	//screenQuadMaterial->setValue("u_SceneryDataTexture", ScreenRelicPass.target->getTarget(1));
 
 
