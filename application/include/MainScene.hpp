@@ -48,6 +48,7 @@ private:
 
 	std::vector<SeedingPoint> getSeedingPoints();
 	void placeRelics();
+	void placeScenery();
 
 	int seedingResolution = 32;
 	std::shared_ptr<SSBO> m_seedingSSBO;

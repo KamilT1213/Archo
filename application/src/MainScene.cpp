@@ -80,7 +80,7 @@ void Archo::onImGUIRender()
 
 void Archo::onRender()
 {
-	m_sceneryRenderer.render();
+	
 	m_backgroundRenderer.render();
 	//m_seedingFinderRenderer.render();
 	if (state == GameState::MainMenu) {
@@ -280,14 +280,28 @@ void Archo::onUpdate(float timestep)
 		//gameMouseLocation = glm::vec2(UVData[0], UVData[1]);
 		////spdlog::info("mouse x: {:03.2f}, mouse y: {:03.2f}", gameMouseLocation.x, gameMouseLocation.y);
 		////spdlog::info("Relic id: {:03.5f}", glm::round(UVData[2] * (Relics + 1)));
-		int RelId = (int)glm::round(UVData[2] * (Relics + 1));
-		int Rarity = (int)glm::round(UVData[0] * 6.0f);
+		int RelId = -1;
+		int Rarity = -1;
+		bool isScenery = (bool)glm::round(UVData[1]);
+		float Segments = 0;
+		if(isScenery){
+			RelId = (int)glm::round(UVData[2] * (m_Sceneries.size() + 1));
+			Segments = 10;
+		}
+		else{
+			RelId = (int)glm::round(UVData[2] * (Relics + 1));
+			Rarity = (int)glm::round(UVData[0] * 6.0f);
+			Segments = ((Rarity + 1) * (Rarity + 1)) + 5.0f;
+		}
+
+		
+
 
 		//spdlog::info("Rarity: {}", Rarity);
 
 		float timeToDig = 1.0f;
 
-		float Segments = ((Rarity + 1) * (Rarity + 1)) + 5.0f;
+
 		float timePerSegment = 0.2f;
 
 		//spdlog::info("ID: {}", RelId - 1);
@@ -403,36 +417,46 @@ void Archo::onUpdate(float timestep)
 						finished = true;
 						ProgressBar = 1;
 
-						auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
-						auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
-						renderComp.material->setValue("u_active", 0.0f);
+						if(isScenery){
+							auto& renderComp = m_SceneryScene->m_entities.get<Render>(m_Sceneries.at(RelId - 1));
+							renderComp.material->setValue("u_active", 0.0f);
+							m_sceneryRenderer.render();
+						}
+						else{
 
-						m_relicRenderer.render();
+						
+							auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
+							auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
+							renderComp.material->setValue("u_active", 0.0f);
 
-						bool found = false;
-						for(auto& item : m_save.s_Items){
-							if(item.first == Rarity){
-								item.second++;
-								found = true;
-								break;
+							m_relicRenderer.render();
+
+							bool found = false;
+							for(auto& item : m_save.s_Items){
+								if(item.first == Rarity){
+									item.second++;
+									found = true;
+									break;
+								}
 							}
-						}
-						if(!found){
-							m_save.s_Items.emplace_back(std::pair<int,int>(Rarity,1));
-						}
+							if(!found){
+								m_save.s_Items.emplace_back(std::pair<int,int>(Rarity,1));
+							}
 
-						saveGame();
+							saveGame();
 
-						relicComp.Active = false;
-						RemainingRelics--;
-						if(RemainingRelics <= 0){
-							m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
-							m_generationRenderer.render();
-					
-							placeRelics();
-					
-							compute_GroundMaterial->setValue("Mode",0.0f);
-							m_groundComputeRenderer.render();
+							relicComp.Active = false;
+							RemainingRelics--;
+							if(RemainingRelics <= 0){
+								m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
+								m_generationRenderer.render();
+						
+								placeRelics();
+								placeScenery();
+
+								compute_GroundMaterial->setValue("Mode",0.0f);
+								m_groundComputeRenderer.render();
+							}
 						}
 						// for (int i = 0; i < Relics; i++) {
 						// 	if (relicComp.Active == true) {
@@ -514,6 +538,7 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 		m_generationRenderer.render();
 
 		placeRelics();
+		placeScenery();
 
 		compute_GroundMaterial->setValue("Mode",0.0f);
 		m_groundComputeRenderer.render();
@@ -1377,7 +1402,7 @@ void Archo::createLayer()
 
 		std::shared_ptr<Material> archmat = std::make_shared<Material>(Scenery_Shader);
 		archmat->setValue("u_SceneryTexture",scenery_ArchTexture);
-		archmat->setValue("u_Id",(float)i/1.f);
+		archmat->setValue("u_Id",(float)(i + 1) / (10 + 1.0f));
 		archmat->setValue("u_active",1.f);
 
 		renderComp.material = archmat;
@@ -1389,7 +1414,7 @@ void Archo::createLayer()
 		float s = Randomiser::uniformFloatBetween(100.0f, 300.0f);
 		transformComp.scale = glm::vec3(s,s,1.0f);
 		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
-		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(0.f, 4096.0f), Randomiser::uniformFloatBetween(0.f, 4096.0f), -1.0f);
+		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), -1.0f);
 		transformComp.recalc();
 
 	}
@@ -1694,7 +1719,9 @@ void Archo::createLayer()
 	m_sceneryRenderer.render();
 
 
-	screenQuadMaterial->setValue("u_SceneryTexture", SceneryPass.target->getTarget(2));
+	screenQuadMaterial->setValue("u_SceneryTexture", SceneryPass.target->getTarget(0));
+	screenQuadMaterial->setValue("u_SceneryDepthTexture", SceneryPass.target->getTarget(2));
+	screenQuadMaterial->setValue("u_SceneryDataTexture", SceneryPass.target->getTarget(1));
 	//screenQuadMaterial->setValue("u_SceneryDataTexture", ScreenRelicPass.target->getTarget(1));
 
 
@@ -1819,6 +1846,7 @@ void Archo::playGame()
 	m_generationRenderer.render();
 
 	placeRelics();
+	placeScenery();
 
 	compute_GroundMaterial->setValue("Mode",0.0f);
 	m_groundComputeRenderer.render();
@@ -2107,6 +2135,49 @@ void Archo::placeRelics()
 	m_relicRenderer.render();
 }
 
+void Archo::placeScenery()
+{
+	auto view = m_SceneryScene->m_entities.view<Transform>();
+	for(auto obj : view){
+
+		std::vector<SeedingPoint> points = getSeedingPoints();
+
+		Transform& transformComp = m_SceneryScene->m_entities.get<Transform>(obj);
+		Render& renderComp = m_SceneryScene->m_entities.get<Render>(obj);
+
+		if (points.size() > 0) {
+			int random = std::rand() % points.size();
+			renderComp.material->setValue("u_active", (float)(int)true);
+			transformComp.translation = glm::vec3(glm::vec2(points[random].position) *
+				float(m_sceneryRenderer.getRenderPass(0).viewPort.height
+					/ m_generationRenderer.getComputePass(0).images[0].texture->getHeight()),
+				-1.0f);
+
+			float s = Randomiser::uniformFloatBetween(100.0f, 300.0f);
+			transformComp.scale = glm::vec3(s,s,1.0f);
+
+			float r = Randomiser::uniformFloatBetween(-0.52359878f, 0.52359878f);
+			transformComp.rotation = glm::vec3(0,0,r);
+
+			transformComp.recalc();
+
+			RemainingRelics++;
+
+			points.erase(points.begin() + random);
+		}
+		else {
+			renderComp.material->setValue("u_active", (float)(int)false);
+		}
+
+
+
+		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
+		//transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), -1.0f);
+		//transformComp.recalc();
+	}
+
+	m_sceneryRenderer.render();
+}
 
 
 

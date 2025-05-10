@@ -17,6 +17,7 @@ uniform sampler2D u_GroundDepthTexture;
 uniform sampler2D u_RelicTexture;
 uniform sampler2D u_RelicDataTexture;
 uniform sampler2D u_SceneryTexture;
+uniform sampler2D u_SceneryDepthTexture;
 uniform sampler2D u_SceneryDataTexture;
 
 uniform float u_flip;
@@ -36,65 +37,101 @@ float hash(vec2 p) {
 
 void main()
 {
-    float ScreenPixelSize = 1.0/min(u_ScreenSize.x, u_ScreenSize.y);
-    float groundDepth = texture(u_GroundDepthTexture, texCoords).r + texture(u_GroundDepthTexture, texCoords).g;
-    vec4 colourout = texture(u_GroundDepthTexture, texCoords);
-    float groundDepthAtDig = texture(u_GroundDepthTexture, DigPos).r;
-    vec2 dir = normalize(vec2(1,-1));
-    float groundDepthoff = texture(u_GroundDepthTexture, texCoords + (-dir * (1.0 / u_ScreenSize))).r;
+    vec4 groundData = texture(u_GroundDepthTexture, texCoords); //x: Offset from bottom, y: Thickness, z: Amount Removed, w: 1
+    float groundDepth = groundData.x + groundData.y;
 
-    float n1 = texture(u_GroundDepthTexture, texCoords + (vec2(-1,0) * (1.0 / u_ScreenSize))).r;
-    float n2 = texture(u_GroundDepthTexture, texCoords + (vec2(-1,0) * (1.0 / u_ScreenSize))).r;
-    float n3 = texture(u_GroundDepthTexture, texCoords + (vec2(0,1) * (1.0 / u_ScreenSize))).r;
-    float n4 = texture(u_GroundDepthTexture, texCoords + (vec2(0,-1) * (1.0 / u_ScreenSize))).r + texture(u_GroundDepthTexture, texCoords + (vec2(0,-1) * (1.0 / u_ScreenSize))).g;
+    vec4 relicData = texture(u_RelicDataTexture, texCoords); //x: Rarity, y: ID, z: 0, w: 1
+    float relicDepth = (relicData.x * (groundData.y + groundData.z)) + groundData.x;
 
-    float dif1 = n1 - n2;
-    float dif2 = n3 - n4;
+    vec4 sceneryData = texture(u_SceneryDataTexture, texCoords); //x: 1, y: ID, z: 1, w: 1
+    float sceneryDepth = 1 - texture(u_SceneryDepthTexture, texCoords).x; 
 
-    vec3 norm = normalize(vec3(dif1,1.0,dif2));
-    float Dot = dot(norm, -normalize(vec3(dir.x, -1.0, dir.y)));
+    colour = vec4(0);
+    data = vec4(0);
 
-    float noiseDis  = tpTex(norm, vec3(texCoords.x, groundDepth, texCoords.y) , 200);
-    noiseDis += tpTex(norm, vec3(texCoords.x, groundDepth, texCoords.y) , 100);
-    noiseDis += tpTex(norm, vec3(texCoords.x, groundDepth, texCoords.y), 400);
-    noiseDis /= 3;
-    noiseDis += 1;
-    noiseDis /= 10;
+    if(groundDepth > relicDepth && groundDepth > sceneryDepth){
+
+        vec2 dir = normalize(vec2(1,-1));
+
+        float groundHeightOff = texture(u_GroundDepthTexture, texCoords + (-dir * (1.0 / u_ScreenSize))).r + texture(u_GroundDepthTexture, texCoords + (-dir * (1.0 / u_ScreenSize))).g;
 
 
-    float cHeight = colourout.r + colourout.g;
 
+        float n1 = texture(u_GroundDepthTexture, texCoords + (vec2(-1,0) * (1.0 / u_ScreenSize))).r + texture(u_GroundDepthTexture, texCoords + (vec2(-1,0) * (1.0 / u_ScreenSize))).g;
+        float n2 = texture(u_GroundDepthTexture, texCoords + (vec2(-1,0) * (1.0 / u_ScreenSize))).r + texture(u_GroundDepthTexture, texCoords + (vec2(-1,0) * (1.0 / u_ScreenSize))).g;
+        float n3 = texture(u_GroundDepthTexture, texCoords + (vec2(0,1) * (1.0 / u_ScreenSize))).r + texture(u_GroundDepthTexture, texCoords + (vec2(0,1) * (1.0 / u_ScreenSize))).g;
+        float n4 = texture(u_GroundDepthTexture, texCoords + (vec2(0,-1) * (1.0 / u_ScreenSize))).r + texture(u_GroundDepthTexture, texCoords + (vec2(0,-1) * (1.0 / u_ScreenSize))).g;
 
-    colour = vec4(vec3(groundDepth),1.0);
-    if(groundDepth > 0.5) colour = mix( vec4(0.302, 0.247, 0.302, 1.0),vec4(0.0, 1.0, 0.0, 1.0), (groundDepth * 2.0) - 1.0);
-    if(groundDepth < 0.5) colour = mix( vec4(1.0, 0.0, 1.0, 1.0),vec4(0.302, 0.247, 0.302, 1.0), (groundDepth * 2.0));
-    if(groundDepth < groundDepthoff && distance(groundDepth,groundDepthoff)  > 0.0001 || Dot - (1 - groundDepth) < 0.35){
-        colour -= vec4(0.15, 0.15, 0.15, 0.0) * (1.0 * (1 - groundDepth));
+        float dif1 = n1 - n2;
+        float dif2 = n3 - n4;
+
+        vec3 norm = normalize(vec3(dif1,1.0,dif2));
+        float Dot = dot(norm, -normalize(vec3(dir.x, -1.0, dir.y)));
+
+        float noiseDis  = tpTex(norm, vec3(texCoords.x, groundDepth, texCoords.y) , 200);
+        noiseDis += tpTex(norm, vec3(texCoords.x, groundDepth, texCoords.y) , 100);
+        noiseDis += tpTex(norm, vec3(texCoords.x, groundDepth, texCoords.y), 400);
+        noiseDis /= 3;
+        noiseDis += 1;
+        noiseDis /= 10;
+
+        colour = vec4(vec3(groundDepth),1.0);
+        if(groundDepth > 0.5) colour = mix( vec4(0.302, 0.247, 0.302, 1.0),vec4(0.0, 1.0, 0.0, 1.0), (groundDepth * 2.0) - 1.0);
+        if(groundDepth < 0.5) colour = mix( vec4(1.0, 0.0, 1.0, 1.0),vec4(0.302, 0.247, 0.302, 1.0), (groundDepth * 2.0));
+        if(groundDepth < groundHeightOff && distance(groundDepth,groundHeightOff)  > 0.0001 || Dot - (1 - groundDepth) < 0.35){
+            //colour -= vec4(0.15, 0.15, 0.15, 0.0) * (1.0 * (1 - groundDepth));
+        }
+
+        colour += vec4(vec3(-noiseDis), 0.0);
+        if(groundData.z < 0.01) colour.xyz += vec3(hash(floor(texCoords * 1024)) / 20.0);
+    }
+    else if((relicDepth > groundDepth || groundData.y <= 0) && relicDepth > sceneryDepth){
+        colour = texture(u_RelicTexture,texCoords);
+        data.z = relicData.y;
+        data.x = 1.0 - relicData.x;
+        data.y = 0.0;
+        data.a = ceil(1 - relicData.x) ;
+    }
+    else if((sceneryDepth > groundDepth || groundData.y <= 0)&& sceneryDepth > relicDepth){
+        colour = texture(u_SceneryTexture,texCoords);
+        data.z = sceneryData.y;
+        data.y = 1.0;
+        data.a = 1.0f;
     }
 
-    colour += vec4(vec3(-noiseDis), 0.0);
-
-    vec4 depthMap = texture(u_SceneryTexture, texCoords);
-
-    if (cHeight < 1 - depthMap.x) {
-        colour = depthMap;
-    }
-
-
-
-    if(colourout.z < 0.01) colour.xyz += vec3(hash(floor(texCoords * 1024)) / 20.0);
+   
+    float groundHeight = texture(u_GroundDepthTexture, texCoords).r + texture(u_GroundDepthTexture, texCoords).g;
     
-    data = vec4(vec3(0.0),0.0);
 
-    vec4 c = texture(u_RelicTexture,texCoords);
-    vec4 d = texture(u_RelicDataTexture,texCoords);
-    if(c.a >= 1 && ((clamp(d.x,-0.1,1.0) * (colourout.g + colourout.z)) + colourout.r > groundDepth || colourout.g <= 0.0)){
-        colour = c;
-        data.z = d.y;
-        data.x = 1.0 - d.x;
-        data.a = ceil(1 - d.x) ;
+   
+
+
+
+    //float groundDepthAtDig = texture(u_GroundDepthTexture, DigPos).r;
+
+
+
+    // vec4 depthMap = texture(u_SceneryTexture, texCoords);
+
+    // if (cHeight < 1 - depthMap.x) {
+    //     colour = depthMap;
+    // }
+
+
+
+   
     
-    }
+
+
+    // vec4 c = texture(u_RelicTexture,texCoords);
+    // vec4 d = texture(u_RelicDataTexture,texCoords);
+    // if(c.a >= 1 && ((clamp(d.x,-0.1,1.0) * (groundData.g + groundData.z)) + groundData.r > groundHeight || groundData.g <= 0.0)){
+    //     colour = c;
+    //     data.z = d.y;
+    //     data.x = 1.0 - d.x;
+    //     data.a = ceil(1 - d.x) ;
+    
+    // }
 
 
     //data = vec4(texCoords,  d.y, 1);
@@ -102,7 +139,7 @@ void main()
     //colour = vec4(vec3((groundDepth + colourout.z) - groundDepth),1.0);
 
     //colour = vec4(,1.0);
-
+    float ScreenPixelSize = 1.0/min(u_ScreenSize.x, u_ScreenSize.y);
     vec2 localToMouse = (texCoords - DigPos);
     float ui = 0.0;
     float RfromM = distance(localToMouse, vec2(0));
@@ -138,10 +175,10 @@ void main()
 
 
 
-    if ((colourout.a <= 0.6 || colourout.g <= 0.0) && c.a < 0.1 && ui <= 0.0 && 1 - depthMap.x <= 0) discard;
-    else if(colourout.g > 0)data.a = 1.0;
+    if (sceneryDepth <= 0 && relicDepth <= 0 && ui <= 0.0 && groundDepth <= 0) discard;
+    else if(groundData.g > 0)data.a = 1.0;
     colour.xyz = ((floor(colour.xyz * 20) + 0.5) / 20);
-    //colour = vec4(vec3(1 - depthMap.x), 1.0);
+    //colour = vec4(vec3(sceneryDepth), 1.0);
     //colour = colourout;
     // if(c.a > 0.1){
     //     colour = mix(colour,c,c.a);

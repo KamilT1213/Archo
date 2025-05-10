@@ -19,7 +19,7 @@ void main()
 {
     
     colour = texture(u_SceneryTexture,texCoords);
-    //if(colour.a <= 0 || u_active <= 0.0){discard;}
+    if(colour.a <= 0 || u_active <= 0.0){discard;}
     colour.a = 1.0;
     data = vec4(1, u_Id, 1, 1);
     
