@@ -38,18 +38,19 @@ float hash(vec2 p) {
 void main()
 {
     vec4 groundData = texture(u_GroundDepthTexture, texCoords); //x: Offset from bottom, y: Thickness, z: Amount Removed, w: 1
-    float groundDepth = groundData.x + groundData.y;
+    groundData.y *= step(0.0005, groundData.y);
+    float groundDepth = (groundData.x + groundData.y);// *step(0.001, groundData.y);
 
     vec4 relicData = texture(u_RelicDataTexture, texCoords); //x: Rarity, y: ID, z: 0, w: 1
-    float relicDepth = (relicData.x * (groundData.y + groundData.z)) + groundData.x;
+    float relicDepth = ((relicData.x * (groundData.y + groundData.z)) + groundData.x) * ceil(relicData.x);
 
     vec4 sceneryData = texture(u_SceneryDataTexture, texCoords); //x: 1, y: ID, z: 1, w: 1
-    float sceneryDepth = 1 - texture(u_SceneryDepthTexture, texCoords).x; 
+    float sceneryDepth = min((1 - texture(u_SceneryDepthTexture, texCoords).x) + sceneryData.x,1.0);
 
     colour = vec4(0);
     data = vec4(0);
 
-    if(groundDepth > relicDepth && groundDepth > sceneryDepth){
+    if(groundDepth > relicDepth && groundDepth > sceneryDepth && groundData.y > 0.0){
 
         vec2 dir = normalize(vec2(1,-1));
 
@@ -85,19 +86,20 @@ void main()
         colour += vec4(vec3(-noiseDis), 0.0);
         if(groundData.z < 0.01) colour.xyz += vec3(hash(floor(texCoords * 1024)) / 20.0);
     }
-    else if((relicDepth > groundDepth || groundData.y <= 0) && relicDepth > sceneryDepth){
+    if((relicDepth > groundDepth || groundData.y <= 0) && relicDepth > sceneryDepth){
         colour = texture(u_RelicTexture,texCoords);
         data.z = relicData.y;
         data.x = 1.0 - relicData.x;
         data.y = 0.0;
         data.a = ceil(1 - relicData.x) ;
     }
-    else if((sceneryDepth > groundDepth || groundData.y <= 0)&& sceneryDepth > relicDepth){
+    if((sceneryDepth > groundDepth || groundData.y <= 0)&& sceneryDepth > relicDepth){
         colour = texture(u_SceneryTexture,texCoords);
         data.z = sceneryData.y;
         data.y = 1.0;
         data.a = 1.0f;
     }
+    //colour = vec4(vec3(max(max(sceneryDepth, groundDepth),relicDepth)), 1.0);
 
    
     float groundHeight = texture(u_GroundDepthTexture, texCoords).r + texture(u_GroundDepthTexture, texCoords).g;
@@ -175,9 +177,10 @@ void main()
 
 
 
-    if (sceneryDepth <= 0 && relicDepth <= 0 && ui <= 0.0 && groundDepth <= 0) discard;
-    else if(groundData.g > 0)data.a = 1.0;
-    colour.xyz = ((floor(colour.xyz * 20) + 0.5) / 20);
+    //if (sceneryDepth <= 0 && relicDepth <= 0 && ui <= 0.0 && groundDepth <= 0) discard;
+    //if (colour.a <= 0 && ui <= 0.0) discard;
+    if(groundData.g > 0)data.a = 1.0;
+    //colour.xyz = ((floor(colour.xyz * 20) + 0.5) / 20);
     //colour = vec4(vec3(sceneryDepth), 1.0);
     //colour = colourout;
     // if(c.a > 0.1){

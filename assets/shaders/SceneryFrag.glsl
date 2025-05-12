@@ -8,6 +8,7 @@ in vec2 texCoords;
 uniform sampler2D u_SceneryTexture;
 uniform float u_Id;
 uniform float u_active;
+uniform float u_DugOut;
 
 float pi = 3.1415;
 
@@ -21,7 +22,7 @@ void main()
     colour = texture(u_SceneryTexture,texCoords);
     if(colour.a <= 0 || u_active <= 0.0){discard;}
     colour.a = 1.0;
-    data = vec4(1, u_Id, 1, 1);
+    data = vec4(u_DugOut, u_Id, 1, 1);
     
 
 }

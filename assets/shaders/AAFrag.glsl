@@ -6,6 +6,7 @@ in vec2 texCoords;
 
 uniform sampler2D u_background;
 uniform sampler2D u_inputTexture;
+uniform sampler2D u_gameButtons;
 uniform vec2 MousePos;
 uniform float factor;
 uniform float allTime;
@@ -42,6 +43,11 @@ void main()
 
     if (Samples[4].a <= 0) {
         colour = texture(u_background, texCoords);
+
+        vec4 buttonSam = texture(u_gameButtons, texCoords);
+        if (buttonSam.a > 0.0) {
+            colour = mix(colour, buttonSam, buttonSam.a);
+        }
 
         vec2 localToMouse = (texCoords - (MousePos / u_ScreenSize));
         localToMouse.y *= ScreenPixelRatio;
@@ -84,6 +90,11 @@ void main()
     }
     
     total = mix(Samples[4], total, clamp(Edge(),0,1));
+
+    vec4 buttonSam = texture(u_gameButtons, texCoords);
+    if (buttonSam.a > 0.0) {
+        total = mix(total, buttonSam, buttonSam.a);
+    }
     
     vec2 localToMouse = (texCoords - (MousePos / u_ScreenSize));
     localToMouse.y *= ScreenPixelRatio;

@@ -66,6 +66,7 @@ private:
 	std::shared_ptr<Scene> m_mainMenu;
 	std::shared_ptr<Scene> m_mainMenu_Settings;
 	std::shared_ptr<Scene> m_mainMenu_Save;
+	std::shared_ptr<Scene> m_gameMenu;
 	std::shared_ptr<Scene> m_pauseMenu;
 	std::shared_ptr<Scene> m_pauseMenu_Settings;
 	std::shared_ptr<Scene> m_pauseMenu_Inventory;

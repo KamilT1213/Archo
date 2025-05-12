@@ -12,6 +12,11 @@ struct Relic {
 
 };
 
+struct Scenery
+{
+	float DugOut = 0.0;
+};
+
 float DigCurve1(float t, float s, float o) {
 	float d = glm::floor(t * s) / s;
 	t = glm::mod(t * s, 1.0f);
@@ -82,7 +87,7 @@ void Archo::onRender()
 {
 	
 	m_backgroundRenderer.render();
-	//m_seedingFinderRenderer.render();
+
 	if (state == GameState::MainMenu) {
 		m_mainMenuRenderer.render();
 	}
@@ -208,6 +213,12 @@ void Archo::onUpdate(float timestep)
 	}
 	else if (state == GameState::InGame) {
 
+		auto view = m_gameMenu->m_entities.view<ScriptComp>();
+		for (auto& entity : view) {
+			ScriptComp script = view.get<ScriptComp>(entity);
+			script.onUpdate(timestep);
+		}
+
 		FinalQuad->setValue("u_State", 1.0f);
 		ZoneScoped;
 
@@ -286,7 +297,7 @@ void Archo::onUpdate(float timestep)
 		float Segments = 0;
 		if(isScenery){
 			RelId = (int)glm::round(UVData[2] * (m_Sceneries.size() + 1));
-			Segments = 10;
+			Segments = 256;
 		}
 		else{
 			RelId = (int)glm::round(UVData[2] * (Relics + 1));
@@ -412,13 +423,30 @@ void Archo::onUpdate(float timestep)
 			if (Pressed) {
 				if (!finished) {
 					Pressed = true;
+					if (isScenery) {
+						auto& sceneComp = m_SceneryScene->m_entities.get<Scenery>(m_Sceneries.at(RelId - 1));
+						ProgressBar = sceneComp.DugOut;
+					}
+
 					ProgressBar += timestep * ((1 / timePerSegment) / Segments);
+
+					if (isScenery) {
+						auto& renderComp = m_SceneryScene->m_entities.get<Render>(m_Sceneries.at(RelId - 1));
+						auto& sceneComp = m_SceneryScene->m_entities.get<Scenery>(m_Sceneries.at(RelId - 1));
+						sceneComp.DugOut = glm::max(ProgressBar, sceneComp.DugOut);
+						renderComp.material->setValue("u_DugOut", floor(ProgressBar* Segments) / Segments);
+						m_sceneryRenderer.render();
+					}
+
+
 					if (ProgressBar > 1) {
 						finished = true;
 						ProgressBar = 1;
 
 						if(isScenery){
 							auto& renderComp = m_SceneryScene->m_entities.get<Render>(m_Sceneries.at(RelId - 1));
+							auto& sceneComp = m_SceneryScene->m_entities.get<Scenery>(m_Sceneries.at(RelId - 1));
+							sceneComp.DugOut = ProgressBar;
 							renderComp.material->setValue("u_active", 0.0f);
 							m_sceneryRenderer.render();
 						}
@@ -458,15 +486,6 @@ void Archo::onUpdate(float timestep)
 								m_groundComputeRenderer.render();
 							}
 						}
-						// for (int i = 0; i < Relics; i++) {
-						// 	if (relicComp.Active == true) {
-						// 		LevelComplete = false;
-						// 		break;
-						// 	}
-						// 	else {
-						// 		LevelComplete = true;
-						// 	}
-						// }
 					}
 				}
 				else {
@@ -702,6 +721,7 @@ void Archo::createLayer()
 	m_mainMenu.reset(new Scene);
 	m_mainMenu_Settings.reset(new Scene);
 	m_mainMenu_Save.reset(new Scene);
+	m_gameMenu.reset(new Scene);
 	m_pauseMenu.reset(new Scene);
 	m_pauseMenu_Settings.reset(new Scene);
 	m_pauseMenu_Inventory.reset(new Scene);
@@ -1167,6 +1187,60 @@ void Archo::createLayer()
 	}
 
 	/*************************
+	*  Game Menu Buttons
+	**************************/
+
+	{
+		entt::entity inventoryButton = m_gameMenu->m_entities.create();
+
+		Render& renderComp = m_gameMenu->m_entities.emplace<Render>(inventoryButton);
+		Transform& transformComp = m_gameMenu->m_entities.emplace<Transform>(inventoryButton);
+		ScriptComp& scriptComp = m_gameMenu->m_entities.emplace<ScriptComp>(inventoryButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = exitButtonMat;
+
+		transformComp.scale = glm::vec3(c / 2.0f, c / 2.0f, 1.f);
+		transformComp.translation = glm::vec3(width - (c / 2.0f), c / 2.0f, 0.f);// +glm::vec3(0, height / 5.f, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::pauseInventory, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(inventoryButton, m_gameMenu, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+	}
+
+	{
+		entt::entity PauseButton = m_gameMenu->m_entities.create();
+
+		Render& renderComp = m_gameMenu->m_entities.emplace<Render>(PauseButton);
+		Transform& transformComp = m_gameMenu->m_entities.emplace<Transform>(PauseButton);
+		ScriptComp& scriptComp = m_gameMenu->m_entities.emplace<ScriptComp>(PauseButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = exitButtonMat;
+
+		transformComp.scale = glm::vec3(c/2.0f, c/2.0f, 1.f);
+		transformComp.translation = glm::vec3(c / 2.0f, c / 2.0f, 0.f);// +glm::vec3(0, height / 5.f, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::pauseMenu, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(PauseButton, m_gameMenu, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+	}
+
+	/*************************
 	*  Pause Menu Buttons
 	**************************/
 
@@ -1396,6 +1470,7 @@ void Archo::createLayer()
 
 		Render& renderComp = m_SceneryScene->m_entities.emplace<Render>(arch);
 		Transform& transformComp = m_SceneryScene->m_entities.emplace<Transform>(arch);
+		m_SceneryScene->m_entities.emplace<Scenery>(arch);
 
 		renderComp.geometry = archVAO;
 		renderComp.depthGeometry = archVAO;
@@ -1556,6 +1631,25 @@ void Archo::createLayer()
 	m_backgroundRenderer.addRenderPass(BackgroundPass);
 
 	/*************************
+	*  Screen Game Button Render Pass
+	**************************/
+
+	RenderPass ScreenGameButtonPass;
+	ScreenGameButtonPass.scene = m_gameMenu;
+	ScreenGameButtonPass.parseScene();
+	ScreenGameButtonPass.target = std::make_shared<FBO>(m_winRef.doGetSize(), buttonPassLayout);
+	ScreenGameButtonPass.viewPort = { 0,0,m_winRef.getWidth(), m_winRef.getHeight() };
+	ScreenGameButtonPass.isScreen = true;
+
+	ScreenGameButtonPass.camera.projection = glm::ortho(0.f, width, height, 0.f);
+	ScreenGameButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuView", ScreenGameButtonPass.camera.view);
+	ScreenGameButtonPass.UBOmanager.setCachedValue("b_menuCamera", "u_menuProjection", ScreenGameButtonPass.camera.projection);
+
+
+	//ScreenGroundPassIDx = m_mainRenderer.getSumPassCount();
+	m_mainRenderer.addRenderPass(ScreenGameButtonPass);
+
+	/*************************
 	*  Pause Menu Render Pass
 	**************************/
 
@@ -1660,6 +1754,8 @@ void Archo::createLayer()
 
 	finalQuadMaterial->setValue("u_MainMenuIn", MainMenuPass.target->getTarget(0));
 
+
+
 	/*************************
 	*  Screen Relic Render Pass
 	**************************/
@@ -1759,6 +1855,8 @@ void Archo::createLayer()
 
 	pauseMenuQuadMaterial->setValue("u_game", ScreenGroundPass.target->getTarget(0));
 
+
+
 	/*************************
 	*  AA Render Pass
 	**************************/
@@ -1766,7 +1864,7 @@ void Archo::createLayer()
 
 	screenAAQuadMaterial->setValue("u_inputTexture", ScreenGroundPass.target->getTarget(0));
 	screenAAQuadMaterial->setValue("u_background", BackgroundPass.target->getTarget(0));
-
+	screenAAQuadMaterial->setValue("u_gameButtons", ScreenGameButtonPass.target->getTarget(0));
 
 	m_screenScene.reset(new Scene);
 
@@ -2070,12 +2168,12 @@ std::vector<SeedingPoint> Archo::getSeedingPoints()
 	m_seedingFinderRenderer.render();
 
 
-	auto view = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
+	//auto view = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
 
-	for (auto relic : view) {
-		Render& rendComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(relic);
-		rendComp.material->setValue("u_active", (float)(int)false);
-	}
+	//for (auto relic : view) {
+	//	Render& rendComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(relic);
+	//	rendComp.material->setValue("u_active", (float)(int)false);
+	//}
 	m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
 
 	std::vector<SeedingPoint> outputPoints;
@@ -2087,18 +2185,18 @@ std::vector<SeedingPoint> Archo::getSeedingPoints()
 
 			outputPoints.push_back(current);
 
-			if (false) {
-				Render& rendComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[counter]);
-				rendComp.material->setValue("u_active", (float)(int)true);
-				rendComp.material->setValue("u_Rarity", 6.0f);
+			//if (false) {
+			//	Render& rendComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[counter]);
+			//	rendComp.material->setValue("u_active", (float)(int)true);
+			//	rendComp.material->setValue("u_Rarity", 6.0f);
 
-				Transform& transComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[counter]);
-				transComp.translation = glm::vec3(glm::vec2(current.position) * float(m_relicRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height / m_generationRenderer.getComputePass(0).images[0].texture->getHeight()), -0.5f);
-				transComp.scale = glm::vec3(4096.f / (current.position.w / 2.0f));
-				transComp.recalc();
+			//	Transform& transComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[counter]);
+			//	transComp.translation = glm::vec3(glm::vec2(current.position) * float(m_relicRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height / m_generationRenderer.getComputePass(0).images[0].texture->getHeight()), -0.5f);
+			//	transComp.scale = glm::vec3(4096.f / (current.position.w / 2.0f));
+			//	transComp.recalc();
 
-				counter++;
-			}
+			//	counter++;
+			//}
 		}
 	}
 
@@ -2144,10 +2242,14 @@ void Archo::placeScenery()
 
 		Transform& transformComp = m_SceneryScene->m_entities.get<Transform>(obj);
 		Render& renderComp = m_SceneryScene->m_entities.get<Render>(obj);
+		Scenery& sceneComp = m_SceneryScene->m_entities.get<Scenery>(obj);
+
+		sceneComp.DugOut = 0.0f;
 
 		if (points.size() > 0) {
 			int random = std::rand() % points.size();
 			renderComp.material->setValue("u_active", (float)(int)true);
+			renderComp.material->setValue("u_DugOut", sceneComp.DugOut);
 			transformComp.translation = glm::vec3(glm::vec2(points[random].position) *
 				float(m_sceneryRenderer.getRenderPass(0).viewPort.height
 					/ m_generationRenderer.getComputePass(0).images[0].texture->getHeight()),
