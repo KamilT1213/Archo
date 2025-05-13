@@ -855,7 +855,14 @@ void Archo::createLayer()
 	buttonQuadShaderDesc.type = ShaderType::rasterization;
 	buttonQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
 	buttonQuadShaderDesc.fragmentSrcPath = "./assets/shaders/UI/ButtonFrag.glsl";
-	std::shared_ptr<Shader> buttonQuadShader = std::make_shared<Shader>(buttonQuadShaderDesc);
+	std::shared_ptr<Shader> buttonQuadShader = std::make_shared<Shader>(buttonQuadShaderDesc);	
+	
+	//Inventory Button material
+	ShaderDescription invButtonQuadShaderDesc;
+	invButtonQuadShaderDesc.type = ShaderType::rasterization;
+	invButtonQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
+	invButtonQuadShaderDesc.fragmentSrcPath = "./assets/shaders/UI/InventoryButtonFrag.glsl";
+	std::shared_ptr<Shader> invButtonQuadShader = std::make_shared<Shader>(invButtonQuadShaderDesc);
 	//std::shared_ptr<Material> buttonQuadMaterial = std::make_shared<Material>(buttonQuadShader);
 
 	ShaderDescription compute_GroundShaderDesc;
@@ -1206,10 +1213,10 @@ void Archo::createLayer()
 
 		renderComp.geometry = buttonQuadVAO;
 
-		std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
-		exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+		m_gameInventoryMat = std::make_shared<Material>(invButtonQuadShader);
+		//m_gameInventoryMat->setValue("u_ButtonTexture", exitButtonTexture);
 
-		renderComp.material = exitButtonMat;
+		renderComp.material = m_gameInventoryMat;
 
 		transformComp.scale = glm::vec3(c / 2.0f, c / 2.0f, 1.f);
 		transformComp.translation = glm::vec3(width - (c / 2.0f), c / 2.0f, 0.f);// +glm::vec3(0, height / 5.f, 0);
@@ -1218,7 +1225,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::pauseInventory, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(inventoryButton, m_gameMenu, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(inventoryButton, m_gameMenu, m_winRef, m_PointerPos, height, transformComp, *(m_gameInventoryMat.get()), boundFunc);
 	}
 
 	{
@@ -1824,6 +1831,7 @@ void Archo::createLayer()
 
 
 	screenQuadMaterial->setValue("u_GroundDepthTexture", groundTexture);
+	m_gameInventoryMat->setValue("u_ButtonTexture", groundTexture);
 
 	screenQuadMaterial->setValue("u_RelicTexture", ScreenRelicPass.target->getTarget(0));
 	screenQuadMaterial->setValue("u_RelicDataTexture", ScreenRelicPass.target->getTarget(1));
@@ -1858,6 +1866,7 @@ void Archo::createLayer()
 	screenQuadMaterial->setValue("u_SceneryTexture", SceneryPass.target->getTarget(0));
 	screenQuadMaterial->setValue("u_SceneryDepthTexture", SceneryPass.target->getTarget(2));
 	screenQuadMaterial->setValue("u_SceneryDataTexture", SceneryPass.target->getTarget(1));
+
 	//screenQuadMaterial->setValue("u_SceneryDataTexture", ScreenRelicPass.target->getTarget(1));
 
 

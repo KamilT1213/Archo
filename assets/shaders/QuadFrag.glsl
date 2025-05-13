@@ -158,7 +158,7 @@ void main()
     }
     else{
         if (RfromM < ScreenPixelSize * (size ) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
-            colour = mix(colour,vec4(vec3(1), 1),0.7);
+            colour = mix(colour,vec4(vec3(1), 1),0.2);
             ui = 1.0;
         }
         if (RfromM < ScreenPixelSize * (sizeOfRing - 5)) {

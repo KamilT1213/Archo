@@ -54,6 +54,7 @@ private:
 	std::shared_ptr<SSBO> m_seedingSSBO;
 	std::vector<SeedingPoint> m_seedingPoints;
 
+	std::shared_ptr<Material> m_gameInventoryMat;
 	std::shared_ptr<Material> m_seedingFinder;
 	std::shared_ptr<Material> compute_GroundMaterial;
 	std::vector<std::shared_ptr<Shader>> m_generators;
