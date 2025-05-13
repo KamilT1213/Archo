@@ -15,6 +15,7 @@ struct Relic {
 struct Scenery
 {
 	float DugOut = 0.0;
+	int type = 0;
 };
 
 float DigCurve1(float t, float s, float o) {
@@ -297,7 +298,7 @@ void Archo::onUpdate(float timestep)
 		float Segments = 0;
 		if(isScenery){
 			RelId = (int)glm::round(UVData[2] * (m_Sceneries.size() + 1));
-			Segments = 256;
+			Segments = 64;
 		}
 		else{
 			RelId = (int)glm::round(UVData[2] * (Relics + 1));
@@ -995,6 +996,11 @@ void Archo::createLayer()
 	archVAO = std::make_shared<VAO>(archModel.m_meshes[0].indices);
 	archVAO->addVertexBuffer(archModel.m_meshes[0].vertices, archLayout);
 
+	Model rockModel("./assets/models/Scenery/RockPile.obj", archAttributeTypes);
+	std::shared_ptr<VAO> rockVAO;
+	rockVAO = std::make_shared<VAO>(rockModel.m_meshes[0].indices);
+	rockVAO->addVertexBuffer(rockModel.m_meshes[0].vertices, archLayout);
+
 	//Actors ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -1470,14 +1476,16 @@ void Archo::createLayer()
 
 		Render& renderComp = m_SceneryScene->m_entities.emplace<Render>(arch);
 		Transform& transformComp = m_SceneryScene->m_entities.emplace<Transform>(arch);
-		m_SceneryScene->m_entities.emplace<Scenery>(arch);
+		Scenery& sceneComp = m_SceneryScene->m_entities.emplace<Scenery>(arch);
+
+		sceneComp.type = 0;
 
 		renderComp.geometry = archVAO;
 		renderComp.depthGeometry = archVAO;
 
 		std::shared_ptr<Material> archmat = std::make_shared<Material>(Scenery_Shader);
 		archmat->setValue("u_SceneryTexture",scenery_ArchTexture);
-		archmat->setValue("u_Id",(float)(i + 1) / (10 + 1.0f));
+		archmat->setValue("u_Id",(float)(i + 1) / (60 + 1.0f));
 		archmat->setValue("u_active",1.f);
 
 		renderComp.material = archmat;
@@ -1487,6 +1495,38 @@ void Archo::createLayer()
 		transformComp.rotation = glm::vec3(0,0,r);
 
 		float s = Randomiser::uniformFloatBetween(100.0f, 300.0f);
+		transformComp.scale = glm::vec3(s,s,1.0f);
+		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
+		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), -1.0f);
+		transformComp.recalc();
+
+	}	
+	
+	for(int i = 0; i < 50; i++){
+		entt::entity rock = m_SceneryScene->m_entities.create();
+		m_Sceneries.push_back(rock);
+
+		Render& renderComp = m_SceneryScene->m_entities.emplace<Render>(rock);
+		Transform& transformComp = m_SceneryScene->m_entities.emplace<Transform>(rock);
+		Scenery& sceneComp = m_SceneryScene->m_entities.emplace<Scenery>(rock);
+
+		sceneComp.type = 1;
+
+		renderComp.geometry = rockVAO;
+		renderComp.depthGeometry = rockVAO;
+
+		std::shared_ptr<Material> archmat = std::make_shared<Material>(Scenery_Shader);
+		archmat->setValue("u_SceneryTexture",scenery_ArchTexture);
+		archmat->setValue("u_Id",(float)(10 + i + 1) / (60 + 1.0f));
+		archmat->setValue("u_active",1.f);
+
+		renderComp.material = archmat;
+		renderComp.depthMaterial = archmat;
+
+		float r = Randomiser::uniformFloatBetween(-0.52359878f, 0.52359878f);
+		transformComp.rotation = glm::vec3(0,0,r);
+
+		float s = Randomiser::uniformFloatBetween(100.0f, 150.0f);
 		transformComp.scale = glm::vec3(s,s,1.0f);
 		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
 		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), -1.0f);
@@ -2015,6 +2055,15 @@ void Archo::unpauseInventory()
 	pass.scene = m_pauseMenu;
 	pass.parseScene();
 
+	m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
+	m_generationRenderer.render();
+
+	placeRelics();
+	placeScenery();
+
+	compute_GroundMaterial->setValue("Mode", 0.0f);
+	m_groundComputeRenderer.render();
+
 	pauseState = PauseState::Pause;
 	state = GameState::InGame;
 }
@@ -2255,11 +2304,22 @@ void Archo::placeScenery()
 					/ m_generationRenderer.getComputePass(0).images[0].texture->getHeight()),
 				-1.0f);
 
-			float s = Randomiser::uniformFloatBetween(100.0f, 300.0f);
-			transformComp.scale = glm::vec3(s,s,1.0f);
+			if (sceneComp.type == 0) {
+				float s = Randomiser::uniformFloatBetween(100.0f, 300.0f);
+				transformComp.scale = glm::vec3(s, s, 1.0f);
 
-			float r = Randomiser::uniformFloatBetween(-0.52359878f, 0.52359878f);
-			transformComp.rotation = glm::vec3(0,0,r);
+				float r = Randomiser::uniformFloatBetween(-0.52359878f, 0.52359878f);
+				transformComp.rotation = glm::vec3(0, 0, r);
+			}
+			else if (sceneComp.type == 1) {
+				float s = Randomiser::uniformFloatBetween(100.0f, 150.0f);
+				transformComp.scale = glm::vec3(s, s, 1.0f);
+
+				float r = Randomiser::uniformFloatBetween(-0.52359878f, 0.52359878f);
+				transformComp.rotation = glm::vec3(0, 0, r);
+			}
+
+
 
 			transformComp.recalc();
 
