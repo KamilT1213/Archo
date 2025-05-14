@@ -151,6 +151,7 @@ void Archo::onUpdate(float timestep)
 		allTime = (allTime - 1000);
 	}
 
+	//spdlog::info("Relics Left: {}", RemainingRelics);
 	//generatePass->setValue("Seed", allTime);
 
 	BackgroundQuad->setValue("allTime", allTime);
@@ -718,6 +719,7 @@ void Archo::createLayer()
 
 	m_winRef.setVSync(false);
 	m_RelicScene.reset(new Scene);
+	m_InventoryButtonScene.reset(new Scene);
 	m_screenScene.reset(new Scene);
 	m_mainMenu.reset(new Scene);
 	m_mainMenu_Settings.reset(new Scene);
@@ -1445,7 +1447,20 @@ void Archo::createLayer()
 	*  Relics
 	**************************/
 
+	int Curve[6]{ 13,8,5,3,2,1 };
+
 	for (int i = 0; i < Relics; i++) {
+		
+		float rarity = 0;
+		int counter = 0;
+		for (int j = 0; j < std::size(Curve); j++) {
+			counter += Curve[j];
+			if (i < counter) {
+				rarity = j;
+				//spdlog::info("Added of rarity: {}", j);
+				break;
+			}
+		}
 
 		entt::entity relic = m_RelicScene->m_entities.create();
 		m_Relics.push_back(relic);
@@ -1456,10 +1471,10 @@ void Archo::createLayer()
 		renderComp.geometry = RelicVAO;
 
 		relicComp.Active = true;
-		float rarity = Randomiser::uniformFloatBetween(0.01f, 6.0f);
+
 		std::shared_ptr<Material> RelicMaterial = std::make_shared<Material>(RelicShader);
 		RelicMaterial->setValue("u_RelicTexture", testRelicTexture);
-		RelicMaterial->setValue("u_Rarity", rarity);
+		RelicMaterial->setValue("u_Rarity", rarity + 0.001f);
 		RelicMaterial->setValue("u_Id", (float)(i + 1) / (Relics + 1.0f));
 		RelicMaterial->setValue("u_active", (float)(int)false);
 
@@ -1471,6 +1486,27 @@ void Archo::createLayer()
 		renderComp.material = RelicMaterial;
 
 		transformComp.recalc();
+
+		entt::entity progressRelic = m_InventoryButtonScene->m_entities.create();
+		//m_Relics.push_back(relic);
+		Render& renderComp2 = m_InventoryButtonScene->m_entities.emplace<Render>(progressRelic);
+		Transform& transformComp2 = m_InventoryButtonScene->m_entities.emplace<Transform>(progressRelic);
+		Relic& relicComp2 = m_InventoryButtonScene->m_entities.emplace<Relic>(progressRelic);
+		renderComp2.geometry = RelicVAO;
+		std::shared_ptr<Material> RelicMaterial2 = std::make_shared<Material>(RelicShader);
+		RelicMaterial2->setValue("u_RelicTexture", testRelicTexture);
+		RelicMaterial2->setValue("u_Rarity", rarity);
+		////RelicMaterial2->setValue("u_Id", (float)(i + 1) / (Relics + 1.0f));
+		RelicMaterial2->setValue("u_active", (float)(int)true);
+		transformComp2.translation = glm::vec3(glm::mod((float)i, 7.f), floorf(i / 7.f), -0.5f);
+		transformComp2.translation += glm::vec3(0.5f, 0.5f, 0);
+		transformComp2.translation /= glm::vec3(7.f, 7.f, 1);
+		transformComp2.translation *= glm::vec3(4096.0f , 4096.0f , 1);
+
+		transformComp2.scale = glm::vec3(4096.0f / 14.0f);
+
+		renderComp2.material = RelicMaterial;
+		transformComp2.recalc();
 	}
 
 	/*************************
@@ -1818,23 +1854,34 @@ void Archo::createLayer()
 	ScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", ScreenRelicPass.camera.view);
 	ScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicProjection2D", ScreenRelicPass.camera.projection);
 
-	//entt::basic_view view = m_RelicScene->m_entities.view<Render>();
-	//for (auto& rel : view) {
-	//	Render render = m_RelicScene->m_entities.get<Render>(rel);
-	//	render.material->setValue("u_relicView2D", ScreenRelicPass.camera.view);
-	//	render.material->setValue("u_relicProjection2D", ScreenRelicPass.camera.projection);
-	//}
-
 	ScreenRelicPassIDx = m_relicRenderer.getSumPassCount();
 	m_relicRenderer.addRenderPass(ScreenRelicPass);
 	m_relicRenderer.render();
 
 
 	screenQuadMaterial->setValue("u_GroundDepthTexture", groundTexture);
-	m_gameInventoryMat->setValue("u_ButtonTexture", groundTexture);
-
 	screenQuadMaterial->setValue("u_RelicTexture", ScreenRelicPass.target->getTarget(0));
 	screenQuadMaterial->setValue("u_RelicDataTexture", ScreenRelicPass.target->getTarget(1));
+
+	/*************************
+	*  Inventory Display Relic Render Pass
+	**************************/
+
+	RenderPass InventoryDisplayScreenRelicPass;
+	InventoryDisplayScreenRelicPass.scene = m_InventoryButtonScene;
+	InventoryDisplayScreenRelicPass.parseScene();
+	InventoryDisplayScreenRelicPass.target = std::make_shared<FBO>(glm::ivec2(4096, 4096), relicScreenPassLayout);
+	InventoryDisplayScreenRelicPass.viewPort = { 0,0,4096, 4096 };
+
+	InventoryDisplayScreenRelicPass.camera.projection = glm::ortho(0.f, 4096.0f, 4096.0f, 0.f);
+
+	InventoryDisplayScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", InventoryDisplayScreenRelicPass.camera.view);
+	InventoryDisplayScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicProjection2D", InventoryDisplayScreenRelicPass.camera.projection);
+
+	m_relicRenderer.addRenderPass(InventoryDisplayScreenRelicPass);
+	m_relicRenderer.render();
+
+	m_gameInventoryMat->setValue("u_ButtonTexture", InventoryDisplayScreenRelicPass.target->getTarget(0));
 
 	/*************************
 	*  Scenery Render Pass
@@ -2064,14 +2111,14 @@ void Archo::unpauseInventory()
 	pass.scene = m_pauseMenu;
 	pass.parseScene();
 
-	m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
-	m_generationRenderer.render();
+	//m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
+	//m_generationRenderer.render();
 
-	placeRelics();
-	placeScenery();
+	//placeRelics();
+	//placeScenery();
 
-	compute_GroundMaterial->setValue("Mode", 0.0f);
-	m_groundComputeRenderer.render();
+	//compute_GroundMaterial->setValue("Mode", 0.0f);
+	//m_groundComputeRenderer.render();
 
 	pauseState = PauseState::Pause;
 	state = GameState::InGame;
@@ -2266,6 +2313,7 @@ void Archo::placeRelics()
 	std::vector<SeedingPoint> points = getSeedingPoints();
 
 	auto view = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
+	RemainingRelics = 0;
 	for (int i = 0; i < view.size(); i++) {
 		Render& renderComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[i]);
 		Transform& transComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[i]);
@@ -2331,8 +2379,6 @@ void Archo::placeScenery()
 
 
 			transformComp.recalc();
-
-			RemainingRelics++;
 
 			points.erase(points.begin() + random);
 		}

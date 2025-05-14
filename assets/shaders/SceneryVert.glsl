@@ -14,11 +14,14 @@ layout(std140, binding = 4) uniform b_sceneryCamera2D
 };
 
 uniform mat4 u_model;
-
+uniform float u_DugOut;
 
 void main()
 {
 	texCoords = a_UV;
-	gl_Position = u_sceneryProjection2D * u_sceneryView2D * (u_model * vec4(a_vertexPosition,1.0));
+	vec3 pos = a_vertexPosition;
+	pos.z = mix(pos.z,1.0, u_DugOut * 0.99);
+	pos.z = clamp(pos.z, 0, 1);
+	gl_Position = u_sceneryProjection2D * u_sceneryView2D * (u_model * vec4(pos,1.0));
 
 }

@@ -63,6 +63,8 @@ private:
 	std::vector<entt::entity> m_Sceneries;
 
 	std::shared_ptr<Scene> m_RelicScene;
+	std::shared_ptr<Scene> m_InventoryButtonScene;
+	std::shared_ptr<Scene> m_InventoryRelicDisplayScene;
 	std::shared_ptr<Scene> m_screenScene;
 	std::shared_ptr<Scene> m_mainMenu;
 	std::shared_ptr<Scene> m_mainMenu_Settings;

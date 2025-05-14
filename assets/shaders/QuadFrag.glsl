@@ -45,7 +45,7 @@ void main()
     float relicDepth = ((relicData.x * (groundData.y + groundData.z)) + groundData.x) * ceil(relicData.x);
 
     vec4 sceneryData = texture(u_SceneryDataTexture, texCoords); //x: 1, y: ID, z: 1, w: 1
-    float sceneryDepth = min((1 - texture(u_SceneryDepthTexture, texCoords).x) + sceneryData.x,1.0);
+    float sceneryDepth = min((1 - texture(u_SceneryDepthTexture, texCoords).x),1.0);
 
     colour = vec4(0);
     data = vec4(0);
@@ -99,7 +99,7 @@ void main()
         data.y = 1.0;
         data.a = 1.0f;
     }
-    //colour = vec4(vec3(max(max(sceneryDepth, groundDepth),relicDepth)), 1.0);
+    //colour = vec4(vec3(sceneryDepth), 1.0);//vec4(vec3(max(max(sceneryDepth, groundDepth), relicDepth)), 1.0);
 
    
     float groundHeight = texture(u_GroundDepthTexture, texCoords).r + texture(u_GroundDepthTexture, texCoords).g;
