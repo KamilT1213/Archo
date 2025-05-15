@@ -55,6 +55,7 @@ private:
 	std::vector<SeedingPoint> m_seedingPoints;
 
 	std::shared_ptr<Material> m_gameInventoryMat;
+	std::shared_ptr<Material> m_itemInventoryMat;
 	std::shared_ptr<Material> m_seedingFinder;
 	std::shared_ptr<Material> compute_GroundMaterial;
 	std::vector<std::shared_ptr<Shader>> m_generators;
@@ -83,6 +84,7 @@ private:
 	entt::entity backgroundQuad;
 	entt::entity MenuQuad;
 	entt::entity PauseQuad;
+	entt::entity InventoryItemsQuad;
 
 	SoundManager m_soundManager;
 	std::shared_ptr<Mix_Chunk> sound;

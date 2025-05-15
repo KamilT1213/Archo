@@ -112,8 +112,15 @@ void Archo::onUpdate(float timestep)
 			pauseMenu();
 		}
 		else if (state == GameState::Paused) {
-
-			pause_to_Game();
+			if (pauseState == PauseState::Pause) {
+				pause_to_Game();
+			}
+			else if (pauseState == PauseState::Settings) {
+				settings_to_pauseMenu();
+			}
+			else if (pauseState == PauseState::Inventory) {
+				unpauseInventory();
+			}
 		}
 		Pausing = true;
 	}
@@ -864,7 +871,14 @@ void Archo::createLayer()
 	invButtonQuadShaderDesc.type = ShaderType::rasterization;
 	invButtonQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
 	invButtonQuadShaderDesc.fragmentSrcPath = "./assets/shaders/UI/InventoryButtonFrag.glsl";
-	std::shared_ptr<Shader> invButtonQuadShader = std::make_shared<Shader>(invButtonQuadShaderDesc);
+	std::shared_ptr<Shader> invButtonQuadShader = std::make_shared<Shader>(invButtonQuadShaderDesc);	
+	
+	//Inventory Items material
+	ShaderDescription invItemsQuadShaderDesc;
+	invItemsQuadShaderDesc.type = ShaderType::rasterization;
+	invItemsQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
+	invItemsQuadShaderDesc.fragmentSrcPath = "./assets/shaders/UI/InventoryItemsFrag.glsl";
+	std::shared_ptr<Shader> invItemsQuadShader = std::make_shared<Shader>(invItemsQuadShaderDesc);
 	//std::shared_ptr<Material> buttonQuadMaterial = std::make_shared<Material>(buttonQuadShader);
 
 	ShaderDescription compute_GroundShaderDesc;
@@ -1433,14 +1447,109 @@ void Archo::createLayer()
 
 		renderComp.material = exitButtonMat;
 
-		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
-		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f);// +glm::vec3(-(width / 5.f), 0, 0);
+		transformComp.scale = glm::vec3(c / 2.0f, c / 2.0f, 1.f);
+		transformComp.translation = glm::vec3(width - (c / 2.0f), c / 2.0f, 0.f);// +glm::vec3(-(width / 5.f), 0, 0);
 
 		transformComp.recalc();
 
 		std::function<void()> boundFunc = std::bind(&Archo::unpauseInventory, this);
 		//boundFunc();
 		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+	}
+
+	{
+		InventoryItemsQuad = m_pauseMenu_Inventory->m_entities.create();
+
+		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(InventoryItemsQuad);
+		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(InventoryItemsQuad);
+		
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> invItemsMat = std::make_shared<Material>(invItemsQuadShader);
+		invItemsMat->setValue("u_Texture", exitButtonTexture);
+
+		renderComp.material = invItemsMat;
+
+		transformComp.scale = glm::vec3((width / 10.f * 3.0f) * widthRatio, height / 10.f * 4.0f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(0, height / 5.f * -0.5f, 0);
+
+		transformComp.recalc();
+
+	}
+
+	{
+		entt::entity saveAndExitButton = m_pauseMenu_Inventory->m_entities.create();
+
+		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(saveAndExitButton);
+		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(saveAndExitButton);
+		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(saveAndExitButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> saveAndExitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		saveAndExitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = saveAndExitButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3((width / 5.f) * widthRatio, height / 5.f * 2.f, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::unpauseInventory, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
+	}
+
+	{
+		entt::entity saveAndExitButton = m_pauseMenu_Inventory->m_entities.create();
+
+		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(saveAndExitButton);
+		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(saveAndExitButton);
+		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(saveAndExitButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> saveAndExitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		saveAndExitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = saveAndExitButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(0, height / 5.f * 2.f, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::unpauseInventory, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
+	}
+
+	{
+		entt::entity saveAndExitButton = m_pauseMenu_Inventory->m_entities.create();
+
+		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(saveAndExitButton);
+		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(saveAndExitButton);
+		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(saveAndExitButton);
+
+
+		renderComp.geometry = buttonQuadVAO;
+
+		std::shared_ptr<Material> saveAndExitButtonMat = std::make_shared<Material>(buttonQuadShader);
+		saveAndExitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+
+		renderComp.material = saveAndExitButtonMat;
+
+		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
+		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(-(width / 5.f) * widthRatio, height / 5.f * 2.f, 0);
+
+		transformComp.recalc();
+
+		std::function<void()> boundFunc = std::bind(&Archo::unpauseInventory, this);
+		//boundFunc();
+		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
 	}
 
 	/*************************
