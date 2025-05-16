@@ -9,6 +9,11 @@ struct SeedingPoint {
 	glm::vec4 position = glm::vec4(-1.0f, -1.0f, -1.0f, 256.0f);
 };
 
+struct RelicsBO {
+	int Quantity;
+	int a, b, c;
+};
+
 class Archo : public Layer
 {
 public:
@@ -34,6 +39,11 @@ private:
 	void pauseMenu();
 	void settings_to_pauseMenu();
 	void pauseInventory();
+
+	void equipToSlot1();
+	void equipToSlot2();
+	void equipToSlot3();
+
 	void unpauseInventory();
 	void pauseSettings();
 	void pause_to_Game();
@@ -62,6 +72,8 @@ private:
 
 	std::vector<entt::entity> m_Relics;
 	std::vector<entt::entity> m_Sceneries;
+
+	std::shared_ptr<SSBO> m_relicsSSBO;
 
 	std::shared_ptr<Scene> m_RelicScene;
 	std::shared_ptr<Scene> m_InventoryButtonScene;
@@ -108,6 +120,8 @@ private:
 	bool Pausing{ false };
 	int Relics{ 32 };//512};
 	int RemainingRelics{ 0 };
+	int invRelicSelected{ -1 };
+	int Equiped[3]{ -1,-1,-1 };
 	float ProgressSegmentTarget{ 0.0f };
 
 	ImVec2 imageSize = ImVec2(width / 3, height / 3);

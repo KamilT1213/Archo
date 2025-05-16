@@ -12,7 +12,16 @@ Material::Material(std::shared_ptr<Shader> shader, const std::string& transformU
 		auto& name = it->first;
 		auto& info = it->second;
 
-		dataCache[name] = UniformData(info.type, info.size);
+		if (info.size > 1) {
+			int location = name.find("[0");
+			for (int i = 0; i < info.size; i++) {
+				dataCache[name.substr(0, location + 1) + std::to_string(i) + "]"] = UniformData(info.type, 1);
+			}
+		}
+		else {
+			dataCache[name] = UniformData(info.type, info.size);
+		}
+
 
 	}
 
