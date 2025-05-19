@@ -32,6 +32,8 @@ namespace UniformConsts
 	const std::unordered_map<GLenum, std::function<void(std::shared_ptr<Shader>, const std::string&, const UniformData&)>>  UDT =
 	{
 		{GL_FLOAT , [](std::shared_ptr<Shader> shader, const std::string& name, const UniformData& matInfo) {shader->uploadUniform<float>(name, (float)std::get<float>(matInfo.data)); } },
+		{GL_INT , [](std::shared_ptr<Shader> shader, const std::string& name, const UniformData& matInfo) {shader->uploadUniform<int>(name, (int)std::get<int>(matInfo.data)); } },
+		{GL_BOOL , [](std::shared_ptr<Shader> shader, const std::string& name, const UniformData& matInfo) {shader->uploadUniform<bool>(name, (bool)std::get<bool>(matInfo.data)); } },
 		{GL_FLOAT_VEC2 , [](std::shared_ptr<Shader> shader, const std::string& name, const UniformData& matInfo) {shader->uploadUniform<glm::vec2>(name, std::get<glm::vec2>(matInfo.data)); } },
 		{GL_FLOAT_VEC3 , [](std::shared_ptr<Shader> shader, const std::string& name, const UniformData& matInfo) {shader->uploadUniform<glm::vec3>(name, std::get<glm::vec3>(matInfo.data)); } },
 		{GL_FLOAT_VEC4 , [](std::shared_ptr<Shader> shader, const std::string& name, const UniformData& matInfo) {shader->uploadUniform<glm::vec4>(name, std::get<glm::vec4>(matInfo.data)); } },

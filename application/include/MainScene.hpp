@@ -6,12 +6,14 @@ enum class InteractionType { Digging, Extraction };
 enum class InteractionState { Idle, InProgress };
 
 struct SeedingPoint {
-	glm::vec4 position = glm::vec4(-1.0f, -1.0f, -1.0f, 256.0f);
+	glm::vec4 position = glm::vec4(-1.0f, -1.0f, -1.0f, 128.0f);
 };
 
 struct RelicsBO {
-	int Quantity;
-	int a, b, c;
+	int Quantity{ 0 };
+	int textureUnit;
+	int xOffset;
+	int yOffset;
 };
 
 class Archo : public Layer
@@ -30,6 +32,7 @@ private:
 	void onReset(GLFWWindowImpl& win) override;
 
 	void createLayer();
+	void UpadateRelicsSSBO();
 	void resetLayer();
 
 	void playGame();
@@ -73,7 +76,13 @@ private:
 	std::vector<entt::entity> m_Relics;
 	std::vector<entt::entity> m_Sceneries;
 
+	glm::vec2 InvGridSize{ 3,4 };
+
 	std::shared_ptr<SSBO> m_relicsSSBO;
+	std::shared_ptr<Texture> RelicTexture1;
+
+	std::array<std::shared_ptr<Material>,3> slotsButtonMats;
+
 
 	std::shared_ptr<Scene> m_RelicScene;
 	std::shared_ptr<Scene> m_InventoryButtonScene;

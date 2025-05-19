@@ -5,6 +5,18 @@ layout(location = 1)out vec4 data;
 
 in vec2 texCoords;
 
+struct Relic {
+    int Quantity;
+    int texture;
+    int xOffset;
+    int yOffset;
+};
+
+layout(std430, binding = 4) buffer ssbo
+{
+    Relic relics[];
+};
+
 uniform sampler2D u_RelicTexture;
 uniform float u_Rarity;
 uniform float u_Id;
@@ -19,29 +31,33 @@ float tpTex(vec3 normal, vec3 pos, float factor);
 void main()
 {
     
-    colour = texture(u_RelicTexture,texCoords);
+    //colour = texture(u_RelicTexture,texCoords);
+    int index = int((u_Rarity));
+    vec2 flippedCoords = vec2(texCoords.x, 1 - texCoords.y);
+    vec2 localCoords = (flippedCoords + vec2(relics[index].xOffset, relics[index].yOffset)) / 4;
+    colour = texture((u_RelicTexture), localCoords);
 
     if(colour.a <= 0 || u_active <= 0.0){discard;}
-
-    if(u_Rarity < 1){
-        colour = vec4(vec3(139/255.0, 143/255.0, 140/255.0),1.0);
-    }
-    else if(u_Rarity <= 2){
-        colour = vec4(vec3(48/255.0, 186/255.0, 83/255.0),1.0);
-    }
-    else if(u_Rarity <= 3){
-        colour = vec4(vec3(32/255.0, 104/255.0, 176/255.0),1.0);
-    }
-    else if(u_Rarity <= 4){
-        colour = vec4(vec3(123/255.0, 32/255.0, 176/255.0),1.0);
-    }
-    else if(u_Rarity <= 5){
-        colour = vec4(vec3(255/255.0, 153/255.0, 1/255.0),1.0);
-    }
-    else if(u_Rarity <= 6){
-        colour = vec4(vec3(255/255.0, 1/255.0, 1/255.0),1.0);
-    }
-    colour.a = 1.0;
+    if (relics[index].Quantity <= 0) { colour.xyz = vec3(0.1); }
+    //if(u_Rarity < 1){
+    //    colour = vec4(vec3(139/255.0, 143/255.0, 140/255.0),1.0);
+    //}
+    //else if(u_Rarity <= 2){
+    //    colour = vec4(vec3(48/255.0, 186/255.0, 83/255.0),1.0);
+    //}
+    //else if(u_Rarity <= 3){
+    //    colour = vec4(vec3(32/255.0, 104/255.0, 176/255.0),1.0);
+    //}
+    //else if(u_Rarity <= 4){
+    //    colour = vec4(vec3(123/255.0, 32/255.0, 176/255.0),1.0);
+    //}
+    //else if(u_Rarity <= 5){
+    //    colour = vec4(vec3(255/255.0, 153/255.0, 1/255.0),1.0);
+    //}
+    //else if(u_Rarity <= 6){
+    //    colour = vec4(vec3(255/255.0, 1/255.0, 1/255.0),1.0);
+    //}
+    //colour.a = 1.0;
     data = vec4(1 - (u_Rarity/6.0), u_Id, 0, 1);
     
 

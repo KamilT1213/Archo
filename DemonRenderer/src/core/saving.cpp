@@ -8,6 +8,7 @@
 #include <ostream>
 #include <vector>
 #include <string>
+#include <numeric>
 
 //* * * * * * * * * * * * * * * * * * * * 
 // Settings Serialization and Saving
@@ -97,7 +98,8 @@ Settings_Save Load_Settings() {
 
 void to_json(nlohmann::json& j, const Game_Save& gS) {
 	j = nlohmann::json{
-		{"Items", gS.s_Items}
+		{"Items", gS.s_Items},
+		{"Eqipped", gS.s_Equiped}
 	};
 }
 
@@ -106,7 +108,21 @@ void from_json(const nlohmann::json& j, Game_Save& gS) {
 		j.at("Items").get_to(gS.s_Items);
 	}
 	else {
-		gS.s_Items = std::vector<std::pair<int,int>>();
+		//std::vector<int> Values(16);
+		//std::iota(Values.begin(), Values.end(), 0);
+
+		//std::vector<std::pair<int, int>> NewItems;
+		//for (int i : Values) {
+		//	NewItems.push_back(std::pair<int, int>({ Values[i],0 }));
+		//}
+
+		gS.s_Items = std::vector<std::pair<int, int>>();
+	}
+	if (j.contains("Eqipped")) {
+		j.at("Eqipped").get_to(gS.s_Equiped);
+	}
+	else {
+		gS.s_Equiped = std::array<int, 3>({-1, -1, -1});
 	}
 }
 

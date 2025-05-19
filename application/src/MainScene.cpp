@@ -36,6 +36,17 @@ float DigCurve2(float t, float s) {
 	return t;
 }
 
+void Archo::UpadateRelicsSSBO() {
+	for (int i = 0; i < m_save.s_Items.size(); i++) {
+		RelicsBO current;
+		current.Quantity = m_save.s_Items.at(i).second;
+		current.textureUnit = 0;
+		current.xOffset = glm::floor(glm::mod(float(m_save.s_Items[i].first), 4.0f));
+		current.yOffset = glm::floor(m_save.s_Items[i].first / 4.0f);
+		m_relicsSSBO->edit(m_save.s_Items[i].first * sizeof(RelicsBO), sizeof(RelicsBO), &current);
+	}
+}
+
 Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 {
 
@@ -55,6 +66,17 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	m_relicsSSBO = std::make_shared<SSBO>(sizeof(RelicsBO) * (48), (48));
 	m_relicsSSBO->bind(4);
+	for (int i = 0; i < 48; i++) {
+		RelicsBO current;
+		current.Quantity = 0;
+		current.textureUnit = 0;
+		current.xOffset = glm::floor(glm::mod(float(i), 4.0f));
+		current.yOffset = glm::floor(i / 4.0f);
+		m_relicsSSBO->edit(i * sizeof(RelicsBO), sizeof(RelicsBO), &current);
+	}
+
+	UpadateRelicsSSBO();
+
 
 	//m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
 	//for (int i = 0; i < m_seedingPoints.size(); i++) {
@@ -89,6 +111,8 @@ void Archo::onRender()
 {
 	
 	m_backgroundRenderer.render();
+
+	m_relicRenderer.render();
 
 	if (state == GameState::MainMenu) {
 		m_mainMenuRenderer.render();
@@ -226,19 +250,37 @@ void Archo::onUpdate(float timestep)
 			boundingBox.first = glm::vec2(transComp.translation - glm::abs(transComp.scale));
 			boundingBox.second = glm::vec2(transComp.translation + glm::abs(transComp.scale));
 
+			if (invRelicSelected >= 0) {
+				m_itemInventoryMat->setValue("u_index", invRelicSelected);
+			}
 
 			//auto& matRef = m_scene->m_entities.get<Material>(m_entity);
+			if (mousePos.x > boundingBox.first.x && mousePos.x < boundingBox.second.x && mousePos.y > boundingBox.first.y && mousePos.y < boundingBox.second.y) {
 
-			if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1)) {
-				if (mousePos.x > boundingBox.first.x && mousePos.x < boundingBox.second.x && mousePos.y > boundingBox.first.y && mousePos.y < boundingBox.second.y) {
-					mousePos -= boundingBox.first;
-					mousePos /= glm::vec2(transComp.scale.x, transComp.scale.y) * 2.0f;
-					mousePos *= glm::vec2(6, 8);
-					mousePos = glm::floor(mousePos);
+				mousePos -= boundingBox.first;
+				mousePos /= glm::vec2(transComp.scale.x, transComp.scale.y) * 2.0f;
+				mousePos *= InvGridSize;
+				mousePos = glm::floor(mousePos);
 
-					int index = mousePos.x + (mousePos.y * 6);
+				int index = mousePos.x + (mousePos.y * InvGridSize.x);
 
-					if (index != invRelicSelected && index < m_save.s_Items.size()) {
+				
+				m_itemInventoryMat->setValue("Hovered", 1.0f);
+				m_itemInventoryMat->setValue("u_index2", index);
+
+				if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1)) {
+
+
+					m_itemInventoryMat->setValue("Pressed", 1.0f);
+					bool found = false;
+					for (auto item : m_save.s_Items) {
+						if (item.first == index) {
+							found = true;
+							break;
+						}
+					}
+
+					if (index != invRelicSelected && found) {
 						invRelicSelected = index;
 
 						//spdlog::info("Index Selected: {}", index);
@@ -246,6 +288,14 @@ void Archo::onUpdate(float timestep)
 					//spdlog::info("Button Active at; x:{} | y:{}", mousePos.x, mousePos.y);
 
 				}
+				else {
+					m_itemInventoryMat->setValue("Pressed", 0.0f);
+				}
+			}
+			else {
+				m_itemInventoryMat->setValue("Hovered", 0.0f);
+				m_itemInventoryMat->setValue("u_index2", -1);
+				m_itemInventoryMat->setValue("Pressed", 0.0f);
 			}
 
 			auto view = m_pauseMenu_Inventory->m_entities.view<ScriptComp>();
@@ -517,6 +567,7 @@ void Archo::onUpdate(float timestep)
 							}
 
 							saveGame();
+							UpadateRelicsSSBO();
 
 							relicComp.Active = false;
 							RemainingRelics--;
@@ -787,6 +838,8 @@ void Archo::createLayer()
 	std::shared_ptr<Texture> settingsButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SettingsButton.png");
 	std::shared_ptr<Texture> scenery_ArchTexture = std::make_shared<Texture>("./assets/textures/Scenery/Arch/ArchTexture.png");
 
+	RelicTexture1 = std::make_shared<Texture>("./assets/textures/Relics/Relics_1.png");
+
 	TextureDescription groundTextureDesc;
 	groundTextureDesc.height = 512.0f;//4096.0f / 2.0f;
 	groundTextureDesc.width = 512.0f;//4096.0f / 2.0f;
@@ -901,6 +954,13 @@ void Archo::createLayer()
 	buttonQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
 	buttonQuadShaderDesc.fragmentSrcPath = "./assets/shaders/UI/ButtonFrag.glsl";
 	std::shared_ptr<Shader> buttonQuadShader = std::make_shared<Shader>(buttonQuadShaderDesc);	
+
+	//Equip Button material
+	ShaderDescription equipButtonQuadShaderDesc;
+	equipButtonQuadShaderDesc.type = ShaderType::rasterization;
+	equipButtonQuadShaderDesc.vertexSrcPath = "./assets/shaders/UI/ButtonVert.glsl";
+	equipButtonQuadShaderDesc.fragmentSrcPath = "./assets/shaders/UI/InventoryEquipFrag.glsl";
+	std::shared_ptr<Shader> equipButtonQuadShader = std::make_shared<Shader>(equipButtonQuadShaderDesc);
 	
 	//Inventory Button material
 	ShaderDescription invButtonQuadShaderDesc;
@@ -1502,7 +1562,12 @@ void Archo::createLayer()
 		renderComp.geometry = buttonQuadVAO;
 
 		m_itemInventoryMat = std::make_shared<Material>(invItemsQuadShader);
-		m_itemInventoryMat->setValue("u_Texture", exitButtonTexture);
+		m_itemInventoryMat->setValue("u_Texture", RelicTexture1);
+		m_itemInventoryMat->setValue("u_GridSize", InvGridSize);
+		m_itemInventoryMat->setValue("Hovered", 0.0f);
+		m_itemInventoryMat->setValue("u_index", -1);
+		m_itemInventoryMat->setValue("u_index2", -1);
+		m_itemInventoryMat->setValue("Pressed", 0.0f);
 
 		renderComp.material = m_itemInventoryMat;
 
@@ -1514,19 +1579,20 @@ void Archo::createLayer()
 	}
 
 	{
-		entt::entity saveAndExitButton = m_pauseMenu_Inventory->m_entities.create();
+		entt::entity slot1Button = m_pauseMenu_Inventory->m_entities.create();
 
-		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(saveAndExitButton);
-		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(saveAndExitButton);
-		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(saveAndExitButton);
+		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(slot1Button);
+		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(slot1Button);
+		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(slot1Button);
 
 
 		renderComp.geometry = buttonQuadVAO;
 
-		std::shared_ptr<Material> saveAndExitButtonMat = std::make_shared<Material>(buttonQuadShader);
-		saveAndExitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
+		slotsButtonMats[0] = std::make_shared<Material>(equipButtonQuadShader);
+		slotsButtonMats[0]->setValue("u_Texture", RelicTexture1);
+		slotsButtonMats[0]->setValue("u_index", m_save.s_Equiped[0]);
 
-		renderComp.material = saveAndExitButtonMat;
+		renderComp.material = slotsButtonMats[0];
 
 		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
 		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(-(width / 5.f) * widthRatio, height / 5.f * 2.f, 0);
@@ -1535,23 +1601,23 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::equipToSlot1, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(slot1Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[0].get()), boundFunc);
 	}
 
 	{
-		entt::entity saveAndExitButton = m_pauseMenu_Inventory->m_entities.create();
+		entt::entity slot2Button = m_pauseMenu_Inventory->m_entities.create();
 
-		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(saveAndExitButton);
-		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(saveAndExitButton);
-		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(saveAndExitButton);
+		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(slot2Button);
+		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(slot2Button);
+		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(slot2Button);
 
 
 		renderComp.geometry = buttonQuadVAO;
 
-		std::shared_ptr<Material> saveAndExitButtonMat = std::make_shared<Material>(buttonQuadShader);
-		saveAndExitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
-
-		renderComp.material = saveAndExitButtonMat;
+		slotsButtonMats[1] = std::make_shared<Material>(equipButtonQuadShader);
+		slotsButtonMats[1]->setValue("u_Texture", RelicTexture1);
+		slotsButtonMats[1]->setValue("u_index", m_save.s_Equiped[1]);
+		renderComp.material = slotsButtonMats[1];
 
 		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
 		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(0, height / 5.f * 2.f, 0);
@@ -1560,23 +1626,23 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::equipToSlot2, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(slot2Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[1].get()), boundFunc);
 	}
 
 	{
-		entt::entity saveAndExitButton = m_pauseMenu_Inventory->m_entities.create();
+		entt::entity slot3Button = m_pauseMenu_Inventory->m_entities.create();
 
-		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(saveAndExitButton);
-		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(saveAndExitButton);
-		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(saveAndExitButton);
+		Render& renderComp = m_pauseMenu_Inventory->m_entities.emplace<Render>(slot3Button);
+		Transform& transformComp = m_pauseMenu_Inventory->m_entities.emplace<Transform>(slot3Button);
+		ScriptComp& scriptComp = m_pauseMenu_Inventory->m_entities.emplace<ScriptComp>(slot3Button);
 
 
 		renderComp.geometry = buttonQuadVAO;
 
-		std::shared_ptr<Material> saveAndExitButtonMat = std::make_shared<Material>(buttonQuadShader);
-		saveAndExitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
-
-		renderComp.material = saveAndExitButtonMat;
+		slotsButtonMats[2] = std::make_shared<Material>(equipButtonQuadShader);
+		slotsButtonMats[2]->setValue("u_Texture", RelicTexture1);
+		slotsButtonMats[2]->setValue("u_index", m_save.s_Equiped[2]);
+		renderComp.material = slotsButtonMats[2];
 
 		transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
 		transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3((width / 5.f) * widthRatio, height / 5.f * 2.f, 0);
@@ -1585,7 +1651,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::equipToSlot3, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(slot3Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[2].get()), boundFunc);
 	}
 
 	/*************************
@@ -1618,7 +1684,7 @@ void Archo::createLayer()
 		relicComp.Active = true;
 
 		std::shared_ptr<Material> RelicMaterial = std::make_shared<Material>(RelicShader);
-		RelicMaterial->setValue("u_RelicTexture", testRelicTexture);
+		RelicMaterial->setValue("u_RelicTexture", RelicTexture1);
 		RelicMaterial->setValue("u_Rarity", rarity + 0.001f);
 		RelicMaterial->setValue("u_Id", (float)(i + 1) / (Relics + 1.0f));
 		RelicMaterial->setValue("u_active", (float)(int)false);
@@ -1639,9 +1705,9 @@ void Archo::createLayer()
 		Relic& relicComp2 = m_InventoryButtonScene->m_entities.emplace<Relic>(progressRelic);
 		renderComp2.geometry = RelicVAO;
 		std::shared_ptr<Material> RelicMaterial2 = std::make_shared<Material>(RelicShader);
-		RelicMaterial2->setValue("u_RelicTexture", testRelicTexture);
-		RelicMaterial2->setValue("u_Rarity", rarity);
-		////RelicMaterial2->setValue("u_Id", (float)(i + 1) / (Relics + 1.0f));
+		RelicMaterial2->setValue("u_RelicTexture", RelicTexture1);
+		RelicMaterial2->setValue("u_Rarity", rarity + 0.001f);
+		RelicMaterial2->setValue("u_Id", -1.0f);
 		RelicMaterial2->setValue("u_active", (float)(int)true);
 		transformComp2.translation = glm::vec3(glm::mod((float)i, 7.f), floorf(i / 7.f), -0.5f);
 		transformComp2.translation += glm::vec3(0.5f, 0.5f, 0);
@@ -1673,7 +1739,7 @@ void Archo::createLayer()
 
 		std::shared_ptr<Material> archmat = std::make_shared<Material>(Scenery_Shader);
 		archmat->setValue("u_SceneryTexture",scenery_ArchTexture);
-		archmat->setValue("u_Id",(float)(i + 1) / (60 + 1.0f));
+		archmat->setValue("u_Id",(float)(i + 1) / (30 + 1.0f));
 		archmat->setValue("u_active",1.f);
 
 		renderComp.material = archmat;
@@ -1690,7 +1756,7 @@ void Archo::createLayer()
 
 	}	
 	
-	for(int i = 0; i < 50; i++){
+	for(int i = 0; i < 20; i++){
 		entt::entity rock = m_SceneryScene->m_entities.create();
 		m_Sceneries.push_back(rock);
 
@@ -1705,7 +1771,7 @@ void Archo::createLayer()
 
 		std::shared_ptr<Material> archmat = std::make_shared<Material>(Scenery_Shader);
 		archmat->setValue("u_SceneryTexture",scenery_ArchTexture);
-		archmat->setValue("u_Id",(float)(10 + i + 1) / (60 + 1.0f));
+		archmat->setValue("u_Id",(float)(10 + i + 1) / (30 + 1.0f));
 		archmat->setValue("u_active",1.f);
 
 		renderComp.material = archmat;
@@ -1720,6 +1786,15 @@ void Archo::createLayer()
 		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), -1.0f);
 		transformComp.recalc();
 
+	}
+
+	for (int i = 0; i < m_save.s_Items.size(); i++) {
+		RelicsBO current;
+		current.Quantity = m_save.s_Items.at(i).second;
+		current.textureUnit = RelicTexture1->getUnit();
+		current.xOffset = glm::floor(glm::mod(float(m_save.s_Items[i].first), 4.0f));
+		current.yOffset = glm::floor(m_save.s_Items[i].first / 4.0f);
+		m_relicsSSBO->edit(m_save.s_Items[i].first * sizeof(RelicsBO), sizeof(RelicsBO), &current);
 	}
 
 	//Particles
@@ -2237,16 +2312,17 @@ void Archo::settings_to_pauseMenu()
 	pass.parseScene();
 
 	pauseState = PauseState::Pause;
-	state = GameState::Paused;
+	state = GameState::Paused; 
 }
 
 void Archo::pauseInventory()
 {
-	
-	for (int i = 0; i < m_save.s_Items.size(); i++) {
+	//std::array<RelicsBO, 48> temp;
 
-		m_relicsSSBO->edit(m_save.s_Items[i].first * sizeof(RelicsBO), sizeof(RelicsBO), &m_save.s_Items.at(i).second);
-	}
+	//m_relicsSSBO->edit(0, 48 * sizeof(RelicsBO), &temp);
+
+
+	UpadateRelicsSSBO();
 
 	auto& pass = m_pausedRenderer.getRenderPass(PauseButtonPassIDx);
 	pass.scene = m_pauseMenu_Inventory;
@@ -2258,20 +2334,40 @@ void Archo::pauseInventory()
 
 void Archo::equipToSlot1()
 {
-	Equiped[0] = invRelicSelected;
-	spdlog::info("|1:{}|2:{}|3:{}|", Equiped[0], Equiped[1], Equiped[2]);
+	for (int i = 0; i < 3; i++) {
+		if (m_save.s_Equiped[i] == invRelicSelected) {
+			m_save.s_Equiped[i] = m_save.s_Equiped[0];
+			slotsButtonMats[i]->setValue("u_index", m_save.s_Equiped[i]);
+		}
+	}
+	m_save.s_Equiped[0] = invRelicSelected;
+	slotsButtonMats[0]->setValue("u_index", m_save.s_Equiped[0]);
+	
 }
 
 void Archo::equipToSlot2()
 {
-	Equiped[1] = invRelicSelected;
-	spdlog::info("|1:{}|2:{}|3:{}|", Equiped[0], Equiped[1], Equiped[2]);
+	for (int i = 0; i < 3; i++) {
+		if (m_save.s_Equiped[i] == invRelicSelected) {
+			m_save.s_Equiped[i] = m_save.s_Equiped[1];
+			slotsButtonMats[i]->setValue("u_index", m_save.s_Equiped[i]);
+		}
+	}
+	m_save.s_Equiped[1] = invRelicSelected;
+	slotsButtonMats[1]->setValue("u_index", m_save.s_Equiped[1]);
 }
 
 void Archo::equipToSlot3()
 {
-	Equiped[2] = invRelicSelected;
-	spdlog::info("|1:{}|2:{}|3:{}|", Equiped[0], Equiped[1], Equiped[2]);
+	for (int i = 0; i < 3; i++) {
+		if (m_save.s_Equiped[i] == invRelicSelected) {
+			m_save.s_Equiped[i] = m_save.s_Equiped[2];
+			slotsButtonMats[i]->setValue("u_index", m_save.s_Equiped[i]);
+		}
+	}
+	m_save.s_Equiped[2] = invRelicSelected;
+	slotsButtonMats[2]->setValue("u_index", m_save.s_Equiped[2]);
+
 }
 
 void Archo::unpauseInventory()
