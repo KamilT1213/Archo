@@ -31,6 +31,7 @@ float noise(in vec2 p);
 void main()
 {
     float ScreenPixelSize = 1.0 / min(u_ScreenSize.x, u_ScreenSize.y);
+    //float ScreenPixelSizePerAxis = 1.0 / u_ScreenSize;
     float ScreenPixelRatio = 1.0 / (u_ScreenSize.x / u_ScreenSize.y);
     vec2 texelSize = 1.0/u_ScreenSize;
     float a = min(u_ScreenSize.x, u_ScreenSize.y);
@@ -80,16 +81,32 @@ void main()
 	Gaussian[7] = 2;
 	Gaussian[8] = 1;
 
+
+    //Gaussian[0] = 1;
+    //Gaussian[1] = 4;
+    //Gaussian[2] = 1;
+    //Gaussian[3] = 4;
+    //Gaussian[4] = 8;
+    //Gaussian[5] = 4;
+    //Gaussian[6] = 1;
+    //Gaussian[7] = 4;
+    //Gaussian[8] = 1;
+
 	vec4 total;
 
-    if (Edge() >= 0.0) {
-        for (int i = 0; i < 9; i++) {
-            total += Samples[i] * Gaussian[i];
-        }
-        total /= 16.0f;
+    for (int i = 0; i < 9; i++) {
+
+        total += Samples[i] * Gaussian[i];
     }
+    total /= 16.0;//counter;
+    total = mix(Samples[4], total, clamp(Edge(), 0, 1) * 1);
+    vec4 Bcolour = texture(u_background, texCoords);
+    total = mix(Bcolour, total, total.a);
+
+        //total = vec4(1.0);
+    //}
     
-    total = mix(Samples[4], total, clamp(Edge(),0,1));
+
 
     vec4 buttonSam = texture(u_gameButtons, texCoords);
     if (buttonSam.a > 0.0) {
@@ -133,15 +150,15 @@ float Edge() {
 
 
     float GaussianDiff[9];
-    GaussianDiff[0] = rgb2hsv(Samples[0].rgb).y;
-    GaussianDiff[1] = rgb2hsv(Samples[1].rgb).y;
-    GaussianDiff[2] = rgb2hsv(Samples[2].rgb).y;
-    GaussianDiff[3] = rgb2hsv(Samples[3].rgb).y;
-    GaussianDiff[4] = rgb2hsv(Samples[4].rgb).y;
-    GaussianDiff[5] = rgb2hsv(Samples[5].rgb).y;
-    GaussianDiff[6] = rgb2hsv(Samples[6].rgb).y;
-    GaussianDiff[7] = rgb2hsv(Samples[7].rgb).y;
-    GaussianDiff[8] = rgb2hsv(Samples[8].rgb).y;
+    GaussianDiff[0] = rgb2hsv(Samples[0].rgb).b;
+    GaussianDiff[1] = rgb2hsv(Samples[1].rgb).b;
+    GaussianDiff[2] = rgb2hsv(Samples[2].rgb).b;
+    GaussianDiff[3] = rgb2hsv(Samples[3].rgb).b;
+    GaussianDiff[4] = rgb2hsv(Samples[4].rgb).b;
+    GaussianDiff[5] = rgb2hsv(Samples[5].rgb).b;
+    GaussianDiff[6] = rgb2hsv(Samples[6].rgb).b;
+    GaussianDiff[7] = rgb2hsv(Samples[7].rgb).b;
+    GaussianDiff[8] = rgb2hsv(Samples[8].rgb).b;
 
     float GaussianDiffFactor[9];
     GaussianDiffFactor[0] = -1;

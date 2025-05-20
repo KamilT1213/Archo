@@ -112,7 +112,7 @@ void Archo::onRender()
 	
 	m_backgroundRenderer.render();
 
-	m_relicRenderer.render();
+	//m_relicRenderer.render();
 
 	if (state == GameState::MainMenu) {
 		m_mainMenuRenderer.render();
@@ -369,7 +369,7 @@ void Archo::onUpdate(float timestep)
 		}
 		//temp = m_DigPos;
 		temp -= glm::clamp(temp, 0.01f, 0.99f);
-
+		temp = glm::floor(temp);
 		//temp = glm::clamp(temp, glm::vec2(0), glm::vec2(width, height));
 
 		screenGroundPass.target->use();
@@ -397,10 +397,14 @@ void Archo::onUpdate(float timestep)
 		else{
 			RelId = (int)glm::round(UVData[2] * (Relics + 1));
 			Rarity = (int)glm::round(UVData[0] * 6.0f);
+			//spdlog::info("Rarity: {}", Rarity);
 			Segments = ((Rarity + 1) * (Rarity + 1)) + 5.0f;
 		}
 
-		
+		if (LastRareity != Rarity) {
+			LastRareity = Rarity;
+			spdlog::info("Switched Rarity: {} at: x:{} , y:{}", LastRareity, temp.x, temp.y);
+		}
 
 
 		//spdlog::info("Rarity: {}", Rarity);
@@ -552,7 +556,8 @@ void Archo::onUpdate(float timestep)
 							auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
 							renderComp.material->setValue("u_active", 0.0f);
 
-							m_relicRenderer.render();
+							auto& renderComp2 = m_InventoryButtonScene->m_entities.get<Render>(m_Relics2.at(RelId - 1));
+							renderComp2.material->setValue("u_active", 0.0f);
 
 							bool found = false;
 							for(auto& item : m_save.s_Items){
@@ -568,6 +573,7 @@ void Archo::onUpdate(float timestep)
 
 							saveGame();
 							UpadateRelicsSSBO();
+							m_relicRenderer.render();
 
 							relicComp.Active = false;
 							RemainingRelics--;
@@ -940,6 +946,12 @@ void Archo::createLayer()
 	RelicShaderDesc.vertexSrcPath = "./assets/shaders/RelicVert.glsl";
 	RelicShaderDesc.fragmentSrcPath = "./assets/shaders/RelicFrag.glsl";
 	std::shared_ptr<Shader> RelicShader = std::make_shared<Shader>(RelicShaderDesc);
+
+	ShaderDescription InvButRelicShaderDesc;
+	InvButRelicShaderDesc.type = ShaderType::rasterization;
+	InvButRelicShaderDesc.vertexSrcPath = "./assets/shaders/RelicVert.glsl";
+	InvButRelicShaderDesc.fragmentSrcPath = "./assets/shaders/InvButRelicFrag.glsl";
+	std::shared_ptr<Shader> InvButRelicShader = std::make_shared<Shader>(InvButRelicShaderDesc);
 
 	ShaderDescription Scenery_ShaderDesc;
 	Scenery_ShaderDesc.type = ShaderType::rasterization;
@@ -1691,7 +1703,7 @@ void Archo::createLayer()
 
 		transformComp.scale = glm::vec3(Randomiser::uniformFloatBetween(100.0f, 150.0f) * ((0.5f * ((7.0f - (1 + rarity)) / 7.0f)) + 0.5f));
 
-		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), (1.0f - (rarity / 6.0f)) - 0.5f);
+		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 1024.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 1024.0f - transformComp.scale.y), (1.0f - (rarity / 6.0f)) - 0.5f);
 
 
 		renderComp.material = RelicMaterial;
@@ -1699,12 +1711,13 @@ void Archo::createLayer()
 		transformComp.recalc();
 
 		entt::entity progressRelic = m_InventoryButtonScene->m_entities.create();
+		m_Relics2.push_back(progressRelic);
 		//m_Relics.push_back(relic);
 		Render& renderComp2 = m_InventoryButtonScene->m_entities.emplace<Render>(progressRelic);
 		Transform& transformComp2 = m_InventoryButtonScene->m_entities.emplace<Transform>(progressRelic);
 		Relic& relicComp2 = m_InventoryButtonScene->m_entities.emplace<Relic>(progressRelic);
 		renderComp2.geometry = RelicVAO;
-		std::shared_ptr<Material> RelicMaterial2 = std::make_shared<Material>(RelicShader);
+		std::shared_ptr<Material> RelicMaterial2 = std::make_shared<Material>(InvButRelicShader);
 		RelicMaterial2->setValue("u_RelicTexture", RelicTexture1);
 		RelicMaterial2->setValue("u_Rarity", rarity + 0.001f);
 		RelicMaterial2->setValue("u_Id", -1.0f);
@@ -1712,11 +1725,11 @@ void Archo::createLayer()
 		transformComp2.translation = glm::vec3(glm::mod((float)i, 7.f), floorf(i / 7.f), -0.5f);
 		transformComp2.translation += glm::vec3(0.5f, 0.5f, 0);
 		transformComp2.translation /= glm::vec3(7.f, 7.f, 1);
-		transformComp2.translation *= glm::vec3(4096.0f , 4096.0f , 1);
+		transformComp2.translation *= glm::vec3(1024.0f , 1024.0f, 1);
 
-		transformComp2.scale = glm::vec3(4096.0f / 14.0f);
+		transformComp2.scale = glm::vec3(1024.0f / 14.0f);
 
-		renderComp2.material = RelicMaterial;
+		renderComp2.material = RelicMaterial2;
 		transformComp2.recalc();
 	}
 
@@ -1751,7 +1764,7 @@ void Archo::createLayer()
 		float s = Randomiser::uniformFloatBetween(100.0f, 300.0f);
 		transformComp.scale = glm::vec3(s,s,1.0f);
 		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
-		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), -1.0f);
+		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 512.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 512.0f - transformComp.scale.y), -1.0f);
 		transformComp.recalc();
 
 	}	
@@ -1783,7 +1796,7 @@ void Archo::createLayer()
 		float s = Randomiser::uniformFloatBetween(100.0f, 150.0f);
 		transformComp.scale = glm::vec3(s,s,1.0f);
 		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
-		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), -1.0f);
+		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 512.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 512.0f - transformComp.scale.y), -1.0f);
 		transformComp.recalc();
 
 	}
@@ -2066,10 +2079,10 @@ void Archo::createLayer()
 	RenderPass ScreenRelicPass;
 	ScreenRelicPass.scene = m_RelicScene;
 	ScreenRelicPass.parseScene();
-	ScreenRelicPass.target = std::make_shared<FBO>(glm::ivec2(4096, 4096), relicScreenPassLayout);
-	ScreenRelicPass.viewPort = { 0,0,4096, 4096 };
+	ScreenRelicPass.target = std::make_shared<FBO>(glm::ivec2(1024, 1024), relicScreenPassLayout);
+	ScreenRelicPass.viewPort = { 0,0,1024, 1024 };
 
-	ScreenRelicPass.camera.projection = glm::ortho(0.f, 4096.0f, 4096.0f, 0.f);
+	ScreenRelicPass.camera.projection = glm::ortho(0.f, 1024.0f, 1024.0f, 0.f);
 
 	ScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", ScreenRelicPass.camera.view);
 	ScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicProjection2D", ScreenRelicPass.camera.projection);
@@ -2090,10 +2103,10 @@ void Archo::createLayer()
 	RenderPass InventoryDisplayScreenRelicPass;
 	InventoryDisplayScreenRelicPass.scene = m_InventoryButtonScene;
 	InventoryDisplayScreenRelicPass.parseScene();
-	InventoryDisplayScreenRelicPass.target = std::make_shared<FBO>(glm::ivec2(4096, 4096), relicScreenPassLayout);
-	InventoryDisplayScreenRelicPass.viewPort = { 0,0,4096, 4096 };
+	InventoryDisplayScreenRelicPass.target = std::make_shared<FBO>(glm::ivec2(1024, 1024), relicScreenPassLayout);
+	InventoryDisplayScreenRelicPass.viewPort = { 0,0,1024, 1024 };
 
-	InventoryDisplayScreenRelicPass.camera.projection = glm::ortho(0.f, 4096.0f, 4096.0f, 0.f);
+	InventoryDisplayScreenRelicPass.camera.projection = glm::ortho(0.f, 1024.0f, 1024.0f, 0.f);
 
 	InventoryDisplayScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicView2D", InventoryDisplayScreenRelicPass.camera.view);
 	InventoryDisplayScreenRelicPass.UBOmanager.setCachedValue("b_relicCamera2D", "u_relicProjection2D", InventoryDisplayScreenRelicPass.camera.projection);
@@ -2110,10 +2123,10 @@ void Archo::createLayer()
 	RenderPass SceneryPass;
 	SceneryPass.scene = m_SceneryScene;
 	SceneryPass.parseScene();
-	SceneryPass.target = std::make_shared<FBO>(glm::ivec2(4096, 4096), sceneryPassLayout);
-	SceneryPass.viewPort = { 0,0,4096, 4096 };
+	SceneryPass.target = std::make_shared<FBO>(glm::ivec2(1024, 1024), sceneryPassLayout);
+	SceneryPass.viewPort = { 0,0,1024, 1024 };
 
-	SceneryPass.camera.projection = glm::ortho(0.f, 4096.0f, 4096.0f, 0.f,0.0f,1.0f);
+	SceneryPass.camera.projection = glm::ortho(0.f, 1024.0f, 1024.0f, 0.f,0.0f,1.0f);
 
 	SceneryPass.UBOmanager.setCachedValue("b_sceneryCamera2D", "u_sceneryView2D", SceneryPass.camera.view);
 	SceneryPass.UBOmanager.setCachedValue("b_sceneryCamera2D", "u_sceneryProjection2D", SceneryPass.camera.projection);
@@ -2590,7 +2603,7 @@ void Archo::placeRelics()
 				float(m_relicRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height
 					/ m_generationRenderer.getComputePass(0).images[0].texture->getHeight()),
 				-0.5f);
-			transComp.scale = glm::vec3(4096.f / (points[random].position.w / 2.0f));
+			transComp.scale = glm::vec3(1024.f / (points[random].position.w / 2.0f));
 			transComp.recalc();
 
 			RemainingRelics++;
@@ -2627,14 +2640,14 @@ void Archo::placeScenery()
 				-1.0f);
 
 			if (sceneComp.type == 0) {
-				float s = Randomiser::uniformFloatBetween(100.0f, 300.0f);
+				float s = Randomiser::uniformFloatBetween(12.5f * 2, 37.5f * 2);
 				transformComp.scale = glm::vec3(s, s, 1.0f);
 
 				float r = Randomiser::uniformFloatBetween(-0.52359878f, 0.52359878f);
 				transformComp.rotation = glm::vec3(0, 0, r);
 			}
 			else if (sceneComp.type == 1) {
-				float s = Randomiser::uniformFloatBetween(100.0f, 150.0f);
+				float s = Randomiser::uniformFloatBetween(12.5f * 2, 18.75f * 2);
 				transformComp.scale = glm::vec3(s, s, 1.0f);
 
 				float r = Randomiser::uniformFloatBetween(-0.52359878f, 0.52359878f);

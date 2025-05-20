@@ -42,8 +42,8 @@ void Texture::init(uint32_t width, uint32_t height, uint32_t channels, unsigned 
 	glTextureParameteri(m_ID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTextureParameteri(m_ID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	glTextureParameteri(m_ID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTextureParameteri(m_ID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTextureParameteri(m_ID, GL_TEXTURE_MIN_FILTER, GL_NEAREST);// GL_LINEAR);
+	glTextureParameteri(m_ID, GL_TEXTURE_MAG_FILTER, GL_NEAREST);// GL_LINEAR);
 
 	int32_t mipCount = 1 + floor(log2(std::max(width, height)));
 	if (channels == 0) { // HACK for depth, maybe good to rpelace this

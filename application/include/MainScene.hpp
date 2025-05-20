@@ -74,9 +74,12 @@ private:
 	std::vector<std::shared_ptr<Shader>> m_generators;
 
 	std::vector<entt::entity> m_Relics;
+	std::vector<entt::entity> m_Relics2;
 	std::vector<entt::entity> m_Sceneries;
 
-	glm::vec2 InvGridSize{ 3,4 };
+	glm::vec2 InvGridSize{ 6,8 };
+
+	int LastRareity{ -1 };
 
 	std::shared_ptr<SSBO> m_relicsSSBO;
 	std::shared_ptr<Texture> RelicTexture1;

@@ -35,10 +35,25 @@ void main()
     int index = int((u_Rarity));
     vec2 flippedCoords = vec2(texCoords.x, 1 - texCoords.y);
     vec2 localCoords = (flippedCoords + vec2(relics[index].xOffset, relics[index].yOffset)) / 4;
+    vec2 localCoords2 = floor(flippedCoords + vec2(relics[index].xOffset, relics[index].yOffset)) / 4;
     colour = texture((u_RelicTexture), localCoords);
 
-    if(colour.a <= 0 || u_active <= 0.0){discard;}
-    if (relics[index].Quantity <= 0) { colour.xyz = vec3(1.0,0.2,0.2); }
+    if(colour.a <= 0){discard;}
+    if (relics[index].Quantity <= 0) { colour.xyz = vec3(0.1); }
+    if (u_active > 0) {
+        //vec2 newCoords = localCoords - localCoords2;
+        //newCoords = ((newCoords - 0.125) * 1.4) + 0.125;
+        //newCoords += localCoords2;
+        float amount = 0.0075;
+        vec4 sampled = texture(u_RelicTexture, localCoords + amount);
+        vec4 sampled2 = texture(u_RelicTexture, localCoords - amount);
+        vec4 sampled3 = texture(u_RelicTexture, localCoords + vec2(-amount, amount));
+        vec4 sampled4 = texture(u_RelicTexture, localCoords - vec2(-amount, amount));
+        if (sampled.a + sampled2.a + sampled3.a + sampled4.a > 3) discard;
+    }
+    else {
+        colour.xyz *= 0.3;
+    }
     //if(u_Rarity < 1){
     //    colour = vec4(vec3(139/255.0, 143/255.0, 140/255.0),1.0);
     //}
@@ -58,7 +73,7 @@ void main()
     //    colour = vec4(vec3(255/255.0, 1/255.0, 1/255.0),1.0);
     //}
     //colour.a = 1.0;
-    data = vec4(1 - (u_Rarity/6.0), u_Id, 0, 1);
+    //data = vec4(1 - (u_Rarity/6.0), u_Id, 0, 1);
     
 
 }

@@ -140,7 +140,7 @@ void main()
     //colour = data;
     //colour = vec4(vec3((groundDepth + colourout.z) - groundDepth),1.0);
 
-    //colour = vec4(,1.0);
+    //colour = data;
     float ScreenPixelSize = 1.0/min(u_ScreenSize.x, u_ScreenSize.y);
     vec2 localToMouse = (texCoords - DigPos);
     float ui = 0.0;
