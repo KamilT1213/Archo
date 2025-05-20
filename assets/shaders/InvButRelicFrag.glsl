@@ -52,7 +52,7 @@ void main()
         if (sampled.a + sampled2.a + sampled3.a + sampled4.a > 3) discard;
     }
     else {
-        colour.xyz *= 0.3;
+        //colour.xyz *= 0.3;
     }
     //if(u_Rarity < 1){
     //    colour = vec4(vec3(139/255.0, 143/255.0, 140/255.0),1.0);
