@@ -16,6 +16,13 @@ struct RelicsBO {
 	int yOffset;
 };
 
+struct DiggingSpot {
+	glm::vec4 DigInfo{ 0,0,0,0 }; //Position: x, y | Radii | Depth
+	float DigProgression{ 0 };// Progession of digging
+	int DigMask{ 0 };// Pattern to use when digging
+	float rotation{ 0 };
+	int a{ 0 };// Reserved
+};
 class Archo : public Layer
 {
 public:
@@ -32,7 +39,8 @@ private:
 	void onReset(GLFWWindowImpl& win) override;
 
 	void createLayer();
-	void UpadateRelicsSSBO();
+	void UpdateRelicsSSBO();
+	void UpdateDigSpotSSBO();
 	void resetLayer();
 
 	void playGame();
@@ -83,6 +91,9 @@ private:
 
 	std::shared_ptr<SSBO> m_relicsSSBO;
 	std::shared_ptr<Texture> RelicTexture1;
+
+	std::shared_ptr<SSBO> m_digSSBO;
+	std::array<DiggingSpot, 16> m_digBOs;
 
 	std::array<std::shared_ptr<Material>,3> slotsButtonMats;
 

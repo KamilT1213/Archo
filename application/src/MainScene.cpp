@@ -36,7 +36,7 @@ float DigCurve2(float t, float s) {
 	return t;
 }
 
-void Archo::UpadateRelicsSSBO() {
+void Archo::UpdateRelicsSSBO() {
 	for (int i = 0; i < m_save.s_Items.size(); i++) {
 		RelicsBO current;
 		current.Quantity = m_save.s_Items.at(i).second;
@@ -45,6 +45,10 @@ void Archo::UpadateRelicsSSBO() {
 		current.yOffset = glm::floor(m_save.s_Items[i].first / 4.0f);
 		m_relicsSSBO->edit(m_save.s_Items[i].first * sizeof(RelicsBO), sizeof(RelicsBO), &current);
 	}
+}
+
+void Archo::UpdateDigSpotSSBO() {
+	m_digSSBO->edit(0, m_digBOs.size() * sizeof(DiggingSpot), m_digBOs.data());
 }
 
 Archo::Archo(GLFWWindowImpl& win) : Layer(win)
@@ -75,8 +79,12 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 		m_relicsSSBO->edit(i * sizeof(RelicsBO), sizeof(RelicsBO), &current);
 	}
 
-	UpadateRelicsSSBO();
+	UpdateRelicsSSBO();
 
+	m_digSSBO = std::make_shared<SSBO>(sizeof(DiggingSpot) * 16, 16);
+	m_digSSBO->bind(5);
+
+	UpdateDigSpotSSBO();
 
 	//m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
 	//for (int i = 0; i < m_seedingPoints.size(); i++) {
@@ -317,6 +325,7 @@ void Archo::onUpdate(float timestep)
 		FinalQuad->setValue("u_State", 1.0f);
 		ZoneScoped;
 
+		m_gameInventoryMat->setValue("Time", allTime / 100.f);
 
 		//auto& computeGroundPass = m_mainRenderer.getComputePass(GroundComputePassIDx);
 		auto& relicPass = m_relicRenderer.getRenderPass(ScreenRelicPassIDx);
@@ -403,7 +412,7 @@ void Archo::onUpdate(float timestep)
 
 		if (LastRareity != Rarity) {
 			LastRareity = Rarity;
-			spdlog::info("Switched Rarity: {} at: x:{} , y:{}", LastRareity, temp.x, temp.y);
+			//spdlog::info("Switched Rarity: {} at: x:{} , y:{}", LastRareity, temp.x, temp.y);
 		}
 
 
@@ -442,8 +451,13 @@ void Archo::onUpdate(float timestep)
 
 		if (m_interactionType == InteractionType::Digging) {
 			if (Pressed && UVData[3] > 0.0f) {
+
 				compute_GroundMaterial->setValue("Mode", 1.0f);
-				compute_GroundMaterial->setValue("DigPos", m_DigPos);
+
+				m_digBOs[0].DigInfo.x = m_DigPos.x;
+				m_digBOs[0].DigInfo.y = m_DigPos.y;
+
+
 				
 				if (!finished) {
 					Pressed = true;
@@ -456,9 +470,18 @@ void Archo::onUpdate(float timestep)
 						finished = true;
 
 					}
-					compute_GroundMaterial->setValue("Factor", 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f));
+					m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
+					for (int i = 1; i < 16; i++) {
+						m_digBOs[i].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
+					}
+					compute_GroundMaterial->setValue("Factor", ProgressBar);
+
 				}
 				else {
+					for (int i = 1; i < 16; i++) {
+						m_digBOs[i].DigInfo.x = Randomiser::uniformFloatBetween(0, 1);
+						m_digBOs[i].DigInfo.y = Randomiser::uniformFloatBetween(0, 1);
+					}
 					finished = true;
 					compute_GroundMaterial->setValue("Mode", 1.5f);
 					m_interactionType == InteractionType::Extraction;
@@ -472,6 +495,8 @@ void Archo::onUpdate(float timestep)
 						finished = false;
 					}
 				}
+
+				UpdateDigSpotSSBO();
 
 				if (ProgressBar * timeToDig >= ProgressSegmentTarget) {
 
@@ -572,7 +597,7 @@ void Archo::onUpdate(float timestep)
 							}
 
 							saveGame();
-							UpadateRelicsSSBO();
+							UpdateRelicsSSBO();
 							m_relicRenderer.render();
 
 							relicComp.Active = false;
@@ -843,6 +868,7 @@ void Archo::createLayer()
 	std::shared_ptr<Texture> deleteSaveButtonTexture = std::make_shared<Texture>("./assets/textures/UI/DeleteSaveButton.png");
 	std::shared_ptr<Texture> settingsButtonTexture = std::make_shared<Texture>("./assets/textures/UI/SettingsButton.png");
 	std::shared_ptr<Texture> scenery_ArchTexture = std::make_shared<Texture>("./assets/textures/Scenery/Arch/ArchTexture.png");
+	std::shared_ptr<Texture> DigBrushMask = std::make_shared<Texture>("./assets/textures/Compute/DigMasks.png");
 
 	RelicTexture1 = std::make_shared<Texture>("./assets/textures/Relics/Relics_1.png");
 
@@ -995,8 +1021,14 @@ void Archo::createLayer()
 	std::shared_ptr<Shader> compute_GroundShader = std::make_shared<Shader>(compute_GroundShaderDesc);
 	compute_GroundMaterial = std::make_shared<Material>(compute_GroundShader);
 	compute_GroundMaterial->setValue("Size", glm::vec2(groundTexture->getWidthf(), groundTexture->getHeightf()));
-	compute_GroundMaterial->setValue("DigStyle", glm::vec4(25.0f,0.25f,0.0f,0.0f));
-	compute_GroundMaterial->setValue("Mode", 0.0f);
+	//compute_GroundMaterial->setValue("DigStyle", glm::vec4(25.0f,0.25f,0.0f,0.0f));
+	compute_GroundMaterial->setValue("DigSpotTotal", 1);
+	
+	m_digBOs[0].DigInfo = glm::vec4(0, 0, 25.0f, 0.25f);
+	m_digBOs[0].DigMask = 1;
+	for (int i = 1; i < 16; i++) {
+		//m_digBOs[i].DigInfo = glm::vec4(0, 0, 25.0f, 0.25f);
+	}
 
 	//ShaderDescription compute_GroundNormalShaderDesc;
 	//compute_GroundNormalShaderDesc.type = ShaderType::compute;
@@ -1880,8 +1912,16 @@ void Archo::createLayer()
 	GroundImgTemp.imageUnit = 1;
 	GroundImgTemp.access = TextureAccess::ReadWrite;
 
+	Image DigBrushMaskImg;
+	DigBrushMaskImg.mipLevel = 0;
+	DigBrushMaskImg.layered = false;
+	DigBrushMaskImg.texture = DigBrushMask;
+	DigBrushMaskImg.imageUnit = 2;
+	DigBrushMaskImg.access = TextureAccess::ReadWrite;
+
 	GroundComputePass.images.push_back(GroundImg);
 	GroundComputePass.images.push_back(GroundImgTemp);
+	GroundComputePass.images.push_back(DigBrushMaskImg);
 
 	GroundComputePassIDx = m_groundComputeRenderer.getSumPassCount();
 	m_groundComputeRenderer.addComputePass(GroundComputePass);
@@ -2335,7 +2375,7 @@ void Archo::pauseInventory()
 	//m_relicsSSBO->edit(0, 48 * sizeof(RelicsBO), &temp);
 
 
-	UpadateRelicsSSBO();
+	UpdateRelicsSSBO();
 
 	auto& pass = m_pausedRenderer.getRenderPass(PauseButtonPassIDx);
 	pass.scene = m_pauseMenu_Inventory;
@@ -2613,6 +2653,11 @@ void Archo::placeRelics()
 		else {
 			renderComp.material->setValue("u_active", (float)(int)false);
 		}
+	}
+
+	for (int i = 0; i < m_Relics2.size(); i++) {
+		auto& renderComp = m_InventoryButtonScene->m_entities.get<Render>(m_Relics2[i]);
+		renderComp.material->setValue("u_active", (float)(int)true);
 	}
 	m_relicRenderer.render();
 }

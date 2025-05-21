@@ -39,7 +39,7 @@ void main()
     colour = texture((u_RelicTexture), localCoords);
 
     if(colour.a <= 0){discard;}
-    if (relics[index].Quantity <= 0) { colour.xyz = vec3(0.1); }
+    if (relics[index].Quantity <= 0) { colour.xyz = vec3(0.2); }
     if (u_active > 0) {
         //vec2 newCoords = localCoords - localCoords2;
         //newCoords = ((newCoords - 0.125) * 1.4) + 0.125;

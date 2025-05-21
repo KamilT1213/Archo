@@ -2,14 +2,17 @@
 layout(local_size_x = 32, local_size_y = 32) in;
 layout(binding = 0, rgba16f) uniform image2D VisibleLayer;
 layout(binding = 1, rgba16f) uniform image2D HiddenLayer;
+layout(binding = 2, rgba16f) uniform image2D BrushMask;
 
 uniform vec2 Size;
-uniform vec2 DigPos;
+//uniform vec2 DigPos;
 
-uniform vec4 DigStyle;
+//uniform vec4 DigStyle;
 
 uniform float Factor;
 uniform float Mode;
+
+uniform int DigSpotTotal;
 
 float hash(vec2 p);
 vec2 randvec2(vec2 p);
@@ -19,6 +22,20 @@ vec3 voronoi(vec2 p, vec2 fp);
 
 float Seed = 0.51765;
 float pi = 3.1415926;
+
+struct DiggingSpot {
+	vec4 DigInfo; //Position: x, y | Radii | Depth
+	float DigProgression;// Progession of digging
+	int DigMask;// Pattern to use when digging
+	float rotation;
+	int a;// Reserved
+};
+
+layout(std430, binding = 5) buffer ssbo
+{
+	DiggingSpot digspots[];
+};
+
 
 void main()
 {
@@ -31,46 +48,65 @@ void main()
 	else if(Mode == 1.0){
 		if(Factor > 0.0){
 
-			Seed = DigPos.x / 2134.041;
-			Seed = DigPos.y / 8715.230;
-			Seed = mod(Seed,1.0);
 
-			float radii = Size.x/DigStyle.x;
-			float dist = distance(coords, DigPos * Size) / radii;
 
-			vec2 NoiseS1 = vec2(coords) / 3.125;
+			float sumRemoval = 0;
+			float currentFactor = 0;
 
-			float noiseLevel = perlin(floor(NoiseS1),fract(NoiseS1) - 0.5);
-			noiseLevel += 1;
-			noiseLevel /= 2;
+			for (int i = 0; i < DigSpotTotal; i++) {
 
-			vec2 NoiseS2 = vec2(coords + (DigPos * 421)) / 1.25;
+				vec2 DigPos = digspots[i].DigInfo.xy;
 
-			float noiseLevel2 = perlin(floor(NoiseS2),fract(NoiseS2) - 0.5);
-			noiseLevel2 += 1;
-			noiseLevel2 /= 2;
+				vec2 MaskCoords = (vec2(floor(mod(float(digspots[i].DigMask), 4.0)), floor(digspots[i].DigMask * 4)) * 256);
 
-			vec4 sampled = imageLoad(VisibleLayer,coords);
-			vec4 middleSampled = imageLoad(VisibleLayer,ivec2(DigPos * Size));
+				Seed = DigPos.x / 2134.041;
+				Seed = DigPos.y / 8715.230;
+				Seed = mod(Seed, 1.0);
 
-			float arcs = acos(dist + (noiseLevel2 /4.0));
-			float distBetweenCentre = distance(sampled.x + sampled.y, middleSampled.x + middleSampled.y);
-			arcs = sin(arcs);// *Size;
+				float radii = Size.x / digspots[i].DigInfo.z;
+				float dist = distance(coords, DigPos * Size) / radii;
 
-			if (dist < 1.0 && !isnan(arcs) && distBetweenCentre < 0.2) {
+				vec2 CoordOnMask = (((coords - (DigPos * Size)) + radii) / (radii * 2)) * 256;
+				MaskCoords += CoordOnMask;
 
-				vec4 Hidden = imageLoad(HiddenLayer,coords);
-				//Hidden.y = mix(Hidden.y - DigStyle.y, Hidden.y, Factor);
-				//Hidden.z = mix(Hidden.z + DigStyle.y, Hidden.z, Factor);				
-				
-				Hidden.y = mix(Hidden.y - (arcs *  ( 1 - dist ) * DigStyle.y * ( 1 - (noiseLevel * dist))), Hidden.y, Factor);
-				Hidden.z = mix(Hidden.z + (arcs *  ( 1 - dist ) * DigStyle.y * (1 - (noiseLevel * dist))), Hidden.z, Factor);				
-				
-				//Hidden.y = mix(Hidden.y - (noiseLevel * DigStyle.y ), Hidden.y, Factor);
-				//Hidden.z = mix(Hidden.z + (noiseLevel * DigStyle.y ), Hidden.z, Factor);
+				vec2 NoiseS1 = vec2(coords) / 3.125;
+
+				float noiseLevel = perlin(floor(NoiseS1), fract(NoiseS1) - 0.5);
+				noiseLevel += 1;
+				noiseLevel /= 2;
+
+				vec2 NoiseS2 = vec2(coords + (DigPos * 421)) / 1.25;
+
+				float noiseLevel2 = perlin(floor(NoiseS2), fract(NoiseS2) - 0.5);
+				noiseLevel2 += 1;
+				noiseLevel2 /= 2;
+
+				vec4 sampled = imageLoad(VisibleLayer, coords);
+				vec4 middleSampled = imageLoad(VisibleLayer, ivec2(DigPos * Size));
+
+				float arcs = acos(dist + (noiseLevel2 / 4.0));
+				float distBetweenCentre = distance(sampled.x + sampled.y, middleSampled.x + middleSampled.y);
+				arcs = sin(arcs);// *Size;
+
+				if (dist < 1.0 && !isnan(arcs) && distBetweenCentre < 0.2) {
+
+					
+					float removal = (arcs * (1 - dist) * digspots[i].DigInfo.w * (1 - (noiseLevel * dist))) * imageLoad(BrushMask,ivec2(MaskCoords)).y;
+					if (removal > sumRemoval) {
+						sumRemoval = removal;
+						currentFactor = digspots[i].DigProgression;
+					}
+
+				}
+			}
+
+			if (sumRemoval > 0) {
+				vec4 Hidden = imageLoad(HiddenLayer, coords);
+
+				Hidden.y = mix(Hidden.y - sumRemoval, Hidden.y, currentFactor);
+				Hidden.z = mix(Hidden.z + sumRemoval, Hidden.z, currentFactor);
 
 				imageStore(VisibleLayer, coords, Hidden);
-
 			}
 		}
 		if(Factor <= 0.0 || Factor >= 1.0){
