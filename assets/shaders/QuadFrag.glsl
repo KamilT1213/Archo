@@ -20,6 +20,21 @@ uniform sampler2D u_SceneryTexture;
 uniform sampler2D u_SceneryDepthTexture;
 uniform sampler2D u_SceneryDataTexture;
 
+uniform int DigSpotTotal;
+
+struct DiggingSpot {
+    vec4 DigInfo; //Position: x, y | Radii | Depth
+    float DigProgression;// Progession of digging
+    int DigMask;// Pattern to use when digging
+    float rotation;
+    int a;// Reserved
+};
+
+layout(std430, binding = 5) buffer ssbo
+{
+    DiggingSpot digspots[];
+};
+
 uniform float u_flip;
 
 float pi = 3.1415;
@@ -142,39 +157,53 @@ void main()
 
     //colour = data;
     float ScreenPixelSize = 1.0/min(u_ScreenSize.x, u_ScreenSize.y);
-    vec2 localToMouse = (texCoords - DigPos);
     float ui = 0.0;
-    float RfromM = distance(localToMouse, vec2(0));
-    float size = u_ScreenSize.x/(DigStyle.x * 2);
-    if(isDigging > 0.0){
-        if (RfromM < ScreenPixelSize * (size + sizeOfRing) && RfromM > ScreenPixelSize * (size) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
-            colour = mix(colour,vec4(vec3(1), 1),0.7);
-            ui = 1.0;
+    float RfromM = 0;
+
+    vec4 UIOverride = colour;
+    vec2 localToMouse = vec2(0);
+
+    for (int i = 0; i < DigSpotTotal; i++) {
+        localToMouse = (texCoords - digspots[i].DigInfo.xy);
+        RfromM = distance(localToMouse, vec2(0));
+        float size = u_ScreenSize.x / (digspots[i].DigInfo.z * 2);
+        if (isDigging > 0.0) {
+
+            if (RfromM < ScreenPixelSize * (size + sizeOfRing) && RfromM > ScreenPixelSize * (size) && atan(-localToMouse.x, -localToMouse.y) < ((1 - digspots[i].DigProgression) * pi * 2) - pi) {
+                UIOverride = mix(colour, vec4(vec3(1), 1), 0.7);
+                ui = 1.0;
+            }
+            if (RfromM < ScreenPixelSize * (sizeOfRing - 5)) {
+                //colour = mix(colour, vec4(vec3(1), 1), 0.7f);
+                //ui = 1.0;
+            }
         }
-        if (RfromM < ScreenPixelSize * (sizeOfRing - 5)) {
-            //colour = mix(colour, vec4(vec3(1), 1), 0.7f);
-            //ui = 1.0;
-        }
-    }
-    else{
-        if (RfromM < ScreenPixelSize * (size ) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
-            colour = mix(colour,vec4(vec3(1), 1),0.2);
-            ui = 1.0;
-        }
-        if (RfromM < ScreenPixelSize * (sizeOfRing - 5)) {
-            //colour = mix(colour, vec4(vec3(1), 1), 0.7f);
-            //ui = 1.0;
+        else {
+
         }
     }
 
-
-    localToMouse = (texCoords - MousePos);
+    localToMouse = (texCoords - DigPos);
     RfromM = distance(localToMouse, vec2(0));
+    if (isDigging <= 0.0) {
+        if (RfromM < ScreenPixelSize * (50) && atan(-localToMouse.x, -localToMouse.y) < (Progress * pi * 2) - pi) {
+            UIOverride = mix(colour, vec4(vec3(1), 1), 0.2);
+            ui = 1.0;
+        }
+        if (RfromM < ScreenPixelSize * (sizeOfRing - 5)) {
+            //colour = mix(colour, vec4(vec3(1), 1), 0.7f);
+            //ui = 1.0;
+        }
+    }
+
+
+
     if (RfromM < ScreenPixelSize * (sizeOfRing - 7.5)) {
-        colour = mix(colour, vec4(vec3(1), 1), 0.4);
+        UIOverride = mix(colour, vec4(vec3(1), 1), 0.4);
         ui = 1.0;
     }
 
+    colour = UIOverride;
 
 
     //if (sceneryDepth <= 0 && relicDepth <= 0 && ui <= 0.0 && groundDepth <= 0) discard;

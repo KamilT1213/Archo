@@ -2,7 +2,7 @@
 layout(local_size_x = 32, local_size_y = 32) in;
 layout(binding = 0, rgba16f) uniform image2D VisibleLayer;
 layout(binding = 1, rgba16f) uniform image2D HiddenLayer;
-layout(binding = 2, rgba16f) uniform image2D BrushMask;
+layout(binding = 2, rgba8) uniform image2D BrushMask;
 
 uniform vec2 Size;
 //uniform vec2 DigPos;
@@ -19,6 +19,8 @@ vec2 randvec2(vec2 p);
 vec2 fade(vec2 t);
 float perlin(vec2 p, vec2 fp);
 vec3 voronoi(vec2 p, vec2 fp);
+mat2 rotate2d(float _angle);
+
 
 float Seed = 0.51765;
 float pi = 3.1415926;
@@ -57,7 +59,7 @@ void main()
 
 				vec2 DigPos = digspots[i].DigInfo.xy;
 
-				vec2 MaskCoords = (vec2(floor(mod(float(digspots[i].DigMask), 4.0)), floor(digspots[i].DigMask * 4)) * 256);
+				vec2 MaskCoords = (vec2(floor(mod(float(digspots[i].DigMask) + 0.5, 4.0)), floor(digspots[i].DigMask / 4)) * 256);
 
 				Seed = DigPos.x / 2134.041;
 				Seed = DigPos.y / 8715.230;
@@ -66,7 +68,7 @@ void main()
 				float radii = Size.x / digspots[i].DigInfo.z;
 				float dist = distance(coords, DigPos * Size) / radii;
 
-				vec2 CoordOnMask = (((coords - (DigPos * Size)) + radii) / (radii * 2)) * 256;
+				vec2 CoordOnMask = ((((coords - (DigPos * Size)) * rotate2d(digspots[i].rotation)) + radii) / (radii * 2)) * 256;
 				MaskCoords += CoordOnMask;
 
 				vec2 NoiseS1 = vec2(coords) / 3.125;

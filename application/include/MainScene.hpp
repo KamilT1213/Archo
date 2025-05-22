@@ -2,6 +2,7 @@
 #include <DemonRenderer.hpp>
 #include "core/saving.hpp"
 
+
 enum class InteractionType { Digging, Extraction };
 enum class InteractionState { Idle, InProgress };
 
@@ -27,7 +28,18 @@ class Archo : public Layer
 {
 public:
 	Archo(GLFWWindowImpl& win);
-	
+
+	std::array<DiggingSpot, 16> m_digBOs;
+
+	float Segments{ 0 };
+	float timeToDig{ 1.0f };
+	float timePerSegment{ 0.2f };
+
+	int RelId{ -1 };
+	int Rarity{ -1 };
+	bool isScenery{ false };
+
+	Game_Save m_save;
 private:
 	void onImGUIRender() override;
 	void onRender() override;
@@ -40,8 +52,12 @@ private:
 
 	void createLayer();
 	void UpdateRelicsSSBO();
+	void ClearRelicsSSBO();
 	void UpdateDigSpotSSBO();
 	void resetLayer();
+
+	void RefreshRelicFunctions();
+	void RunRelicFunctions();
 
 	void playGame();
 	void mainSettings();
@@ -71,7 +87,7 @@ private:
 	void placeRelics();
 	void placeScenery();
 
-	int seedingResolution = 32;
+	int seedingResolution = 64;
 	std::shared_ptr<SSBO> m_seedingSSBO;
 	std::vector<SeedingPoint> m_seedingPoints;
 
@@ -93,10 +109,11 @@ private:
 	std::shared_ptr<Texture> RelicTexture1;
 
 	std::shared_ptr<SSBO> m_digSSBO;
-	std::array<DiggingSpot, 16> m_digBOs;
+
 
 	std::array<std::shared_ptr<Material>,3> slotsButtonMats;
 
+	std::array<std::function<void()>, 3> RelicFunctions;
 
 	std::shared_ptr<Scene> m_RelicScene;
 	std::shared_ptr<Scene> m_InventoryButtonScene;
@@ -145,7 +162,10 @@ private:
 	int RemainingRelics{ 0 };
 	int invRelicSelected{ -1 };
 	int Equiped[3]{ -1,-1,-1 };
+	int Digspots = 1;
 	float ProgressSegmentTarget{ 0.0f };
+
+	glm::ivec2 TerrainSize{ 1024,1024 };
 
 	ImVec2 imageSize = ImVec2(width / 3, height / 3);
 	ImVec2 uv0 = ImVec2(0.0f, 1.0f);
@@ -195,7 +215,7 @@ private:
 	Renderer m_sceneryRenderer;
 
 	Settings_Save m_settings;
-	Game_Save m_save;
+
 
 	InteractionType m_interactionType;
 	InteractionState m_interactionState;

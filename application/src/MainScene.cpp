@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <numeric> // For std::iota
 #include <string>
+#include "scripts/RelicFunctions.hpp"
 
 
 struct Relic {
@@ -44,6 +45,17 @@ void Archo::UpdateRelicsSSBO() {
 		current.xOffset = glm::floor(glm::mod(float(m_save.s_Items[i].first), 4.0f));
 		current.yOffset = glm::floor(m_save.s_Items[i].first / 4.0f);
 		m_relicsSSBO->edit(m_save.s_Items[i].first * sizeof(RelicsBO), sizeof(RelicsBO), &current);
+	}
+}
+
+void Archo::ClearRelicsSSBO() {
+	for (int i = 0; i < 48; i++) {
+		RelicsBO current;
+		current.Quantity = 0;
+		current.textureUnit = 0;
+		current.xOffset = glm::floor(glm::mod(float(i), 4.0f));
+		current.yOffset = glm::floor(i / 4.0f);
+		m_relicsSSBO->edit(i * sizeof(RelicsBO), sizeof(RelicsBO), &current);
 	}
 }
 
@@ -107,6 +119,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 
 	createLayer();
+	RefreshRelicFunctions();
 }
 
 void Archo::onImGUIRender()
@@ -395,10 +408,17 @@ void Archo::onUpdate(float timestep)
 		//gameMouseLocation = glm::vec2(UVData[0], UVData[1]);
 		////spdlog::info("mouse x: {:03.2f}, mouse y: {:03.2f}", gameMouseLocation.x, gameMouseLocation.y);
 		////spdlog::info("Relic id: {:03.5f}", glm::round(UVData[2] * (Relics + 1)));
-		int RelId = -1;
-		int Rarity = -1;
-		bool isScenery = (bool)glm::round(UVData[1]);
-		float Segments = 0;
+		Segments = 0;
+		timeToDig = 1.0f;
+		timePerSegment = 0.2f;
+
+		RelId = -1;
+		Rarity = -1;
+		isScenery = (bool)glm::round(UVData[1]);
+
+		m_digBOs[0].DigInfo = glm::vec4(0, 0, 25.0f, 0.25f);
+		m_digBOs[0].DigMask = 0;
+
 		if(isScenery){
 			RelId = (int)glm::round(UVData[2] * (m_Sceneries.size() + 1));
 			Segments = 64;
@@ -415,13 +435,14 @@ void Archo::onUpdate(float timestep)
 			//spdlog::info("Switched Rarity: {} at: x:{} , y:{}", LastRareity, temp.x, temp.y);
 		}
 
+		RunRelicFunctions();
 
+		//spdlog::info("Functions Active: {} | {} | {}", RelicFunctions[0] == NULL, RelicFunctions[1] == NULL, RelicFunctions[2] == NULL);
+		//spdlog::info("Dig Spot Data: {} | {} | {} | {}", m_digBOs[0].DigInfo.x, m_digBOs[0].DigInfo.y, m_digBOs[0].DigInfo.z, m_digBOs[0].DigInfo.w);
+	
 		//spdlog::info("Rarity: {}", Rarity);
 
-		float timeToDig = 1.0f;
 
-
-		float timePerSegment = 0.2f;
 
 		//spdlog::info("ID: {}", RelId - 1);
 
@@ -478,10 +499,8 @@ void Archo::onUpdate(float timestep)
 
 				}
 				else {
-					for (int i = 1; i < 16; i++) {
-						m_digBOs[i].DigInfo.x = Randomiser::uniformFloatBetween(0, 1);
-						m_digBOs[i].DigInfo.y = Randomiser::uniformFloatBetween(0, 1);
-					}
+
+
 					finished = true;
 					compute_GroundMaterial->setValue("Mode", 1.5f);
 					m_interactionType == InteractionType::Extraction;
@@ -496,7 +515,7 @@ void Archo::onUpdate(float timestep)
 					}
 				}
 
-				UpdateDigSpotSSBO();
+				
 
 				if (ProgressBar * timeToDig >= ProgressSegmentTarget) {
 
@@ -517,6 +536,11 @@ void Archo::onUpdate(float timestep)
 
 					//m_soundManager.playSound(s.c_str());
 					//spdlog::info("PlaySound");
+					for (int i = 1; i < 16; i++) {
+						m_digBOs[i].DigInfo.x = Randomiser::uniformFloatBetween(0, 1);
+						m_digBOs[i].DigInfo.y = Randomiser::uniformFloatBetween(0, 1);
+					}
+					m_digBOs[0].rotation = Randomiser::uniformFloatBetween(-glm::pi<float>(), glm::pi<float>());
 					ProgressSegmentTarget++;
 				}
 			}
@@ -533,8 +557,12 @@ void Archo::onUpdate(float timestep)
 					finished = false;
 
 				}
+				m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
+				for (int i = 1; i < 16; i++) {
+					m_digBOs[i].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
+				}
 			}
-
+			UpdateDigSpotSSBO();
 			m_groundComputeRenderer.render();
 		}
 		else if (m_interactionType == InteractionType::Extraction) {
@@ -598,6 +626,7 @@ void Archo::onUpdate(float timestep)
 
 							saveGame();
 							UpdateRelicsSSBO();
+							RefreshRelicFunctions();
 							m_relicRenderer.render();
 
 							relicComp.Active = false;
@@ -664,10 +693,10 @@ void Archo::onUpdate(float timestep)
 		
 
 
-		QuadMat->setValue("MousePos", (m_PointerPos));
+		//QuadMat->setValue("MousePos", (m_PointerPos));
 		QuadMat->setValue("DigPos", (m_DigPos));
 		QuadMat->setValue("Progress", x);
-		QuadMat->setValue("DigStyle", glm::vec4(25.0f,0.05f,0.0f,0.0f));
+		//QuadMat->setValue("DigStyle", glm::vec4(25.0f,0.05f,0.0f,0.0f));
 		QuadMat->setValue("isDigging", (float)(int)(m_interactionType == InteractionType::Digging));
 		//QuadMat->setValue("RelicFill", RelicSetWave);
 		//QuadMat->setValue("u_flip", (float)(int)Flip);
@@ -873,8 +902,8 @@ void Archo::createLayer()
 	RelicTexture1 = std::make_shared<Texture>("./assets/textures/Relics/Relics_1.png");
 
 	TextureDescription groundTextureDesc;
-	groundTextureDesc.height = 512.0f;//4096.0f / 2.0f;
-	groundTextureDesc.width = 512.0f;//4096.0f / 2.0f;
+	groundTextureDesc.height = TerrainSize.y;//1024.0f;//4096.0f / 2.0f;
+	groundTextureDesc.width = TerrainSize.x;//1024.0f;//4096.0f / 2.0f;
 	groundTextureDesc.channels = 4;
 	groundTextureDesc.isHDR = true;
 
@@ -911,6 +940,7 @@ void Archo::createLayer()
 	std::shared_ptr<Material> screenQuadMaterial = std::make_shared<Material>(screenQuadShader);
 
 	screenQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
+	screenQuadMaterial->setValue("DigSpotTotal", Digspots);
 
 
 	//Final main menu screen
@@ -1022,12 +1052,13 @@ void Archo::createLayer()
 	compute_GroundMaterial = std::make_shared<Material>(compute_GroundShader);
 	compute_GroundMaterial->setValue("Size", glm::vec2(groundTexture->getWidthf(), groundTexture->getHeightf()));
 	//compute_GroundMaterial->setValue("DigStyle", glm::vec4(25.0f,0.25f,0.0f,0.0f));
-	compute_GroundMaterial->setValue("DigSpotTotal", 1);
+	compute_GroundMaterial->setValue("DigSpotTotal", Digspots);
 	
 	m_digBOs[0].DigInfo = glm::vec4(0, 0, 25.0f, 0.25f);
-	m_digBOs[0].DigMask = 1;
+	m_digBOs[0].DigMask = 5;
 	for (int i = 1; i < 16; i++) {
-		//m_digBOs[i].DigInfo = glm::vec4(0, 0, 25.0f, 0.25f);
+		m_digBOs[i].DigInfo = glm::vec4(0, 0, Randomiser::uniformFloatBetween(25.f,15.f), 0.25f);
+		m_digBOs[i].DigMask = Randomiser::uniformIntBetween(0,5);
 	}
 
 	//ShaderDescription compute_GroundNormalShaderDesc;
@@ -1752,7 +1783,7 @@ void Archo::createLayer()
 		std::shared_ptr<Material> RelicMaterial2 = std::make_shared<Material>(InvButRelicShader);
 		RelicMaterial2->setValue("u_RelicTexture", RelicTexture1);
 		RelicMaterial2->setValue("u_Rarity", rarity + 0.001f);
-		RelicMaterial2->setValue("u_Id", -1.0f);
+		//RelicMaterial2->setValue("u_Id", -1.0f);
 		RelicMaterial2->setValue("u_active", (float)(int)true);
 		transformComp2.translation = glm::vec3(glm::mod((float)i, 7.f), floorf(i / 7.f), -0.5f);
 		transformComp2.translation += glm::vec3(0.5f, 0.5f, 0);
@@ -1796,7 +1827,7 @@ void Archo::createLayer()
 		float s = Randomiser::uniformFloatBetween(100.0f, 300.0f);
 		transformComp.scale = glm::vec3(s,s,1.0f);
 		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
-		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 512.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 512.0f - transformComp.scale.y), -1.0f);
+		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, TerrainSize.x - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, TerrainSize.y - transformComp.scale.y), -1.0f);
 		transformComp.recalc();
 
 	}	
@@ -1828,7 +1859,7 @@ void Archo::createLayer()
 		float s = Randomiser::uniformFloatBetween(100.0f, 150.0f);
 		transformComp.scale = glm::vec3(s,s,1.0f);
 		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
-		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 512.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 512.0f - transformComp.scale.y), -1.0f);
+		transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, TerrainSize.x - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, TerrainSize.y - transformComp.scale.y), -1.0f);
 		transformComp.recalc();
 
 	}
@@ -1876,7 +1907,7 @@ void Archo::createLayer()
 
 	ComputePass SeedingComputePass;
 	SeedingComputePass.material = m_seedingFinder;
-	SeedingComputePass.workgroups = { seedingResolution,seedingResolution,1 };// { seedingResolution, seedingResolution, 1 };
+	SeedingComputePass.workgroups = { TerrainSize.x / 16,TerrainSize.y / 16,1 };// { seedingResolution, seedingResolution, 1 };
 	SeedingComputePass.barrier = MemoryBarrier::ShaderImageAccess;
 
 	Image InImg;
@@ -1918,6 +1949,8 @@ void Archo::createLayer()
 	DigBrushMaskImg.texture = DigBrushMask;
 	DigBrushMaskImg.imageUnit = 2;
 	DigBrushMaskImg.access = TextureAccess::ReadWrite;
+
+	
 
 	GroundComputePass.images.push_back(GroundImg);
 	GroundComputePass.images.push_back(GroundImgTemp);
@@ -2306,6 +2339,41 @@ void Archo::resetLayer()
 
 }
 
+void Archo::RefreshRelicFunctions()
+{
+	int currentDigSlot = 0;
+	for (int i = 0; i < 3; i++) {
+		int Grade = 0;
+		for (int j = 0; j < m_save.s_Items.size(); j++) {
+			if (m_save.s_Items[j].first == m_save.s_Equiped[i]) {
+				int counter = 0;
+				for (int k = 0; k < 8; k++) {
+					counter += int(pow(k + 1, 2));
+					if (m_save.s_Items[j].second <= counter) {
+						Grade = k;
+						break;
+					}
+				}
+				break;
+			}
+		}
+		FunctionAllocationData FuncDat = BindNewFunction(m_save.s_Equiped[i], Grade, this, std::pair<int, int>{currentDigSlot, 16 - currentDigSlot});
+		currentDigSlot += FuncDat.DigSlotsUsed;
+		RelicFunctions[i] = FuncDat.BoundFunc;
+	}
+	if (currentDigSlot == 0) currentDigSlot = 1;
+
+	compute_GroundMaterial->setValue("DigSpotTotal", currentDigSlot);
+	m_mainRenderer.getRenderPass(ScreenGroundPassIDx).scene->m_entities.get<Render>(Quad).material->setValue("DigSpotTotal", currentDigSlot);
+}
+
+void Archo::RunRelicFunctions()
+{
+	for (int i = 0; i < 3; i++) {
+		if(RelicFunctions[i] != NULL) RelicFunctions[i]();
+	}
+}
+
 void Archo::playGame()
 {
 	m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
@@ -2396,6 +2464,7 @@ void Archo::equipToSlot1()
 	m_save.s_Equiped[0] = invRelicSelected;
 	slotsButtonMats[0]->setValue("u_index", m_save.s_Equiped[0]);
 	
+	RefreshRelicFunctions();
 }
 
 void Archo::equipToSlot2()
@@ -2408,6 +2477,8 @@ void Archo::equipToSlot2()
 	}
 	m_save.s_Equiped[1] = invRelicSelected;
 	slotsButtonMats[1]->setValue("u_index", m_save.s_Equiped[1]);
+
+	RefreshRelicFunctions();
 }
 
 void Archo::equipToSlot3()
@@ -2421,6 +2492,7 @@ void Archo::equipToSlot3()
 	m_save.s_Equiped[2] = invRelicSelected;
 	slotsButtonMats[2]->setValue("u_index", m_save.s_Equiped[2]);
 
+	RefreshRelicFunctions();
 }
 
 void Archo::unpauseInventory()
@@ -2499,6 +2571,14 @@ void Archo::deleteGameSave()
 {
 	m_save = Game_Save();
 	Save_Game(m_save);
+	ClearRelicsSSBO();
+	for (int i = 0; i < 3; i++) {
+		if (m_save.s_Equiped[i] == invRelicSelected) {
+			m_save.s_Equiped[i] = -1;
+			slotsButtonMats[i]->setValue("u_index", m_save.s_Equiped[i]);
+		}
+	}
+	RefreshRelicFunctions();
 }
 
 #include "windows/window.hpp"

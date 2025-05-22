@@ -23,10 +23,12 @@ set (PROJECT_SOURCE_FILES
 set (SCRIPT_HEADER_FILES
 	"application/scripts/include/controller.hpp"
 	"application/scripts/include/button.hpp"
+	"application/scripts/RelicFunctions.hpp"
 )
 set (SCRIPT_SOURCE_FILES
 	"application/scripts/src/controller.cpp"
 	"application/scripts/src/button.cpp"
+	"application/scripts/RelicFunctions.cpp"
 )
 
 # Add excutable target and include directory
