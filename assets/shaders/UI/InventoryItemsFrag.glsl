@@ -43,7 +43,7 @@ void main() {
 
 	int index = int(floor(floor((normed)*gridSize).x + (floor((1 - normed)*gridSize).y * (gridSize * ratio))));
 	vec2 flippedCoords = vec2(normed.x, 1 - normed.y);
-	vec2 localCoords = ((mod(flippedCoords * gridSize, 1.0) + vec2(relics[index].xOffset, relics[index].yOffset)) / 4) ;
+	vec2 localCoords = ((mod(flippedCoords * gridSize, 1.0) + vec2(relics[index].xOffset, relics[index].yOffset)) / 8) ;
 	col = texture((u_Texture), localCoords);
 	//col.xyz = colPick(index + 0.5).xyz * (step(length(mod(normed * gridSize, 1.0) - 0.5), 0.45));
 	//col.xyz = vec3(index / 48.0);
@@ -52,11 +52,13 @@ void main() {
 	int counter = 0;
 	int progress = 0;
 	float rotator = 0;
+	int segments = 0;
 	for (int i = 0; i < 8; i++) {
 		counter += int(pow(i + 1, 2));
 		if (relics[index].Quantity <= counter) {
 			progress = i ;
-			rotator = float(relics[index].Quantity - (counter - pow(i + 1, 2)) ) / pow(i + 1, 2.0);
+			rotator = float(relics[index].Quantity - (counter - pow(i + 1, 2)) );
+			segments = int(pow(i + 1, 2.0));
 			break;
 		}
 	}
@@ -65,7 +67,8 @@ void main() {
 
 	vec2 local = mod(normed * gridSize, 1.0) -0.5;
 	float RfromM = length(local);
-	if (RfromM < 0.5 && RfromM > 0.45 && atan(-local.x, -local.y) < (rotator * pi * 2) - pi) {
+	float l = (((atan(-local.x, -local.y) + pi) / 2.0) / pi) * segments;
+	if (RfromM < 0.5 && RfromM > 0.45 && atan(-local.x, -local.y) < ((rotator / segments) * pi * 2) - pi && abs((l - floor(l))-0.5) * 2 < 1.0 - 0.1) {
 		col.xyz = vec3(colPick(progress + 0.5).xyz);
 		col.a = 1.0;
 	}

@@ -36,7 +36,7 @@ void main() {
 		float gridThickness = 0.05;
 
 		vec2 flippedCoords = vec2(texCoords.x, 1 - texCoords.y);
-		vec2 localCoords = (flippedCoords + vec2(relics[u_index].xOffset, relics[u_index].yOffset)) / 4;
+		vec2 localCoords = (flippedCoords + vec2(relics[u_index].xOffset, relics[u_index].yOffset)) / 8;
 		col = texture((u_Texture), localCoords);
 
 		int counter = 0;

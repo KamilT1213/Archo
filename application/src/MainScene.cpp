@@ -42,8 +42,8 @@ void Archo::UpdateRelicsSSBO() {
 		RelicsBO current;
 		current.Quantity = m_save.s_Items.at(i).second;
 		current.textureUnit = 0;
-		current.xOffset = glm::floor(glm::mod(float(m_save.s_Items[i].first), 4.0f));
-		current.yOffset = glm::floor(m_save.s_Items[i].first / 4.0f);
+		current.xOffset = glm::floor(glm::mod(float(m_save.s_Items[i].first), 8.0f));
+		current.yOffset = glm::floor(m_save.s_Items[i].first / 8.0f);
 		m_relicsSSBO->edit(m_save.s_Items[i].first * sizeof(RelicsBO), sizeof(RelicsBO), &current);
 	}
 }
@@ -53,8 +53,8 @@ void Archo::ClearRelicsSSBO() {
 		RelicsBO current;
 		current.Quantity = 0;
 		current.textureUnit = 0;
-		current.xOffset = glm::floor(glm::mod(float(i), 4.0f));
-		current.yOffset = glm::floor(i / 4.0f);
+		current.xOffset = glm::floor(glm::mod(float(i), 8.0f));
+		current.yOffset = glm::floor(i / 8.0f);
 		m_relicsSSBO->edit(i * sizeof(RelicsBO), sizeof(RelicsBO), &current);
 	}
 }
@@ -86,8 +86,8 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 		RelicsBO current;
 		current.Quantity = 0;
 		current.textureUnit = 0;
-		current.xOffset = glm::floor(glm::mod(float(i), 4.0f));
-		current.yOffset = glm::floor(i / 4.0f);
+		current.xOffset = glm::floor(glm::mod(float(i), 8.0f));
+		current.yOffset = glm::floor(i / 8.0f);
 		m_relicsSSBO->edit(i * sizeof(RelicsBO), sizeof(RelicsBO), &current);
 	}
 
@@ -424,10 +424,10 @@ void Archo::onUpdate(float timestep)
 			Segments = 64;
 		}
 		else{
-			RelId = (int)glm::round(UVData[2] * (Relics + 1));
-			Rarity = (int)glm::round(UVData[0] * 6.0f);
-			//spdlog::info("Rarity: {}", Rarity);
-			Segments = ((Rarity + 1) * (Rarity + 1)) + 5.0f;
+			RelId = (int)glm::round((UVData[2]) * (Relics + 1));
+			Rarity = (int)glm::round(UVData[0] * 64.0f);
+			//spdlog::info("Rarity: {}", UVData[0]);
+			Segments = (Rarity + 1);//((Rarity + 1) * (Rarity + 1)) + 5.0f;
 		}
 
 		if (LastRareity != Rarity) {
@@ -451,6 +451,7 @@ void Archo::onUpdate(float timestep)
 			else m_interactionType = InteractionType::Digging;
 			//spdlog::info("Digging?: {}", m_interactionType == InteractionType::Digging);
 		}
+
 
 
 		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && UVData[3] > 0) {
@@ -604,11 +605,11 @@ void Archo::onUpdate(float timestep)
 						}
 						else{
 
-						
+							
 							auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
 							auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
 							renderComp.material->setValue("u_active", 0.0f);
-
+							RelId = (Relics + 1) - RelId;
 							auto& renderComp2 = m_InventoryButtonScene->m_entities.get<Render>(m_Relics2.at(RelId - 1));
 							renderComp2.material->setValue("u_active", 0.0f);
 
@@ -623,6 +624,8 @@ void Archo::onUpdate(float timestep)
 							if(!found){
 								m_save.s_Items.emplace_back(std::pair<int,int>(Rarity,1));
 							}
+
+							//spdlog::info("Picked Up: {} : {}", RelId, UVData[0]);
 
 							saveGame();
 							UpdateRelicsSSBO();
@@ -899,7 +902,7 @@ void Archo::createLayer()
 	std::shared_ptr<Texture> scenery_ArchTexture = std::make_shared<Texture>("./assets/textures/Scenery/Arch/ArchTexture.png");
 	std::shared_ptr<Texture> DigBrushMask = std::make_shared<Texture>("./assets/textures/Compute/DigMasks.png");
 
-	RelicTexture1 = std::make_shared<Texture>("./assets/textures/Relics/Relics_1.png");
+	RelicTexture1 = std::make_shared<Texture>("./assets/textures/Relics/RelicPack_1.png");
 
 	TextureDescription groundTextureDesc;
 	groundTextureDesc.height = TerrainSize.y;//1024.0f;//4096.0f / 2.0f;
@@ -1734,6 +1737,7 @@ void Archo::createLayer()
 	**************************/
 
 	int Curve[6]{ 13,8,5,3,2,1 };
+	std::array<std::pair<int, int>, 6> Ranges{ std::pair<int,int>(0,15), std::pair<int,int>(16,26), std::pair<int,int>(27,34), std::pair<int,int>(35,40), std::pair<int,int>(41,44), std::pair<int,int>(45,47) };
 
 	for (int i = 0; i < Relics; i++) {
 		
@@ -1742,7 +1746,7 @@ void Archo::createLayer()
 		for (int j = 0; j < std::size(Curve); j++) {
 			counter += Curve[j];
 			if (i < counter) {
-				rarity = j;
+				rarity = Randomiser::uniformIntBetween(Ranges[j].first, Ranges[j].second);;
 				//spdlog::info("Added of rarity: {}", j);
 				break;
 			}
@@ -1790,7 +1794,7 @@ void Archo::createLayer()
 		transformComp2.translation /= glm::vec3(7.f, 7.f, 1);
 		transformComp2.translation *= glm::vec3(1024.0f , 1024.0f, 1);
 
-		transformComp2.scale = glm::vec3(1024.0f / 14.0f);
+		transformComp2.scale = glm::vec3((1024.0f / 14.0f) - 1.0f);
 
 		renderComp2.material = RelicMaterial2;
 		transformComp2.recalc();
@@ -1868,8 +1872,8 @@ void Archo::createLayer()
 		RelicsBO current;
 		current.Quantity = m_save.s_Items.at(i).second;
 		current.textureUnit = RelicTexture1->getUnit();
-		current.xOffset = glm::floor(glm::mod(float(m_save.s_Items[i].first), 4.0f));
-		current.yOffset = glm::floor(m_save.s_Items[i].first / 4.0f);
+		current.xOffset = glm::floor(glm::mod(float(m_save.s_Items[i].first), 8.0f));
+		current.yOffset = glm::floor(m_save.s_Items[i].first / 8.0f);
 		m_relicsSSBO->edit(m_save.s_Items[i].first * sizeof(RelicsBO), sizeof(RelicsBO), &current);
 	}
 
@@ -2712,13 +2716,30 @@ void Archo::placeRelics()
 
 	auto view = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
 	RemainingRelics = 0;
+	int Curve[6]{ 13,8,5,3,2,1 };
+	std::array<std::pair<int, int>, 6> Ranges{ std::pair<int,int>(0,16), std::pair<int,int>(16,27), std::pair<int,int>(27,35), std::pair<int,int>(35,41), std::pair<int,int>(41,45), std::pair<int,int>(45,48) };
 	for (int i = 0; i < view.size(); i++) {
 		Render& renderComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[i]);
 		Transform& transComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[i]);
 
+		float rarity = 0;
+		int counter = 0;
+		for (int j = 0; j < std::size(Curve); j++) {
+			counter += Curve[j];
+			if (i < counter) {
+				rarity = Randomiser::uniformIntBetween(Ranges[j].first, Ranges[j].second);;
+				//spdlog::info("Added of rarity: {}", j);
+				break;
+			}
+		}
+
 		if (points.size() > 0) {
+
+			//spdlog::info("Rarities: {} : {}", i, rarity);
+
 			int random = std::rand() % points.size();
 			renderComp.material->setValue("u_active", (float)(int)true);
+			renderComp.material->setValue("u_Rarity", rarity + 0.001f);
 			transComp.translation = glm::vec3(glm::vec2(points[random].position) *
 				float(m_relicRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height
 					/ m_generationRenderer.getComputePass(0).images[0].texture->getHeight()),
@@ -2729,16 +2750,19 @@ void Archo::placeRelics()
 			RemainingRelics++;
 
 			points.erase(points.begin() + random);
+
+			auto& renderComp2 = m_InventoryButtonScene->m_entities.get<Render>(m_Relics2[i]);
+			renderComp2.material->setValue("u_active", (float)(int)true);
+			renderComp2.material->setValue("u_Rarity", rarity + 0.001f);
 		}
 		else {
 			renderComp.material->setValue("u_active", (float)(int)false);
 		}
 	}
 
-	for (int i = 0; i < m_Relics2.size(); i++) {
-		auto& renderComp = m_InventoryButtonScene->m_entities.get<Render>(m_Relics2[i]);
-		renderComp.material->setValue("u_active", (float)(int)true);
-	}
+	//for (int i = 0; i < m_Relics2.size(); i++) {
+
+	//}
 	m_relicRenderer.render();
 }
 

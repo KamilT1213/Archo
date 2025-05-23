@@ -34,7 +34,7 @@ void main()
     //colour = texture(u_RelicTexture,texCoords);
     int index = int((u_Rarity));
     vec2 flippedCoords = vec2(texCoords.x, 1 - texCoords.y);
-    vec2 localCoords = (flippedCoords + vec2(relics[index].xOffset, relics[index].yOffset)) / 4;
+    vec2 localCoords = (flippedCoords + vec2(relics[index].xOffset, relics[index].yOffset)) / vec2(8,8);
     colour = texture((u_RelicTexture), localCoords);
 
     if(colour.a <= 0 || u_active <= 0.0){discard;}
@@ -58,7 +58,7 @@ void main()
     //    colour = vec4(vec3(255/255.0, 1/255.0, 1/255.0),1.0);
     //}
     //colour.a = 1.0;
-    data = vec4(1 - (u_Rarity/6.0), u_Id, 0, 1);
+    data = vec4(1 - (u_Rarity/64.0), u_Id, 0, 1);
     
 
 }
