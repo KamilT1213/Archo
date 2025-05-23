@@ -13,11 +13,7 @@ struct Relic {
 
 };
 
-struct Scenery
-{
-	float DugOut = 0.0;
-	int type = 0;
-};
+
 
 float DigCurve1(float t, float s, float o) {
 	float d = glm::floor(t * s) / s;
@@ -435,7 +431,11 @@ void Archo::onUpdate(float timestep)
 			//spdlog::info("Switched Rarity: {} at: x:{} , y:{}", LastRareity, temp.x, temp.y);
 		}
 
+		m_digBOs[0].DigInfo.x = m_DigPos.x;
+		m_digBOs[0].DigInfo.y = m_DigPos.y;
+
 		RunRelicFunctions();
+		UpdateDigSpotSSBO();
 
 		//spdlog::info("Functions Active: {} | {} | {}", RelicFunctions[0] == NULL, RelicFunctions[1] == NULL, RelicFunctions[2] == NULL);
 		//spdlog::info("Dig Spot Data: {} | {} | {} | {}", m_digBOs[0].DigInfo.x, m_digBOs[0].DigInfo.y, m_digBOs[0].DigInfo.z, m_digBOs[0].DigInfo.w);
@@ -476,10 +476,6 @@ void Archo::onUpdate(float timestep)
 
 				compute_GroundMaterial->setValue("Mode", 1.0f);
 
-				m_digBOs[0].DigInfo.x = m_DigPos.x;
-				m_digBOs[0].DigInfo.y = m_DigPos.y;
-
-
 				
 				if (!finished) {
 					Pressed = true;
@@ -511,6 +507,7 @@ void Archo::onUpdate(float timestep)
 						ProgressBar = 0;
 						extrBegan = false;
 						ProgressSegmentTarget = 0.5;
+						ProgressSegmentTarget_RelicTrigger = 0.5;
 						Pressed = false;
 						finished = false;
 					}
@@ -537,11 +534,11 @@ void Archo::onUpdate(float timestep)
 
 					//m_soundManager.playSound(s.c_str());
 					//spdlog::info("PlaySound");
-					for (int i = 1; i < 16; i++) {
-						m_digBOs[i].DigInfo.x = Randomiser::uniformFloatBetween(0, 1);
-						m_digBOs[i].DigInfo.y = Randomiser::uniformFloatBetween(0, 1);
-					}
-					m_digBOs[0].rotation = Randomiser::uniformFloatBetween(-glm::pi<float>(), glm::pi<float>());
+					//for (int i = 1; i < 16; i++) {
+						//m_digBOs[i].DigInfo.x = Randomiser::uniformFloatBetween(0, 1);
+						//m_digBOs[i].DigInfo.y = Randomiser::uniformFloatBetween(0, 1);
+					//}
+					//m_digBOs[0].rotation = Randomiser::uniformFloatBetween(-glm::pi<float>(), glm::pi<float>());
 					ProgressSegmentTarget++;
 				}
 			}
@@ -554,6 +551,7 @@ void Archo::onUpdate(float timestep)
 					ProgressBar = 0;
 					extrBegan = false;
 					ProgressSegmentTarget = 0.5;
+					ProgressSegmentTarget_RelicTrigger = 0.5;
 					Pressed = false;
 					finished = false;
 
@@ -654,6 +652,7 @@ void Archo::onUpdate(float timestep)
 						extrBegan = false;
 						ProgressBar = 0;
 						ProgressSegmentTarget = 1;
+						ProgressSegmentTarget_RelicTrigger = 1;
 						Pressed = false;
 						finished = false;
 					}
@@ -682,6 +681,7 @@ void Archo::onUpdate(float timestep)
 					ProgressBar = 0;
 					extrBegan = false;
 					ProgressSegmentTarget = 0.5;
+					ProgressSegmentTarget_RelicTrigger = 0.5;
 					Pressed = false;
 					finished = false;
 				}
@@ -2373,9 +2373,22 @@ void Archo::RefreshRelicFunctions()
 
 void Archo::RunRelicFunctions()
 {
+	if (ProgressBar * timeToDig >= ProgressSegmentTarget_RelicTrigger) {
+		RelicSegmentTrigger = true;
+		ProgressSegmentTarget_RelicTrigger++;
+	}
+
+	if (ProgressBar * Segments >= ProgressSegmentTarget_RelicTrigger) {
+		RelicSegmentTrigger = true;
+		ProgressSegmentTarget_RelicTrigger++;
+	}
+
 	for (int i = 0; i < 3; i++) {
 		if(RelicFunctions[i] != NULL) RelicFunctions[i]();
 	}
+
+	if (RelicSegmentTrigger == true) RelicSegmentTrigger = false;
+	
 }
 
 void Archo::playGame()

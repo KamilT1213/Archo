@@ -44,7 +44,7 @@ void main()
         //vec2 newCoords = localCoords - localCoords2;
         //newCoords = ((newCoords - 0.125) * 1.4) + 0.125;
         //newCoords += localCoords2;
-        float amount = 0.0075;
+        float amount = 0.0025;
         vec4 sampled = texture(u_RelicTexture, localCoords + amount);
         vec4 sampled2 = texture(u_RelicTexture, localCoords - amount);
         vec4 sampled3 = texture(u_RelicTexture, localCoords + vec2(-amount, amount));

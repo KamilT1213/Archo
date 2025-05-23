@@ -24,6 +24,12 @@ struct DiggingSpot {
 	float rotation{ 0 };
 	int a{ 0 };// Reserved
 };
+
+struct Scenery
+{
+	float DugOut = 0.0;
+	int type = 0;
+};
 class Archo : public Layer
 {
 public:
@@ -38,6 +44,11 @@ public:
 	int RelId{ -1 };
 	int Rarity{ -1 };
 	bool isScenery{ false };
+
+	bool RelicSegmentTrigger{ false };
+
+	std::shared_ptr<Scene> m_SceneryScene;
+	std::vector<entt::entity> m_Sceneries;
 
 	Game_Save m_save;
 private:
@@ -99,7 +110,7 @@ private:
 
 	std::vector<entt::entity> m_Relics;
 	std::vector<entt::entity> m_Relics2;
-	std::vector<entt::entity> m_Sceneries;
+
 
 	glm::vec2 InvGridSize{ 6,8 };
 
@@ -126,7 +137,7 @@ private:
 	std::shared_ptr<Scene> m_pauseMenu;
 	std::shared_ptr<Scene> m_pauseMenu_Settings;
 	std::shared_ptr<Scene> m_pauseMenu_Inventory;
-	std::shared_ptr<Scene> m_SceneryScene;
+
 
 	float initialRatio;
 
@@ -163,7 +174,11 @@ private:
 	int invRelicSelected{ -1 };
 	int Equiped[3]{ -1,-1,-1 };
 	int Digspots = 1;
+
 	float ProgressSegmentTarget{ 0.0f };
+	float ProgressSegmentTarget_RelicTrigger{ 0.0f };
+
+	
 
 	glm::ivec2 TerrainSize{ 1024,1024 };
 

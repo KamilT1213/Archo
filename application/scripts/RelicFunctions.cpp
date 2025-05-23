@@ -155,7 +155,10 @@ FunctionAllocationData BindNewFunction(int ItemID, int ItemGrade, Archo* GameRef
 
 void Relic_1_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Increase radius by 1 plus (0 to 1) depeding on grade //Common
 {
-	GameRef->m_digBOs[0].DigInfo.z -= 1.0f  + (1.0f * (Grade/6.0f)); 
+	float size = GameRef->m_digBOs[0].DigInfo.z;
+	size -= 1.0f  + (1.0f * (Grade/6.0f));
+	if (size < 1) size = 1;
+	GameRef->m_digBOs[0].DigInfo.z = size;
 }
 
 void Relic_2_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Decrease segments by 1 plus (0 to 6) depeding on grade //Common
@@ -166,7 +169,7 @@ void Relic_2_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	GameRef->Segments = Segments;
 }
 
-void Relic_3_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Decrease dig time by 0.1 plus (0 to 0.1 depending on grade //Common
+void Relic_3_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Decrease dig time by 0.1 plus (0 to 0.1) depending on grade //Common
 {
 	float digTime = GameRef->timeToDig;
 	digTime -= 0.1f + (0.1f * (Grade / 6.0f));
@@ -184,14 +187,34 @@ void Relic_4_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	}
 }
 
-void Relic_5_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_5_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Randomizes dig rotation for every segment and has a (1% to 25%) chance to make the dig larger by (5 to 15) depending on grade //Common
 {
-	GameRef->m_digBOs[0].DigMask = 1;
+	if (GameRef->RelicSegmentTrigger) {
+		GameRef->m_digBOs[0].rotation = Randomiser::uniformFloatBetween(-glm::pi<float>(), glm::pi<float>());
+		float scale = Randomiser::uniformFloatBetween(0, 10.0f - (Grade * 1.6f));
+		
+		if (scale < 0.1f) {
+			float size = GameRef->m_digBOs[0].DigInfo.z;
+			size -= 5 + (10 * (Grade / 6));
+			if (size < 1) size = 1;
+			GameRef->m_digBOs[0].DigInfo.z = size;
+		}
+	}
 }
 
-void Relic_6_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_6_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) // chance to instantly destroy scenery (1% to 2%) depending on grade //Common
 {
-	GameRef->m_digBOs[0].DigMask = 2;
+	if (GameRef->RelicSegmentTrigger) {
+		if (GameRef->isScenery) {
+			float chance = Randomiser::uniformFloatBetween(0, 10.0f - (5.0f * (Grade / 6.0f)));
+			if (chance < 0.1f) {
+				auto& sceneComp = GameRef->m_SceneryScene->m_entities.get<Scenery>(GameRef->m_Sceneries.at(GameRef->RelId - 1));
+				sceneComp.DugOut = 2.0;
+
+			}
+
+		}
+	}
 }
 
 void Relic_7_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
