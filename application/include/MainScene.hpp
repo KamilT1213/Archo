@@ -52,6 +52,8 @@ public:
 	float allTime{ 0.0f };
 	float ProgressBar{ 0.0f };
 
+	float deltaTime{0.0f};
+
 
 	std::shared_ptr<Scene> m_SceneryScene;
 	std::vector<entt::entity> m_Sceneries;

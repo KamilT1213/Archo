@@ -27,8 +27,8 @@ void main() {
 
 		float a = max(abs(texCoords.x - 0.5),abs(texCoords.y - 0.5));
 		col.a *= step(0.4,0.8- a) + step(0.4,step(0.4,a) * smoothstep(0.0,1.0,mod(-a,0.05) * 20) * ((noise((texCoords + (vec2(cos(Time * 200 * pi), sin(Time * 200 * pi)) * 0.02)) * 30) + 1) / 2.0) * 1);
-		col.xyz = mix(vec3(0.01, 0.01, 0.01),vec3(0.3, 0.0, 0.3),((noise((texCoords + (vec2(cos(Time * 20 * pi), sin(Time * 20 * pi)) * 1)) * 30) + 1)/2.0));
-		col.xyz = mix(col.xyz, col.xyz + vec3(0.2, 0.0, 0.2),((noise((texCoords + (vec2(cos(Time * 100 * pi), sin(Time * 100 * pi)) * 0.1)) * 60) + 1)/2.0));
+		col.xyz = mix(vec3(0.01, 0.01, 0.01),vec3(0.1, 0.1, 0.1),((noise((texCoords + (vec2(cos(Time * 20 * pi), sin(Time * 20 * pi)) * 1)) * 30) + 1)/2.0));
+		col.xyz = mix(col.xyz, col.xyz + vec3(0.05, 0.01, 0.05),((noise((texCoords + (vec2(cos(Time * 100 * pi), sin(Time * 100 * pi)) * 0.1)) * 60) + 1)/2.0));
 		//col.xyz = mix(col.xyz, vec3(1.0), ((noise(texCoords * 100 * vec2(1,4)) + 1)/4.0));
 		col.xyz *= 1 - (Hovered * 0.1);
 		col.xyz *= 1 - (Pressed * 0.1);

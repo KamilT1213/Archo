@@ -329,6 +329,8 @@ void Archo::onUpdate(float timestep)
 	}
 	else if (state == GameState::InGame) {
 
+		deltaTime = timestep;
+
 		auto view = m_gameMenu->m_entities.view<ScriptComp>();
 		for (auto& entity : view) {
 			ScriptComp script = view.get<ScriptComp>(entity);
@@ -410,7 +412,6 @@ void Archo::onUpdate(float timestep)
 		////spdlog::info("mouse x: {:03.2f}, mouse y: {:03.2f}", gameMouseLocation.x, gameMouseLocation.y);
 		////spdlog::info("Relic id: {:03.5f}", glm::round(UVData[2] * (Relics + 1)));
 		Segments = 0;
-		timeToDig = 1.0f;
 		timePerSegment = 0.2f;
 
 		RelId = -1;
@@ -421,7 +422,7 @@ void Archo::onUpdate(float timestep)
 		//m_digBOs[0].DigMask = 0;
 
 		for (int i = 0; i <= Digspots; i++) {
-			m_digBOs[i].DigInfo = glm::vec4(0, 0, 25.0f, 0.10f);
+			m_digBOs[i].DigInfo = glm::vec4(glm::vec2(m_digBOs[i].DigInfo), 25.0f, 0.10f);
 			m_digBOs[i].DigMask = 0;
 		}
 
@@ -1074,12 +1075,12 @@ void Archo::createLayer()
 	//compute_GroundMaterial->setValue("DigStyle", glm::vec4(25.0f,0.25f,0.0f,0.0f));
 	compute_GroundMaterial->setValue("DigSpotTotal", Digspots);
 	
-	m_digBOs[0].DigInfo = glm::vec4(0, 0, 25.0f, 0.25f);
-	m_digBOs[0].DigMask = 5;
-	for (int i = 1; i < 16; i++) {
-		m_digBOs[i].DigInfo = glm::vec4(0, 0, Randomiser::uniformFloatBetween(25.f,15.f), 0.25f);
-		m_digBOs[i].DigMask = Randomiser::uniformIntBetween(0,5);
-	}
+	//m_digBOs[0].DigInfo = glm::vec4(0, 0, 25.0f, 0.25f);
+	//m_digBOs[0].DigMask = 5;
+	//for (int i = 1; i < 16; i++) {
+	//	m_digBOs[i].DigInfo = glm::vec4(0, 0, Randomiser::uniformFloatBetween(25.f,15.f), 0.25f);
+	//	m_digBOs[i].DigMask = Randomiser::uniformIntBetween(0,5);
+	//}
 
 	//ShaderDescription compute_GroundNormalShaderDesc;
 	//compute_GroundNormalShaderDesc.type = ShaderType::compute;
@@ -2362,7 +2363,7 @@ void Archo::resetLayer()
 
 void Archo::RefreshRelicFunctions()
 {
-	int currentDigSlot = 0;
+	int currentDigSlot = 1;
 	for (int i = 0; i < 3; i++) {
 		int Grade = 0;
 		for (int j = 0; j < m_save.s_Items.size(); j++) {
@@ -2394,14 +2395,17 @@ void Archo::RunRelicFunctions()
 {
 	if (ProgressBar * timeToDig >= ProgressSegmentTarget_RelicTrigger) {
 		RelicSegmentTrigger = true;
+				//spdlog::info("Trigger with: {} with dig time of {}",ProgressSegmentTarget_RelicTrigger,timeToDig);
 		ProgressSegmentTarget_RelicTrigger++;
+
 	}
 
 	if (ProgressBar * Segments >= ProgressSegmentTarget_RelicTrigger) {
 		RelicSegmentTrigger = true;
+				//spdlog::info("Trigger with: {}",ProgressSegmentTarget_RelicTrigger);
 		ProgressSegmentTarget_RelicTrigger++;
 	}
-
+	timeToDig = 1.0f;
 	for (int i = 0; i < 3; i++) {
 		if(RelicFunctions[i] != NULL) RelicFunctions[i]();
 	}

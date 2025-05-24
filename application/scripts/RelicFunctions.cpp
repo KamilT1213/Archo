@@ -4,8 +4,6 @@ FunctionAllocationData BindNewFunction(int ItemID, int ItemGrade, Archo* GameRef
 {
 	FunctionAllocationData outData = FunctionAllocationData();
 
-	if (DigSpotRange.first <= 0) outData.DigSlotsUsed = 1;
-
 	if (ItemID == 0) {
 		outData.BoundFunc = std::bind(Relic_1_Function, ItemGrade, GameRef,DigSpotRange);
 	}
@@ -65,6 +63,7 @@ FunctionAllocationData BindNewFunction(int ItemID, int ItemGrade, Archo* GameRef
 	}	
 	else if (ItemID == 18) {
 		outData.BoundFunc = std::bind(Relic_19_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.DigSlotsUsed += 1;
 	}	
 	else if (ItemID == 19) {
 		outData.BoundFunc = std::bind(Relic_20_Function, ItemGrade, GameRef, DigSpotRange);
@@ -231,6 +230,9 @@ void Relic_7_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 void Relic_8_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Increase Dig depth by (0.05 to 0.15) depending on grade and empty dig slot
 {
 	GameRef->m_digBOs[0].DigInfo.w += 0.05 + (0.1 * (Grade/6.0f));
+	int target = DigSpotRange.first;
+	//spdlog::info("8: Slot edited: {}",target);
+	GameRef->m_digBOs[target].DigInfo.w += 0.05 + (0.1 * (Grade/6.0f));
 }
 
 void Relic_9_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) // chance to remove random scenery (0.5% to 1%) depending on grade
@@ -255,20 +257,20 @@ void Relic_9_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 
 void Relic_10_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// chance to dig a small hole in a random spot near the player dig site
 {
+	int target = DigSpotRange.first;
+	//spdlog::info("10: Slot edited: {}",target);
+	//GameRef->m_digBOs[target].DigInfo = glm::vec4(0, 0, 0.0f, 0.0f);
 	if (GameRef->RelicBeginTrigger) {
-		float chance = Randomiser::uniformFloatBetween(0, 1.0f - (0.5f * (Grade / 6.0f)));
+		float chance = Randomiser::uniformFloatBetween(0, 0.6f - (0.5f * (Grade / 6.0f)));
 		glm::vec2 digLocal = glm::vec2(GameRef->m_digBOs[0].DigInfo);
 		digLocal += glm::vec2(Randomiser::uniformFloatBetween(-0.03,0.03),Randomiser::uniformFloatBetween(-0.03,0.03));
-		if(chance < 0.1f){
-			int target = DigSpotRange.first;
-			if(target == 0) target = 1;
+		if(chance < 0.1f || true){
+
 			GameRef->m_digBOs[target].DigInfo = glm::vec4(digLocal.x, digLocal.y, 25.0f, 0.1f);
 		}
 
 	}
 	else if(GameRef->RelicFinishTrigger){
-		int target = DigSpotRange.first;
-		if(target == 0) target = 1;
 		GameRef->m_digBOs[target].DigInfo = glm::vec4(0, 0, 0.0f, 0.0f);
 	}
 }
@@ -311,7 +313,7 @@ void Relic_13_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 		}
 
 	}
-	GameRef->timeToDig += 5.0f * (Grade / 6.0f);
+	GameRef->timeToDig += 1.0f + (5.0f * (Grade / 6.0f));
 }
 
 void Relic_14_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Increases Segments when extracting but reduces segment time
@@ -320,16 +322,16 @@ void Relic_14_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	GameRef->timePerSegment -= 0.1f * (Grade / 6.0f);
 }
 
-void Relic_15_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// digs in a single circle pattern around the player cursor scales to normal dig depth (0% to 200%) by grade
+void Relic_15_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// digs in a single circle pattern around the player cursor scales to normal dig depth (100% to 200%) by grade
 {
+	
 	if(GameRef->ProgressBar > 1.0f/3.0f){
 		float progress = GameRef->ProgressBar - (1.0f/3.0f);
 		progress *= 1.5f;
 		int target = DigSpotRange.first;
-		if(target == 0) target = 1;
 
 		GameRef->m_digBOs[target].DigInfo.z += 55.0f;
-		GameRef->m_digBOs[target].DigInfo.w *= 2.0f * (Grade / 6.0f);
+		GameRef->m_digBOs[target].DigInfo.w *= 1.0f + (1.0f * (Grade / 6.0f));
 		//GameRef->m_digBOs[target].DigInfo.w += 1.25f;
 
 		glm::vec2 digLocal = glm::vec2(GameRef->m_digBOs[0].DigInfo);
@@ -337,38 +339,66 @@ void Relic_15_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 
 		GameRef->m_digBOs[target].DigInfo.x = digLocal.x;
 		GameRef->m_digBOs[target].DigInfo.y = digLocal.y;
+		//spdlog::info("15: Slot edited: {}",target);
 	}
 	else{
 		int target = DigSpotRange.first;
-		if(target == 0) target = 1;
 		GameRef->m_digBOs[target].DigInfo = glm::vec4(0,0,0,0);
+		//spdlog::info("15: Slot edited: {}",target);
 	}
 
 }
 
 void Relic_16_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) // pulls all dig spots closer to player cursor (0% to 60%) scales by grade
 {
-	glm::vec2 localPos = glm::vec2(GameRef->m_digBOs[0].DigInfo);
-	for(int i = 0; i < GameRef->m_digBOs.size(); i++){
-		glm::vec2 currentPos = glm::vec2(GameRef->m_digBOs[i].DigInfo);
-		currentPos = glm::mix(currentPos,localPos,0.6f + (Grade / 6.0f));
-		GameRef->m_digBOs[i].DigInfo.x = currentPos.x;
-		GameRef->m_digBOs[i].DigInfo.y = currentPos.y;
+	if(GameRef->RelicSegmentTrigger){
+		glm::vec2 localPos = glm::vec2(GameRef->m_digBOs[0].DigInfo);
+		for(int i = 0; i < GameRef->m_digBOs.size(); i++){
+			glm::vec2 currentPos = glm::vec2(GameRef->m_digBOs[i].DigInfo);
+			currentPos = glm::mix(currentPos,localPos,0.6f * (Grade / 6.0f));
+			GameRef->m_digBOs[i].DigInfo.x = currentPos.x;
+			GameRef->m_digBOs[i].DigInfo.y = currentPos.y;
+		}
 	}
+
 }
 
 //Uncommons
 
-void Relic_17_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_17_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// increase dig depth by (40% to 100%) but dig size by (40% to 100%)
 {
+	GameRef->m_digBOs[0].DigInfo.z *= 1.4f + (Grade/6.0f);
+	GameRef->m_digBOs[0].DigInfo.w *= 1.4f + (Grade/6.0f);
 }
 
-void Relic_18_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_18_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// changes dig brush to cat scratch with random rotations increases dig depth (0.01 to 0.1)
 {
+	GameRef->m_digBOs[0].DigMask = 4;
+	GameRef->m_digBOs[0].DigInfo.w += 0.01 + (0.09 * (Grade/6.0f));
+	if (GameRef->RelicSegmentTrigger) {
+		GameRef->m_digBOs[0].rotation = Randomiser::uniformFloatBetween(-glm::pi<float>(), glm::pi<float>());
+
+	}
 }
 
-void Relic_19_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_19_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// dig spot that is placed randomly and goes towards the player cursour is sped up (0.05 to 0.35) by grade
 {
+
+	int target = DigSpotRange.first;
+
+	//spdlog::info("19: Slot edited: {}",target);
+
+	if (GameRef->RelicBeginTrigger) {
+		GameRef->m_digBOs[target].DigInfo.x = Randomiser::uniformFloatBetween(0, 1);
+		GameRef->m_digBOs[target].DigInfo.y = Randomiser::uniformFloatBetween(0, 1);
+	}
+	glm::vec2 direction = glm::normalize(glm::vec2(GameRef->m_digBOs[0].DigInfo) - glm::vec2(GameRef->m_digBOs[target].DigInfo));
+	GameRef->m_digBOs[target].DigInfo.x += direction.x * GameRef->deltaTime * (0.05f * (Grade + 1));
+	GameRef->m_digBOs[target].DigInfo.y += direction.y * GameRef->deltaTime * (0.05f * (Grade + 1));
+	//GameRef->m_digBOs[target].DigInfo.z *= 0.1f;
+	GameRef->m_digBOs[target].DigInfo.w *= 1.5f;
+	spdlog::info("Position: x:{} , y:{}",GameRef->m_digBOs[target].DigInfo.x,GameRef->m_digBOs[target].DigInfo.y);
+	spdlog::info("Values: x:{} , y:{}",GameRef->m_digBOs[target].DigInfo.z,GameRef->m_digBOs[target].DigInfo.w);
 }
 
 void Relic_20_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)

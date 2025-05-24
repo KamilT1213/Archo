@@ -86,7 +86,7 @@ void old() {
 
 	float distance = (max(abs(dist.x), abs(dist.y)) - (d * s));
 	bTotal += clamp(((distance) * 2), -1.0, 0.3);
-	total = vec4(vec3(0.3, bTotal, 0.6), 1.0);
+	total = vec4(mix(vec3(0.1, 0.1, 0.1),vec3(0.05, 0.05,0.05),bTotal), 1.0);
 
 
 	colour = total;
