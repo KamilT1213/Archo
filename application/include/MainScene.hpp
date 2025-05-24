@@ -45,10 +45,18 @@ public:
 	int Rarity{ -1 };
 	bool isScenery{ false };
 
+	bool RelicBeginTrigger{ false };
 	bool RelicSegmentTrigger{ false };
+	bool RelicFinishTrigger{ false };
+
+	float allTime{ 0.0f };
+	float ProgressBar{ 0.0f };
+
 
 	std::shared_ptr<Scene> m_SceneryScene;
 	std::vector<entt::entity> m_Sceneries;
+
+	Renderer m_sceneryRenderer;
 
 	Game_Save m_save;
 private:
@@ -65,6 +73,7 @@ private:
 	void UpdateRelicsSSBO();
 	void ClearRelicsSSBO();
 	void UpdateDigSpotSSBO();
+	void ClearDigSpotSSBO();
 	void resetLayer();
 
 	void RefreshRelicFunctions();
@@ -169,6 +178,7 @@ private:
 	bool Flip{ true };
 	bool Fliping{ false };
 	bool Pausing{ false };
+	bool beganInput { false};
 	int Relics{ 32 };//512};
 	int RemainingRelics{ 0 };
 	int invRelicSelected{ -1 };
@@ -188,9 +198,8 @@ private:
 
 	glm::vec2 gameMouseLocation{ 0,0 };
 
-	float ProgressBar{ 0.0f };
 
-	float allTime{ 0.0f };
+
 	float factor{ 1.0f };
 	float ResetWave{ 1.0f };
 	float RelicResetWave{ 1.0f };
@@ -227,7 +236,7 @@ private:
 	Renderer m_seedingFinderRenderer;
 	Renderer m_groundComputeRenderer;
 	Renderer m_relicRenderer;
-	Renderer m_sceneryRenderer;
+
 
 	Settings_Save m_settings;
 

@@ -58,6 +58,10 @@ void Archo::ClearRelicsSSBO() {
 void Archo::UpdateDigSpotSSBO() {
 	m_digSSBO->edit(0, m_digBOs.size() * sizeof(DiggingSpot), m_digBOs.data());
 }
+void Archo::ClearDigSpotSSBO(){
+	m_digBOs = std::array<DiggingSpot,16>();
+	m_digSSBO->edit(0, m_digBOs.size() * sizeof(DiggingSpot), m_digBOs.data());
+}
 
 Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 {
@@ -370,6 +374,7 @@ void Archo::onUpdate(float timestep)
 			temp = glm::clamp(temp, glm::vec2(0), glm::vec2(1));
 
 			m_DigPos = temp;
+
 		}
 
 
@@ -412,8 +417,13 @@ void Archo::onUpdate(float timestep)
 		Rarity = -1;
 		isScenery = (bool)glm::round(UVData[1]);
 
-		m_digBOs[0].DigInfo = glm::vec4(0, 0, 25.0f, 0.25f);
-		m_digBOs[0].DigMask = 0;
+		//m_digBOs[0].DigInfo = glm::vec4(0, 0, 25.0f, 0.10f);
+		//m_digBOs[0].DigMask = 0;
+
+		for (int i = 0; i <= Digspots; i++) {
+			m_digBOs[i].DigInfo = glm::vec4(0, 0, 25.0f, 0.10f);
+			m_digBOs[i].DigMask = 0;
+		}
 
 		if(isScenery){
 			RelId = (int)glm::round(UVData[2] * (m_Sceneries.size() + 1));
@@ -453,10 +463,10 @@ void Archo::onUpdate(float timestep)
 		}
 
 
-
+		RelicBeginTrigger = false;
 		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && UVData[3] > 0) {
 			Pressed = true;
-
+			if(m_interactionState == InteractionState::Idle) RelicBeginTrigger = true;
 		}
 		else {
 			Pressed = false;
@@ -467,6 +477,8 @@ void Archo::onUpdate(float timestep)
 		}
 		else {
 			m_interactionState = InteractionState::Idle;
+			beganInput = false;
+
 		}
 
 		bool LevelComplete = false;
@@ -499,6 +511,7 @@ void Archo::onUpdate(float timestep)
 
 
 					finished = true;
+					RelicFinishTrigger = true;
 					compute_GroundMaterial->setValue("Mode", 1.5f);
 					m_interactionType == InteractionType::Extraction;
 					//m_computeRenderer.render();
@@ -510,6 +523,7 @@ void Archo::onUpdate(float timestep)
 						ProgressSegmentTarget_RelicTrigger = 0.5;
 						Pressed = false;
 						finished = false;
+						RelicFinishTrigger = false;
 					}
 				}
 
@@ -554,6 +568,7 @@ void Archo::onUpdate(float timestep)
 					ProgressSegmentTarget_RelicTrigger = 0.5;
 					Pressed = false;
 					finished = false;
+					RelicFinishTrigger = false;
 
 				}
 				m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
@@ -647,6 +662,7 @@ void Archo::onUpdate(float timestep)
 				}
 				else {
 					finished = true;
+					RelicFinishTrigger = true;
 					ProgressBar -= timestep * 5;
 					if (ProgressBar < 0) {
 						extrBegan = false;
@@ -655,6 +671,7 @@ void Archo::onUpdate(float timestep)
 						ProgressSegmentTarget_RelicTrigger = 1;
 						Pressed = false;
 						finished = false;
+						RelicFinishTrigger = false;
 					}
 				}
 
@@ -2369,6 +2386,8 @@ void Archo::RefreshRelicFunctions()
 
 	compute_GroundMaterial->setValue("DigSpotTotal", currentDigSlot);
 	m_mainRenderer.getRenderPass(ScreenGroundPassIDx).scene->m_entities.get<Render>(Quad).material->setValue("DigSpotTotal", currentDigSlot);
+
+	ClearDigSpotSSBO();
 }
 
 void Archo::RunRelicFunctions()
@@ -2388,6 +2407,8 @@ void Archo::RunRelicFunctions()
 	}
 
 	if (RelicSegmentTrigger == true) RelicSegmentTrigger = false;
+	if (RelicFinishTrigger == true) RelicFinishTrigger = false;
+	if (RelicBeginTrigger == true) RelicBeginTrigger = false;
 	
 }
 
