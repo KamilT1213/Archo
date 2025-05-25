@@ -354,28 +354,25 @@ void Archo::onUpdate(float timestep)
 		sHeight = backgroundPass.viewPort.height;
 		sWidth = backgroundPass.viewPort.width;
 
+
+		m_PointerPos_inGame = m_PointerPos; //-(m_winRef.getSizef() * 0.5f);
+		//temp /= glm::vec2(sHeight, sWidth);
+		if (sHeight > sWidth) {
+			float diff = (sHeight - sWidth) / 2.0f;
+			m_PointerPos_inGame.y -= diff;
+			m_PointerPos_inGame /= (glm::vec2(sWidth, sHeight) - glm::vec2(0, diff * 2.0f));
+		}
+		else if (sHeight < sWidth) {
+			float diff = (sWidth - sHeight) / 2.0f;
+			m_PointerPos_inGame.x -= diff;
+
+			m_PointerPos_inGame /= (glm::vec2(sWidth, sHeight) - glm::vec2(diff * 2.0f, 0));
+			//spdlog::info("MousePos: x:{} , y:{}", temp.x, temp.y);
+		}
+		m_PointerPos_inGame = glm::clamp(m_PointerPos_inGame, glm::vec2(0), glm::vec2(1));
+
 		if (m_interactionState == InteractionState::Idle) {
-			glm::vec2 temp = m_PointerPos; //-(m_winRef.getSizef() * 0.5f);
-			//temp /= glm::vec2(sHeight, sWidth);
-
-			if (sHeight > sWidth) {
-				float diff = (sHeight - sWidth) / 2.0f;
-				temp.y -= diff;
-				temp /= (glm::vec2(sWidth, sHeight) - glm::vec2(0, diff * 2.0f));
-			}
-			else if (sHeight < sWidth) {
-				float diff = (sWidth - sHeight) / 2.0f;
-				temp.x -= diff;
-
-				temp /= (glm::vec2(sWidth, sHeight) - glm::vec2(diff * 2.0f, 0));
-				//spdlog::info("MousePos: x:{} , y:{}", temp.x, temp.y);
-			}
-
-
-
-			temp = glm::clamp(temp, glm::vec2(0), glm::vec2(1));
-
-			m_DigPos = temp;
+			m_DigPos = m_PointerPos_inGame;
 
 		}
 
@@ -501,8 +498,8 @@ void Archo::onUpdate(float timestep)
 						finished = true;
 
 					}
-					m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
-					for (int i = 1; i < 16; i++) {
+					//m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
+					for (int i = 0; i < 16; i++) {
 						m_digBOs[i].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
 					}
 					compute_GroundMaterial->setValue("Factor", ProgressBar);
@@ -572,8 +569,8 @@ void Archo::onUpdate(float timestep)
 					RelicFinishTrigger = false;
 
 				}
-				m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
-				for (int i = 1; i < 16; i++) {
+				//m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
+				for (int i = 0; i < 16; i++) {
 					m_digBOs[i].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
 				}
 			}
@@ -2382,6 +2379,7 @@ void Archo::RefreshRelicFunctions()
 		FunctionAllocationData FuncDat = BindNewFunction(m_save.s_Equiped[i], Grade, this, std::pair<int, int>{currentDigSlot, 16 - currentDigSlot});
 		currentDigSlot += FuncDat.DigSlotsUsed;
 		RelicFunctions[i] = FuncDat.BoundFunc;
+		//spdlog::info("Grade: {}",Grade);
 	}
 	if (currentDigSlot == 0) currentDigSlot = 1;
 

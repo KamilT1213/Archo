@@ -1,8 +1,11 @@
 #include "RelicFunctions.hpp"
 
+//Bug to fix -----------> When relics that spawn extra dig spots are not the left most slot they will not work as intended
+
 FunctionAllocationData BindNewFunction(int ItemID, int ItemGrade, Archo* GameRef, std::pair<int, int> DigSpotRange)
 {
 	FunctionAllocationData outData = FunctionAllocationData();
+	//spdlog::info("DigSpotRanges: {} - {}",DigSpotRange.first,DigSpotRange.second);
 
 	if (ItemID == 0) {
 		outData.BoundFunc = std::bind(Relic_1_Function, ItemGrade, GameRef,DigSpotRange);
@@ -395,34 +398,101 @@ void Relic_19_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	glm::vec2 direction = glm::normalize(glm::vec2(GameRef->m_digBOs[0].DigInfo) - glm::vec2(GameRef->m_digBOs[target].DigInfo));
 	GameRef->m_digBOs[target].DigInfo.x += direction.x * GameRef->deltaTime * (0.05f * (Grade + 1));
 	GameRef->m_digBOs[target].DigInfo.y += direction.y * GameRef->deltaTime * (0.05f * (Grade + 1));
-	//GameRef->m_digBOs[target].DigInfo.z *= 0.1f;
-	GameRef->m_digBOs[target].DigInfo.w *= 1.5f;
-	spdlog::info("Position: x:{} , y:{}",GameRef->m_digBOs[target].DigInfo.x,GameRef->m_digBOs[target].DigInfo.y);
-	spdlog::info("Values: x:{} , y:{}",GameRef->m_digBOs[target].DigInfo.z,GameRef->m_digBOs[target].DigInfo.w);
+	GameRef->m_digBOs[target].DigInfo.z *= 1.5f;
+	GameRef->m_digBOs[target].DigInfo.w *= 1.1f;
+	//spdlog::info("Changes of bbo: {} {} {} {}, at {}",GameRef->m_digBOs[target].DigInfo.x,GameRef->m_digBOs[target].DigInfo.y,GameRef->m_digBOs[target].DigInfo.z,GameRef->m_digBOs[target].DigInfo.w, GameRef->ProgressBar);
+	//spdlog::info("Position: x:{} , y:{}",GameRef->m_digBOs[target].DigInfo.x,GameRef->m_digBOs[target].DigInfo.y);
+	//spdlog::info("Values: x:{} , y:{}",GameRef->m_digBOs[target].DigInfo.z,GameRef->m_digBOs[target].DigInfo.w);
 }
 
-void Relic_20_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_20_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) // increase all digspots size at random by (0% - 10% to 0% - 30%)
 {
+		for(int i = 0; i < GameRef->m_digBOs.size(); i++){
+			float size = GameRef->m_digBOs[i].DigInfo.z;
+			if(size != 0){
+				float random = Randomiser::uniformFloatBetween(0.f,0.1f + (0.2f * (Grade / 6.0f)));
+				size *= 1.0f - random;
+				if (size < 1) size = 1;
+				GameRef->m_digBOs[i].DigInfo.z = size;
+			}
+		}
 }
 
-void Relic_21_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_21_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// decreases dig and extraction time by (10% to 30%)
 {
+	GameRef->timeToDig *= 0.9f - (0.2f * (Grade / 6.0f));
+	GameRef->timePerSegment *= 0.9f - (0.2f * (Grade / 6.0f));
 }
 
-void Relic_22_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_22_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// creates a ravine between dig pos and mouse pointer at a size limit
 {
+	GameRef->m_digBOs[0].DigMask = 6;
+	glm::vec2 dir = GameRef->m_PointerPos_inGame - GameRef->m_DigPos;
+	float dist = glm::clamp(glm::length(dir)/2.0f,0.001f,0.1f);
+	dir = glm::normalize(dir);
+
+	float preSize = GameRef->m_digBOs[0].DigInfo.z;
+
+
+	glm::vec2 newPos = GameRef->m_DigPos + (dir * (dist));
+	float newSize = 1.0f / dist;
+	float newRot = glm::tanh(dir.x/dir.y);
+	float newDepth = GameRef->m_digBOs[0].DigInfo.w * (((0.1 + (1.0f / preSize)) - dist) * 5) * (1 + (Grade / 6.0f));
+
+	GameRef->m_digBOs[0].DigInfo = glm::vec4(newPos,newSize,newDepth);
+	GameRef->m_digBOs[0].rotation = newRot;
 }
 
-void Relic_23_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_23_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Moves currently removing scenery with mouse cursor increases scenery segments drastically (400% to 100%)
 {
+	if(GameRef->isScenery){
+		GameRef->Segments *= 4.0f - (3.0f * (Grade / 6.0f));
+	}
+	if(GameRef->isScenery && GameRef->Pressed && GameRef->RelicSceneryOffsetHold.x == 0 && GameRef->RelId > 0){
+		//spdlog::info("RelID: {}",GameRef->RelId);
+		auto& transformComp = GameRef->m_SceneryScene->m_entities.get<Transform>(GameRef->m_Sceneries.at(GameRef->RelId - 1));
+		GameRef->RelicSceneryOffsetHold = glm::vec2(transformComp.translation) - (glm::abs(glm::vec2(0,1) - GameRef->m_PointerPos_inGame) * 1024.f);
+	}
+	else if(GameRef->Pressed && glm::abs(GameRef->RelicSceneryOffsetHold.x) > 0 && GameRef->RelId > 0){
+		auto& transformComp = GameRef->m_SceneryScene->m_entities.get<Transform>(GameRef->m_Sceneries.at(GameRef->RelId - 1));
+		transformComp.translation = glm::vec3((glm::abs(glm::vec2(0,1) - GameRef->m_PointerPos_inGame) * 1024.f) + GameRef->RelicSceneryOffsetHold,transformComp.translation.z);
+		transformComp.recalc();
+		GameRef->m_sceneryRenderer.render();
+		GameRef->m_DigPos = GameRef->m_PointerPos_inGame;
+
+	}
+	else{
+		GameRef->RelicSceneryOffsetHold = glm::vec2(0);
+		GameRef->m_interactionState = InteractionState::Idle;
+	}
 }
 
-void Relic_24_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_24_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// locks all Digpos to grid of dig size increases dig depth by (0% to 100%)
 {
+	for(int i = 0; i < GameRef->m_digBOs.size(); i++){
+		float size = GameRef->m_digBOs[i].DigInfo.z / 2.0f;
+		glm::vec2 location = glm::vec2(GameRef->m_digBOs[i].DigInfo);
+		location -= 0.5f;
+		location *= size;
+		location = glm::floor(location) + 0.5f;
+		location /= size;
+		location += 0.5f;
+		GameRef->m_digBOs[i].DigInfo.x = location.x;
+		GameRef->m_digBOs[i].DigInfo.y = location.y;
+		GameRef->m_digBOs[i].DigInfo.w *= 1.0 + (Grade / 6.0f);
+	}
 }
 
-void Relic_25_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_25_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// increase radius and dig strength but mirror dig spot around center
 {
+	glm::vec2 location = glm::vec2(GameRef->m_digBOs[0].DigInfo);
+	location -= 0.5f;
+	location *= -1;
+	location += 0.5f;
+	GameRef->m_digBOs[0].DigInfo.x = location.x;
+	GameRef->m_digBOs[0].DigInfo.y = location.y;
+	GameRef->m_digBOs[0].DigInfo.x *= 0.9 - (0.4 * (Grade / 6.0f));
+	GameRef->m_digBOs[0].DigInfo.w *= 1 + (1 * (Grade / 6.0f));
 }
 
 void Relic_26_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)

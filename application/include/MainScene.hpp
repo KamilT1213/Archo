@@ -52,11 +52,21 @@ public:
 	float allTime{ 0.0f };
 	float ProgressBar{ 0.0f };
 
+	bool Pressed{ false };
+
+	glm::vec2 RelicSceneryOffsetHold = glm::vec2(-1);
+
 	float deltaTime{0.0f};
 
+	glm::vec2 m_PointerPos = glm::vec2(m_winRef.getSizef() / 2.0f);
+	glm::vec2 m_PointerPos_inGame = glm::vec2(0.5);
+	glm::vec2 m_DigPos = glm::vec2(0.5);
 
 	std::shared_ptr<Scene> m_SceneryScene;
 	std::vector<entt::entity> m_Sceneries;
+
+	InteractionType m_interactionType;
+	InteractionState m_interactionState;
 
 	Renderer m_sceneryRenderer;
 
@@ -167,14 +177,14 @@ private:
 	float height = m_winRef.getHeightf();
 
 	glm::vec2 m_ScreenSize = glm::vec2(m_winRef.getSizef());
-	glm::vec2 m_PointerPos = glm::vec2(m_winRef.getSizef() / 2.0f);
-	glm::vec2 m_DigPos = glm::vec2(0.5);
+
+
 
 	bool b{ true };
 	bool focusMode{ true };
 	bool modeToggle{ false };
 	bool Reseting{ false };
-	bool Pressed{ false };
+	
 	bool finished{ false };
 	bool extrBegan{ false };
 	bool Flip{ true };
@@ -243,8 +253,7 @@ private:
 	Settings_Save m_settings;
 
 
-	InteractionType m_interactionType;
-	InteractionState m_interactionState;
+
 
 	// Actor positions for ease of use and to avoid additonal magic numbers
 
