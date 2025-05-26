@@ -20,6 +20,9 @@ uniform sampler2D u_SceneryTexture;
 uniform sampler2D u_SceneryDepthTexture;
 uniform sampler2D u_SceneryDataTexture;
 
+uniform sampler2D u_ParticleDepthTexture;
+uniform sampler2D u_ParticleTexture;
+
 uniform int DigSpotTotal;
 
 struct DiggingSpot {
@@ -92,8 +95,13 @@ void main()
         noiseDis /= 10;
 
         colour = vec4(vec3(groundDepth),1.0);
-        if(groundDepth > 0.5) colour = mix( vec4(0.302, 0.247, 0.302, 1.0),vec4(0.0, 1.0, 0.0, 1.0), (groundDepth * 2.0) - 1.0);
-        if(groundDepth < 0.5) colour = mix( vec4(1.0, 0.0, 1.0, 1.0),vec4(0.302, 0.247, 0.302, 1.0), (groundDepth * 2.0));
+
+        vec4 col1 = vec4(0.2, 0.4, 0.4, 1.0);
+        vec4 col2 = vec4(0.2, 0.1, 0.3, 1.0);
+        vec4 col3 = vec4(0.05, 0.01, 0.05, 1.0);
+
+        if(groundDepth > 0.5) colour = mix( col2,col1, (groundDepth * 2.0) - 1.0);
+        if(groundDepth < 0.5) colour = mix( col3,col2, (groundDepth * 2.0));
         if(groundDepth < groundHeightOff && distance(groundDepth,groundHeightOff)  > 0.0001 || Dot - (1 - groundDepth) < 0.35){
             //colour -= vec4(0.15, 0.15, 0.15, 0.0) * (1.0 * (1 - groundDepth));
         }
@@ -114,9 +122,16 @@ void main()
         data.y = 1.0;
         data.a = 1.0f;
     }
-    //colour = vec4(vec3(sceneryDepth), 1.0);//vec4(vec3(max(max(sceneryDepth, groundDepth), relicDepth)), 1.0);
-
+    //colour = vec4(relicData.xyz + sceneryData.xyz, 1.0);//vec4(vec3(max(max(sceneryDepth, groundDepth), relicDepth)), 1.0);
+    float maxHeight = max(max(sceneryDepth,groundDepth * ceil(groundData.y)),relicDepth);
    
+    if(maxHeight < 1 - texture(u_ParticleDepthTexture,texCoords).x){
+        vec4 col = texture(u_ParticleTexture,texCoords);
+        colour = mix(colour,col,col.a);
+    }
+
+    //colour = texture(u_ParticleDepthTexture,texCoords);
+
     float groundHeight = texture(u_GroundDepthTexture, texCoords).r + texture(u_GroundDepthTexture, texCoords).g;
     
 

@@ -443,6 +443,7 @@ void Relic_22_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	GameRef->m_digBOs[0].rotation = newRot;
 }
 
+//VVVVVVVVVVVVVV maybe also move at a slower rate that goes up with level??
 void Relic_23_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Moves currently removing scenery with mouse cursor increases scenery segments drastically (400% to 100%)
 {
 	if(GameRef->isScenery){
@@ -495,12 +496,54 @@ void Relic_25_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	GameRef->m_digBOs[0].DigInfo.w *= 1 + (1 * (Grade / 6.0f));
 }
 
-void Relic_26_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_26_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Plays sound in direction of closest relic when extracting
 {
+	if(GameRef->RelicBeginTrigger && GameRef->m_interactionType == InteractionType::Extraction){
+		GameRef->m_relicPingSound_channel = GameRef->m_soundManager.playSoundAtPosition(GameRef->m_relicPingSound.get(),0,glm::vec3(0,0,-1),glm::vec3(99999,99999,99999),GameRef->m_relicPingSound_channel,-1);
+	}
+	if(GameRef->m_interactionType == InteractionType::Extraction && GameRef->RelicSegmentTrigger){
+
+		glm::vec2 closest = glm::vec2(0,0);
+		float closestDist = 9999999;
+		for(auto Obj : GameRef->m_RelicScene->m_entities.view<Transform>()){
+			auto relicComp = GameRef->m_RelicScene->m_entities.get<Relic>(Obj);
+			if(relicComp.Active == true){
+				auto transformComp = GameRef->m_RelicScene->m_entities.get<Transform>(Obj);
+				glm::vec2 local = glm::vec2(transformComp.translation / 1024.f) - glm::abs(glm::vec2(0,1) - GameRef->m_DigPos);
+				float currentDist = glm::length(local);
+				if(currentDist < closestDist){
+					closestDist = currentDist;
+					closest = local;
+				}
+			}
+
+		}
+		//spdlog::info(">>Channel: {}",GameRef->m_relicPingSound_channel);
+		GameRef->m_soundManager.playSoundAtPosition(GameRef->m_relicPingSound.get(),0,glm::vec3(0,0,-1),glm::vec3(-closest.x,0,closest.y) * 1024.f,GameRef->m_relicPingSound_channel);
+		//spdlog::info("Playing at: x:{} y:{}",closest.x,closest.y);
+	}
+	if(GameRef->RelicFinishTrigger || GameRef->m_interactionType != InteractionType::Extraction){
+		if(GameRef->m_relicPingSound_channel >= 0){
+			GameRef->m_soundManager.stopSound(GameRef->m_relicPingSound_channel);
+		} 
+		GameRef->m_relicPingSound_channel = -1;
+	}
 }
 
-void Relic_27_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+//VVVVVVVVVV needs partical ring.
+void Relic_27_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Ring placed randomly around the map when within will boost dig depth of player
 {
+	int factor =  GameRef->m_relicLastTime - glm::floor(GameRef->allTime);
+	if(factor == 0){
+		GameRef->m_relicLastTime += Randomiser::uniformIntBetween(1,2);
+		if(GameRef->m_relicLastTime > 1000) GameRef->m_relicLastTime -= 1000;
+		
+		GameRef->m_relicZonePos = glm::vec2(Randomiser::uniformFloatBetween(0,1),Randomiser::uniformFloatBetween(0,1));
+	}
+
+	if(glm::distance(GameRef->m_DigPos,GameRef->m_relicZonePos) < glm::mix(0.1,0.2,(Grade / 6.0f))){
+		GameRef->m_digBOs[0].DigInfo.w *= 2;
+	}
 }
 
 void Relic_28_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)

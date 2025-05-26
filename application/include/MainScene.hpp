@@ -10,6 +10,28 @@ struct SeedingPoint {
 	glm::vec4 position = glm::vec4(-1.0f, -1.0f, -1.0f, 128.0f);
 };
 
+struct ParticleData{
+	glm::vec4 colour;
+	glm::vec2 position;
+	glm::vec2 direction;
+	float size;
+	float speed;
+	float lifespan;
+	float depth;
+};
+
+struct ParticleBehaviour{
+	glm::vec2 target;
+	float factor;
+	int Mode;
+};
+
+struct Relic {
+	bool Active;
+	int Type;
+
+};
+
 struct RelicsBO {
 	int Quantity{ 0 };
 	int textureUnit;
@@ -51,6 +73,7 @@ public:
 
 	float allTime{ 0.0f };
 	float ProgressBar{ 0.0f };
+	int DigSegments{3};
 
 	bool Pressed{ false };
 
@@ -62,11 +85,21 @@ public:
 	glm::vec2 m_PointerPos_inGame = glm::vec2(0.5);
 	glm::vec2 m_DigPos = glm::vec2(0.5);
 
+	glm::vec2 m_relicZonePos;
+	int m_relicLastTime;
+
 	std::shared_ptr<Scene> m_SceneryScene;
 	std::vector<entt::entity> m_Sceneries;
 
+	std::shared_ptr<Scene> m_RelicScene;
+	std::vector<entt::entity> m_Relics;
+
 	InteractionType m_interactionType;
 	InteractionState m_interactionState;
+
+	SoundManager m_soundManager;
+	std::shared_ptr<Mix_Chunk> m_relicPingSound;
+	int m_relicPingSound_channel{-1};
 
 	Renderer m_sceneryRenderer;
 
@@ -82,6 +115,8 @@ private:
 	void onReset(GLFWWindowImpl& win) override;
 
 	void createLayer();
+	void UpdateParticleTasksSSBO();
+	void ClearParticleTasksSSBO();
 	void UpdateRelicsSSBO();
 	void ClearRelicsSSBO();
 	void UpdateDigSpotSSBO();
@@ -129,7 +164,7 @@ private:
 	std::shared_ptr<Material> compute_GroundMaterial;
 	std::vector<std::shared_ptr<Shader>> m_generators;
 
-	std::vector<entt::entity> m_Relics;
+
 	std::vector<entt::entity> m_Relics2;
 
 
@@ -147,7 +182,12 @@ private:
 
 	std::array<std::function<void()>, 3> RelicFunctions;
 
-	std::shared_ptr<Scene> m_RelicScene;
+	std::shared_ptr<SSBO> m_particles;
+	std::shared_ptr<SSBO> m_particleBehaviour;
+	std::array<ParticleBehaviour,8> m_particleTasks;
+	std::shared_ptr<Material> m_particlesComputeMat;
+
+
 	std::shared_ptr<Scene> m_InventoryButtonScene;
 	std::shared_ptr<Scene> m_InventoryRelicDisplayScene;
 	std::shared_ptr<Scene> m_screenScene;
@@ -158,6 +198,7 @@ private:
 	std::shared_ptr<Scene> m_pauseMenu;
 	std::shared_ptr<Scene> m_pauseMenu_Settings;
 	std::shared_ptr<Scene> m_pauseMenu_Inventory;
+	std::shared_ptr<Scene> m_particleScene;
 
 
 	float initialRatio;
@@ -170,8 +211,9 @@ private:
 	entt::entity PauseQuad;
 	entt::entity InventoryItemsQuad;
 
-	SoundManager m_soundManager;
+
 	std::shared_ptr<Mix_Chunk> sound;
+	int ExtractionSound = -1;
 
 	float width = m_winRef.getWidthf();
 	float height = m_winRef.getHeightf();
@@ -191,7 +233,7 @@ private:
 	bool Fliping{ false };
 	bool Pausing{ false };
 	bool beganInput { false};
-	int Relics{ 32 };//512};
+	int Relics{ 16 };//512};
 	int RemainingRelics{ 0 };
 	int invRelicSelected{ -1 };
 	int Equiped[3]{ -1,-1,-1 };
@@ -229,6 +271,8 @@ private:
 	size_t FinalPausePassIDx;
 	size_t FinalMainMenuPassIDx;
 
+	size_t ParticlePassIDx;
+
 	//std::shared_ptr<SSBO> terrainParticlesStartPoints;
 	//std::shared_ptr<SSBO> terrainParticles;
 
@@ -248,7 +292,7 @@ private:
 	Renderer m_seedingFinderRenderer;
 	Renderer m_groundComputeRenderer;
 	Renderer m_relicRenderer;
-
+	Renderer m_particleRenderer;
 
 	Settings_Save m_settings;
 
@@ -302,6 +346,10 @@ private:
 
 	};
 
+	FBOLayout particlePassLayout = {
+		{AttachmentType::ColourHDR,true},
+		{AttachmentType::Depth,true}
+	};
 
 
 	//FBOLayout typicalLayout = {

@@ -10,7 +10,7 @@
 class ButtonScript : public Script
 {
 public:
-	ButtonScript(entt::entity entity, std::shared_ptr<Scene> scene, GLFWWindowImpl& win, glm::vec2& mousePos, float inscale, Transform& trans, Material& mat,const std::function<void()>& func) :
+	ButtonScript(entt::entity entity, std::shared_ptr<Scene> scene, GLFWWindowImpl& win, glm::vec2& mousePos, float inscale, Transform& trans, Material& mat,const std::function<void()>& func, SoundManager& sm, std::shared_ptr<Mix_Chunk> s) :
 		Script(entity, scene),
 		m_winRef(win),
 		m_mousePosRef(mousePos),
@@ -19,7 +19,9 @@ public:
 		m_hovered(false),
 		m_transRef(trans),
 		m_matRef(mat),
-		m_assignedFunc(func)
+		m_assignedFunc(func),
+		m_soundManager(sm),
+		m_sound(s)
 	{
 
 	}
@@ -33,6 +35,8 @@ private:
 	Transform& m_transRef;
 	Material& m_matRef;
 	glm::vec2& m_mousePosRef;
+	SoundManager& m_soundManager;
+	std::shared_ptr<Mix_Chunk> m_sound;
 	std::function<void()> m_assignedFunc;
 	float initialScreenHeight;
 	bool m_active{ false };

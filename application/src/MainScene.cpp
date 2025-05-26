@@ -7,11 +7,7 @@
 #include "scripts/RelicFunctions.hpp"
 
 
-struct Relic {
-	bool Active;
-	int Type;
 
-};
 
 
 
@@ -33,8 +29,23 @@ float DigCurve2(float t, float s) {
 	return t;
 }
 
-void Archo::UpdateRelicsSSBO() {
-	for (int i = 0; i < m_save.s_Items.size(); i++) {
+void Archo::UpdateParticleTasksSSBO()
+{
+	m_particleBehaviour->edit(0,sizeof(ParticleBehaviour) * m_particleTasks.size(), m_particleTasks.data());
+}
+
+void Archo::ClearParticleTasksSSBO()
+{
+	for(int i = 0; i < m_particleTasks.size(); i++){
+		m_particleTasks[i] = ParticleBehaviour();
+		m_particleTasks[i].Mode = 1;
+	}
+	UpdateParticleTasksSSBO();
+}
+
+void Archo::UpdateRelicsSSBO()
+{
+    for (int i = 0; i < m_save.s_Items.size(); i++) {
 		RelicsBO current;
 		current.Quantity = m_save.s_Items.at(i).second;
 		current.textureUnit = 0;
@@ -98,6 +109,24 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 
 	UpdateDigSpotSSBO();
 
+	m_particles = std::make_shared<SSBO>(sizeof(ParticleData) * (128), 128);
+	m_particles->bind(6);
+
+	ParticleData test;
+	test.colour = glm::vec4(1,0,1,1);
+	test.direction = glm::vec2(0.0);
+	test.lifespan = 1.0f;
+	test.position = glm::vec2(0.5f);
+	test.depth = 0.5f;
+	test.size = 64.0f;
+	test.speed = 0.0f;
+
+	m_particles->edit(0,sizeof(ParticleData),&test);
+
+	m_particleBehaviour = std::make_shared<SSBO>(sizeof(ParticleBehaviour) * 8, 8);
+	m_particleBehaviour->bind(7);
+	ClearParticleTasksSSBO();
+
 	//m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
 	//for (int i = 0; i < m_seedingPoints.size(); i++) {
 	//	m_seedingPoints[i] = SeedingPoint();
@@ -116,7 +145,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	//		m_seedingPoints[i].position.w, i);
 	//}
 
-
+	glEnable(GL_PROGRAM_POINT_SIZE);
 
 	createLayer();
 	RefreshRelicFunctions();
@@ -140,6 +169,7 @@ void Archo::onRender()
 	}
 	else if (state == GameState::InGame) {
 		ZoneScoped;
+		m_particleRenderer.render();
 		m_mainRenderer.render();
 		glDisable(GL_BLEND);
 	}
@@ -330,6 +360,7 @@ void Archo::onUpdate(float timestep)
 	else if (state == GameState::InGame) {
 
 		deltaTime = timestep;
+		m_particlesComputeMat->setValue("dt",timestep);
 
 		auto view = m_gameMenu->m_entities.view<ScriptComp>();
 		for (auto& entity : view) {
@@ -450,7 +481,16 @@ void Archo::onUpdate(float timestep)
 	
 		//spdlog::info("Rarity: {}", Rarity);
 
+		ParticleData test;
+		test.colour = glm::vec4(1,0,1,1);
+		test.direction = glm::vec2(0.0);
+		test.lifespan = 1.0f;
+		test.position = m_DigPos;//::vec2(0.5f);
+		test.depth = 0.5f;
+		test.size = 64.0f;
+		test.speed = 0.0f;
 
+		m_particles->edit(0,sizeof(ParticleData),&test);
 
 		//spdlog::info("ID: {}", RelId - 1);
 
@@ -500,7 +540,7 @@ void Archo::onUpdate(float timestep)
 					}
 					//m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
 					for (int i = 0; i < 16; i++) {
-						m_digBOs[i].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
+						m_digBOs[i].DigProgression = 1.0f - DigCurve1(ProgressBar, (float)DigSegments, 10.0f);
 					}
 					compute_GroundMaterial->setValue("Factor", ProgressBar);
 
@@ -517,8 +557,8 @@ void Archo::onUpdate(float timestep)
 					if (ProgressBar < 0) {
 						ProgressBar = 0;
 						extrBegan = false;
-						ProgressSegmentTarget = 0.5;
-						ProgressSegmentTarget_RelicTrigger = 0.5;
+						ProgressSegmentTarget = timeToDig / (float)DigSegments;
+						ProgressSegmentTarget_RelicTrigger = timeToDig / (float)DigSegments;
 						Pressed = false;
 						finished = false;
 						RelicFinishTrigger = false;
@@ -526,9 +566,9 @@ void Archo::onUpdate(float timestep)
 				}
 
 				
-
+				//spdlog::info("Checking: {}",ProgressBar * timeToDig);
 				if (ProgressBar * timeToDig >= ProgressSegmentTarget) {
-
+					//spdlog::info("Check: {} is >= to {}",ProgressBar * timeToDig,ProgressSegmentTarget);
 					//int r = rand() % 2;
 					//int r2 = rand() % 4;
 
@@ -551,7 +591,13 @@ void Archo::onUpdate(float timestep)
 						//m_digBOs[i].DigInfo.y = Randomiser::uniformFloatBetween(0, 1);
 					//}
 					//m_digBOs[0].rotation = Randomiser::uniformFloatBetween(-glm::pi<float>(), glm::pi<float>());
-					ProgressSegmentTarget++;
+					//m_soundManager.playSound(sound.get(),0);
+					//m_soundManager.playSoundAtPosition(sound.get(),256,glm::vec3(0,0,-1),glm::vec3(glm::vec3(0,0,-1)));
+					//spdlog::info("Playing sound at {}",ProgressSegmentTarget);
+					//spdlog::info("Dug Segment: {}",ProgressSegmentTarget);
+					m_soundManager.playRandomFromLibrary(ExtractionSound);
+					ProgressSegmentTarget += timeToDig / (float)DigSegments;
+					RelicSegmentTrigger = true;
 				}
 			}
 			else {
@@ -562,8 +608,8 @@ void Archo::onUpdate(float timestep)
 				if (ProgressBar < 0) {
 					ProgressBar = 0;
 					extrBegan = false;
-					ProgressSegmentTarget = 0.5;
-					ProgressSegmentTarget_RelicTrigger = 0.5;
+					ProgressSegmentTarget = timeToDig / (float)DigSegments;
+					ProgressSegmentTarget_RelicTrigger = timeToDig / (float)DigSegments;
 					Pressed = false;
 					finished = false;
 					RelicFinishTrigger = false;
@@ -587,9 +633,11 @@ void Archo::onUpdate(float timestep)
 			if (Pressed) {
 				if (!finished) {
 					Pressed = true;
-					if (isScenery) {
+					if (isScenery && ProgressBar <= 0) {
 						auto& sceneComp = m_SceneryScene->m_entities.get<Scenery>(m_Sceneries.at(RelId - 1));
 						ProgressBar = sceneComp.DugOut;
+						ProgressSegmentTarget = (ProgressBar * Segments) + 1;
+						ProgressSegmentTarget_RelicTrigger = (ProgressBar * Segments) + 1;
 					}
 
 					ProgressBar += timestep * ((1 / timePerSegment) / Segments);
@@ -675,14 +723,17 @@ void Archo::onUpdate(float timestep)
 
 				if (ProgressBar * Segments >= ProgressSegmentTarget) {
 
-					//int r = rand() % 4;
+					// int r = rand() % 4;
 
-					//std::string s = "./assets/sounds/Extraction_soft_var";
-					//s += char('0' + r);
-					//s.append(".wav");
+					// std::string s = "./assets/sounds/Extraction_soft_var";
+					// s += char('0' + r);
+					// s.append(".wav");
 
-					//m_soundManager.playSound(s.c_str());
+					//m_soundManager.playSound(sound.get(),0);
+					//m_soundManager.playSoundAtPosition(sound.get(),256,glm::vec3(0,0,-1),glm::vec3(glm::vec3(0,0,-1)));
 					//spdlog::info("PlaySound");
+					m_soundManager.playRandomFromLibrary(ExtractionSound);
+					RelicSegmentTrigger = true;
 					ProgressSegmentTarget++;
 				}
 
@@ -880,14 +931,37 @@ void Archo::createLayer()
 	m_settings = Load_Settings();
 	m_save = Load_Game();
 
-	//const char* soundFile = "./assets/sounds/Extraction_soft_var0.wav";
-	//sound = (std::shared_ptr<Mix_Chunk>)Mix_LoadWAV(soundFile);
-	//if (!sound) {
-	//	std::cerr << "Failed to load sound: " << Mix_GetError() << "\n";
-	//	Mix_CloseAudio();
-	//	SDL_Quit();
-	//	//return;
-	//}
+	const char* soundFile = "./assets/sounds/Extraction_soft_var0.wav";
+	sound = (std::shared_ptr<Mix_Chunk>)Mix_LoadWAV(soundFile);
+	if (!sound) {
+		std::cerr << "Failed to load sound: " << Mix_GetError() << "\n";
+		//Mix_CloseAudio();
+		//SDL_Quit();
+		//return;
+	}
+
+	soundFile = "./assets/sounds/Sonar_var0.wav";
+	m_relicPingSound = (std::shared_ptr<Mix_Chunk>)Mix_LoadWAV(soundFile);
+	if (!m_relicPingSound) {
+		std::cerr << "Failed to load sound: " << Mix_GetError() << "\n";
+		//Mix_CloseAudio();
+		//SDL_Quit();
+		//return;
+	}
+
+	soundFile = "./assets/sounds/Music_var0.wav";
+	Mix_Music* music = Mix_LoadMUS(soundFile);
+	if (!music) {
+		std::cerr << "Failed to load sound: " << Mix_GetError() << "\n";
+		//Mix_CloseAudio();
+		//SDL_Quit();
+		//return;
+	}
+	
+	Mix_PlayMusic(music,-1);
+	Mix_VolumeMusic(128);
+
+	ExtractionSound = m_soundManager.addNewSoundsToLibrary("Extraction_soft",5);
 
 	m_winRef.setVSync(false);
 	m_RelicScene.reset(new Scene);
@@ -901,6 +975,7 @@ void Archo::createLayer()
 	m_pauseMenu_Settings.reset(new Scene);
 	m_pauseMenu_Inventory.reset(new Scene);
 	m_SceneryScene.reset(new Scene);
+	m_particleScene.reset(new Scene);
 
 	initialRatio = width / height;
 
@@ -938,6 +1013,14 @@ void Archo::createLayer()
 	compute_Generator_Type1_ShaderDesc.type = ShaderType::compute;
 	compute_Generator_Type1_ShaderDesc.computeSrcPath = "./assets/shaders/compute_Generate_Type1.glsl";
 	m_generators.push_back(std::make_shared<Shader>(compute_Generator_Type1_ShaderDesc));
+		
+	//Particle Compute
+	ShaderDescription compute_Particle_ShaderDesc;
+	compute_Particle_ShaderDesc.type = ShaderType::compute;
+	compute_Particle_ShaderDesc.computeSrcPath = "./assets/shaders/compute_Particles.glsl";
+	std::shared_ptr<Shader> Particle_computeShader = std::make_shared<Shader>(compute_Particle_ShaderDesc);
+	m_particlesComputeMat = std::make_shared<Material>(Particle_computeShader);
+	
 
 
 	//Locate Seeding points
@@ -960,6 +1043,14 @@ void Archo::createLayer()
 	screenQuadMaterial->setValue("u_ScreenSize", m_ScreenSize);
 	screenQuadMaterial->setValue("DigSpotTotal", Digspots);
 
+	//Particle Material
+	ShaderDescription particleShaderDesc;
+	particleShaderDesc.type = ShaderType::rasterization;
+	particleShaderDesc.vertexSrcPath = "./assets/shaders/ParticleVert.glsl";
+	particleShaderDesc.fragmentSrcPath = "./assets/shaders/ParticleFrag.glsl";
+	std::shared_ptr<Shader> particleShader = std::make_shared<Shader>(particleShaderDesc);
+	std::shared_ptr<Material> particleMaterial = std::make_shared<Material>(particleShader);
+	particleMaterial->setPrimitive(GL_POINTS);
 
 	//Final main menu screen
 	ShaderDescription menuQuadShaderDesc;
@@ -1243,7 +1334,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::playGame, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(startButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(startButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(startButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(startButtonMat.get()), boundFunc, m_soundManager,sound);
 	}
 
 	{
@@ -1268,7 +1359,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::mainSettings, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(settingsButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(settingsButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(settingsButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(settingsButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1293,7 +1384,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::mainSave, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(saveButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(saveButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(saveButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(saveButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1318,7 +1409,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::exitGame, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	/*************************
@@ -1347,7 +1438,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::settings_to_mainMenu, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Settings, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Settings, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	/*************************
@@ -1376,7 +1467,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::deleteGameSave, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(deleteSaveButton, m_mainMenu_Save, m_winRef, m_PointerPos, height, transformComp, *(deleteSaveButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(deleteSaveButton, m_mainMenu_Save, m_winRef, m_PointerPos, height, transformComp, *(deleteSaveButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1401,7 +1492,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::mainMenu, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Save, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_mainMenu_Save, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	/*************************
@@ -1430,7 +1521,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::pauseInventory, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(inventoryButton, m_gameMenu, m_winRef, m_PointerPos, height, transformComp, *(m_gameInventoryMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(inventoryButton, m_gameMenu, m_winRef, m_PointerPos, height, transformComp, *(m_gameInventoryMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1455,7 +1546,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::pauseMenu, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(PauseButton, m_gameMenu, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(PauseButton, m_gameMenu, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	/*************************
@@ -1484,7 +1575,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::pause_to_Game, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(startButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(startButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(startButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(startButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1509,7 +1600,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::pauseSettings, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(settingsButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(settingsButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(settingsButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(settingsButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1534,7 +1625,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::saveGame, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(saveButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(saveButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(saveButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(saveButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1559,7 +1650,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::saveAndExit, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 
@@ -1585,7 +1676,7 @@ void Archo::createLayer()
 
 	//	std::function<void()> boundFunc = std::bind(&Archo::playGame, this);
 	//	//boundFunc();
-	//	scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu, m_winRef, transformComp, *(exitButtonMat.get()), boundFunc);
+	//	scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu, m_winRef, transformComp, *(exitButtonMat.get()), boundFunc, m_soundManager, sound);
 	//}
 
 	/*************************
@@ -1614,7 +1705,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::settings_to_pauseMenu, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Settings, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Settings, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	/*************************
@@ -1643,7 +1734,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::unpauseInventory, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1694,7 +1785,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::equipToSlot1, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(slot1Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[0].get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(slot1Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[0].get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1719,7 +1810,7 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::equipToSlot2, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(slot2Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[1].get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(slot2Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[1].get()), boundFunc, m_soundManager, sound);
 	}
 
 	{
@@ -1744,15 +1835,18 @@ void Archo::createLayer()
 
 		std::function<void()> boundFunc = std::bind(&Archo::equipToSlot3, this);
 		//boundFunc();
-		scriptComp.attachScript<ButtonScript>(slot3Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[2].get()), boundFunc);
+		scriptComp.attachScript<ButtonScript>(slot3Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[2].get()), boundFunc, m_soundManager, sound);
 	}
 
 	/*************************
 	*  Relics
 	**************************/
 
-	int Curve[6]{ 13,8,5,3,2,1 };
+	//int Curve[6]{ 13,8,5,3,2,1 };
+	int Curve[6]{ 6,4,2,2,1,1 };
 	std::array<std::pair<int, int>, 6> Ranges{ std::pair<int,int>(0,15), std::pair<int,int>(16,26), std::pair<int,int>(27,34), std::pair<int,int>(35,40), std::pair<int,int>(41,44), std::pair<int,int>(45,47) };
+
+
 
 	for (int i = 0; i < Relics; i++) {
 		
@@ -1804,12 +1898,12 @@ void Archo::createLayer()
 		RelicMaterial2->setValue("u_Rarity", rarity + 0.001f);
 		//RelicMaterial2->setValue("u_Id", -1.0f);
 		RelicMaterial2->setValue("u_active", (float)(int)true);
-		transformComp2.translation = glm::vec3(glm::mod((float)i, 7.f), floorf(i / 7.f), -0.5f);
+		transformComp2.translation = glm::vec3(glm::mod((float)i, 4.f), floorf(i / 4.f), -0.5f);
 		transformComp2.translation += glm::vec3(0.5f, 0.5f, 0);
-		transformComp2.translation /= glm::vec3(7.f, 7.f, 1);
+		transformComp2.translation /= glm::vec3(4.f, 4.f, 1);
 		transformComp2.translation *= glm::vec3(1024.0f , 1024.0f, 1);
 
-		transformComp2.scale = glm::vec3((1024.0f / 14.0f) - 1.0f);
+		transformComp2.scale = glm::vec3((1024.0f / 8.0f) - 1.0f);
 
 		renderComp2.material = RelicMaterial2;
 		transformComp2.recalc();
@@ -1893,6 +1987,26 @@ void Archo::createLayer()
 	}
 
 	//Particles
+
+	{
+		entt::entity particle = m_particleScene->m_entities.create();
+		Render& renderComp = m_particleScene->m_entities.emplace<Render>(particle);
+		Transform& transformComp = m_particleScene->m_entities.emplace<Transform>(particle);
+
+		//renderComp.geometry = RelicVAO;
+		//renderComp.depthGeometry = RelicVAO;
+		renderComp.SSBOgeometry = m_particles;
+
+		renderComp.material = particleMaterial;
+
+		transformComp.translation = glm::vec3(0,0,-0.5f);
+		transformComp.scale = glm::vec3(1 ,1,1);
+		transformComp.recalc();
+	}
+
+
+
+	//Particles
 	//Actor particles;
 
 	//uint32_t numberOfParticles = 4096 * 4;
@@ -1921,6 +2035,13 @@ void Archo::createLayer()
 	/*************************
 	*  Compute Pass
 	**************************/
+
+	ComputePass ParticleComputePass;
+	ParticleComputePass.material = m_particlesComputeMat;
+	ParticleComputePass.workgroups = {8,1,1};
+	ParticleComputePass.barrier = MemoryBarrier::All;
+
+	m_particleRenderer.addComputePass(ParticleComputePass);
 
 	setupGenerator(m_generationRenderer, groundTexture, groundTextureTemp, m_generators.at(0));
 
@@ -2208,6 +2329,8 @@ void Archo::createLayer()
 
 	m_gameInventoryMat->setValue("u_ButtonTexture", InventoryDisplayScreenRelicPass.target->getTarget(0));
 
+
+
 	/*************************
 	*  Scenery Render Pass
 	**************************/
@@ -2253,7 +2376,26 @@ void Archo::createLayer()
 		renderComp.material = screenQuadMaterial;
 	}
 
+	/*************************
+	*  particle Render Pass
+	**************************/
 
+	RenderPass particlePass;
+	particlePass.scene = m_particleScene;
+	particlePass.parseScene();
+	particlePass.target = std::make_shared<FBO>(glm::ivec2(1024, 1024), particlePassLayout);
+	particlePass.viewPort = { 0,0,1024, 1024 };
+
+	particlePass.camera.projection = glm::ortho(0.f, 1024.0f, 1024.0f, 0.f);
+
+	particlePass.UBOmanager.setCachedValue("b_particleCamera2D", "u_particleView2D", particlePass.camera.view);
+	particlePass.UBOmanager.setCachedValue("b_particleCamera2D", "u_particleProjection2D", particlePass.camera.projection);
+
+	ParticlePassIDx = m_particleRenderer.getSumPassCount();
+	m_particleRenderer.addRenderPass(particlePass);
+
+	screenQuadMaterial->setValue("u_ParticleTexture", particlePass.target->getTarget(0));
+	screenQuadMaterial->setValue("u_ParticleDepthTexture", particlePass.target->getTarget(1));
 
 	/*************************
 	*  Screen Ground Render Pass
@@ -2353,6 +2495,8 @@ void Archo::createLayer()
 
 }
 
+
+
 void Archo::resetLayer()
 {
 
@@ -2391,18 +2535,18 @@ void Archo::RefreshRelicFunctions()
 
 void Archo::RunRelicFunctions()
 {
-	if (ProgressBar * timeToDig >= ProgressSegmentTarget_RelicTrigger) {
-		RelicSegmentTrigger = true;
+	//if (ProgressBar * timeToDig >= ProgressSegmentTarget_RelicTrigger) {
+		//RelicSegmentTrigger = true;
 				//spdlog::info("Trigger with: {} with dig time of {}",ProgressSegmentTarget_RelicTrigger,timeToDig);
-		ProgressSegmentTarget_RelicTrigger++;
+		//ProgressSegmentTarget_RelicTrigger += timeToDig / (float)DigSegments;
 
-	}
+	//}
 
-	if (ProgressBar * Segments >= ProgressSegmentTarget_RelicTrigger) {
-		RelicSegmentTrigger = true;
+	//if (ProgressBar * Segments >= ProgressSegmentTarget_RelicTrigger) {
+		//RelicSegmentTrigger = true;
 				//spdlog::info("Trigger with: {}",ProgressSegmentTarget_RelicTrigger);
-		ProgressSegmentTarget_RelicTrigger++;
-	}
+		//ProgressSegmentTarget_RelicTrigger++;
+	//}
 	timeToDig = 1.0f;
 	for (int i = 0; i < 3; i++) {
 		if(RelicFunctions[i] != NULL) RelicFunctions[i]();
@@ -2752,12 +2896,13 @@ void Archo::placeRelics()
 
 	auto view = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
 	RemainingRelics = 0;
-	int Curve[6]{ 13,8,5,3,2,1 };
+	//int Curve[6]{ 13,8,5,3,2,1 };
+	int Curve[6]{ 6,4,2,2,1,1 };
 	std::array<std::pair<int, int>, 6> Ranges{ std::pair<int,int>(0,16), std::pair<int,int>(16,27), std::pair<int,int>(27,35), std::pair<int,int>(35,41), std::pair<int,int>(41,45), std::pair<int,int>(45,48) };
 	for (int i = 0; i < view.size(); i++) {
 		Render& renderComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[i]);
 		Transform& transComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[i]);
-
+		Relic& relicComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Relic>(view[i]);
 		float rarity = 0;
 		int counter = 0;
 		for (int j = 0; j < std::size(Curve); j++) {
@@ -2790,6 +2935,7 @@ void Archo::placeRelics()
 			auto& renderComp2 = m_InventoryButtonScene->m_entities.get<Render>(m_Relics2[i]);
 			renderComp2.material->setValue("u_active", (float)(int)true);
 			renderComp2.material->setValue("u_Rarity", rarity + 0.001f);
+			relicComp.Active = true;
 		}
 		else {
 			renderComp.material->setValue("u_active", (float)(int)false);

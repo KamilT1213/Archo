@@ -37,7 +37,7 @@ void ButtonScript::onUpdate(float timestep)
 		//spdlog::info("Released");
 
 		//_sleep(1000);
-
+		m_soundManager.playSound(m_sound.get(),0);
 		m_assignedFunc();
 		m_active = false;
 	}

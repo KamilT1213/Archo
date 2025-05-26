@@ -1,59 +1,52 @@
 #version 460 core
-layout(local_size_x = 128) in;
+layout(local_size_x = 16) in;
 
-struct Particle {
-	vec4 position;
-	vec2 UV;
+struct ParticleData{
+	vec4 colour;
+	vec2 position;
+	vec2 direction;
+	float size;
+	float speed;
+	float lifespan;
+	float depth;
 };
 
-layout(std430, binding = 0) buffer vertex0
+struct ParticleBehaviour{
+	vec2 target;
+	float factor;
+	int Mode;
+};
+
+layout(std430, binding = 6) buffer Data
 {
-	Particle startingPoints[];
+	ParticleData particles[];
 };
 
-layout(std430, binding = 1) buffer vertex1
+layout(std430, binding = 7) buffer Behaviour
 {
-	Particle particles[];
+	ParticleBehaviour tasks[];
 };
-
-layout(binding = 0, rgba16) uniform image2D outputImg;
 
 uniform float dt;
 
-float speed = 2.0;
 
 void main()
 {
-	vec4 startingPoint = startingPoints[gl_GlobalInvocationID.x].position;
-	vec4 particlePos = particles[gl_GlobalInvocationID.x].position;
-	vec2 UVin = startingPoints[gl_GlobalInvocationID.x].UV;
-	vec2 UVout = particles[gl_GlobalInvocationID.x].UV;
+	uint Task = gl_WorkGroupID.x;
+	uint Particle = gl_GlobalInvocationID.x;
 
-	ivec2 p = ivec2((UVout * 4096).x, (UVout * 4096).y);
-	ivec2 p2 = ivec2((UVin * 4096).x, (UVin * 4096).y);
-	float yOffset = (abs(imageLoad(outputImg, p).y - 0.5)) * 25;
-	float yOffset2 = (abs(imageLoad(outputImg, p2).y - 0.5)) * 25;
-
-	if (distance(startingPoint.xyz, vec3(0)) > 0.0 && particlePos.a == 0.0) {// && yOffset2 > 0) {
-		particlePos = startingPoint;
-		UVout = UVin;
-		particlePos.xyz += vec3(0, 1, 0);
-
-		particlePos.a = yOffset;
-
+	if(tasks[Task].Mode == 0){
+		particles[Particle].colour.a = 0.0;
+		particles[Particle].depth = 1.0;
 	}
-	else if (particlePos.a >= 1.0 ) {
-
-		
-		particlePos.xyz -= vec3(0,dt * speed, 0);
-		particlePos.a -= (dt) * speed;
-
-	}
-	else if (particlePos.a <= 1.0) {
-		particlePos = vec4(0);
-		UVout = vec2(0);
+	else if( tasks[Task].Mode == 1){
+		particles[Particle].size = 16;
+		particles[Particle].colour = vec4(Particle / 128,1,1,1);
+		particles[Particle].depth = 0.5;
+		if(particles[Particle].position.y > 1) particles[Particle].position.y = 0;
+		particles[Particle].position.y += dt / 10.0;
+		particles[Particle].depth = (sin(particles[Particle].position.y * 3.1415 * 10) + 1)/2.0;
+		particles[Particle].position.x = (Task / 8.0);
 	}
 
-	particles[gl_GlobalInvocationID.x].position = particlePos;
-	particles[gl_GlobalInvocationID.x].UV = UVout;
 }

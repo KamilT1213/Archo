@@ -175,6 +175,7 @@ void Renderer::render() const
 						TracyGpuZone("SSBO Draw");
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderComp.SSBOgeometry->getID());  // binding point from material
 						glDrawArrays(renderComp.material->getPrimitive(), 0, renderComp.SSBOgeometry->getElementCount());
+						//spdlog::info("Rendered SSBOS with range: {}", renderComp.SSBOgeometry->getElementCount());
 						//rendered++;
 
 					}

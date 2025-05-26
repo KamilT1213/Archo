@@ -83,10 +83,11 @@ void old() {
 
 	dist *= s;
 
-
-	float distance = (max(abs(dist.x), abs(dist.y)) - (d * s));
+	float demp = sqrt(pow(dist.x,2) + pow(dist.y,2));
+	//float distance = (max(abs(dist.x), abs(dist.y)) - (d * s));
+	float distance = (demp - (d * s));
 	bTotal += clamp(((distance) * 2), -1.0, 0.3);
-	total = vec4(mix(vec3(0.1, 0.1, 0.1),vec3(0.05, 0.05,0.05),bTotal), 1.0);
+	total = vec4(mix(vec3(0.2, 0.2, 0.2),vec3(0.05, 0.05,0.05),bTotal), 1.0);
 
 
 	colour = total;
