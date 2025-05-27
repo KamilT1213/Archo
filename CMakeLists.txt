@@ -389,3 +389,4 @@ set_target_properties(TracyClient PROPERTIES FOLDER "tracy")
 
 set_target_properties(SDL2 SDL2-static sdl_headers_copy SDL2_test SDL2main uninstall SDL2_mixer PROPERTIES FOLDER "SDL2")
 
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)

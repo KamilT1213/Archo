@@ -519,7 +519,7 @@ void Relic_26_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 
 		}
 		//spdlog::info(">>Channel: {}",GameRef->m_relicPingSound_channel);
-		GameRef->m_soundManager.playSoundAtPosition(GameRef->m_relicPingSound.get(),0,glm::vec3(0,0,-1),glm::vec3(-closest.x,0,closest.y) * 1024.f,GameRef->m_relicPingSound_channel);
+		GameRef->m_soundManager.playSoundAtPosition(GameRef->m_relicPingSound.get(),0,glm::vec3(0,0,-1),glm::vec3(-closest.x,0,closest.y) * (1024.f + (1024.f * Grade)) ,GameRef->m_relicPingSound_channel);
 		//spdlog::info("Playing at: x:{} y:{}",closest.x,closest.y);
 	}
 	if(GameRef->RelicFinishTrigger || GameRef->m_interactionType != InteractionType::Extraction){

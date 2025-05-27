@@ -6,11 +6,6 @@
 #include <string>
 #include "scripts/RelicFunctions.hpp"
 
-
-
-
-
-
 float DigCurve1(float t, float s, float o) {
 	float d = glm::floor(t * s) / s;
 	t = glm::mod(t * s, 1.0f);
@@ -361,6 +356,7 @@ void Archo::onUpdate(float timestep)
 
 		deltaTime = timestep;
 		m_particlesComputeMat->setValue("dt",timestep);
+		m_particlesComputeMat->setValue("allTime",allTime);
 
 		auto view = m_gameMenu->m_entities.view<ScriptComp>();
 		for (auto& entity : view) {
@@ -481,17 +477,13 @@ void Archo::onUpdate(float timestep)
 	
 		//spdlog::info("Rarity: {}", Rarity);
 
-		ParticleData test;
-		test.colour = glm::vec4(1,0,1,1);
-		test.direction = glm::vec2(0.0);
-		test.lifespan = 1.0f;
-		test.position = m_DigPos;//::vec2(0.5f);
-		test.depth = 0.5f;
-		test.size = 64.0f;
-		test.speed = 0.0f;
+		ParticleBehaviour test;
+		test.factor = 0.1f;
+		test.Mode = 2;
+		test.target = m_DigPos;
 
-		m_particles->edit(0,sizeof(ParticleData),&test);
-
+		m_particleTasks[0] = test;
+		UpdateParticleTasksSSBO();
 		//spdlog::info("ID: {}", RelId - 1);
 
 		if (m_interactionState == InteractionState::Idle) {
