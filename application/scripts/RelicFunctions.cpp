@@ -2,165 +2,166 @@
 
 //Bug to fix -----------> When relics that spawn extra dig spots are not the left most slot they will not work as intended
 
-FunctionAllocationData BindNewFunction(int ItemID, int ItemGrade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+FunctionAllocationData BindNewFunction(int ItemID, int ItemGrade, Archo* GameRef, std::pair<int, int>DigSpotRange, std::pair<int, int>ParticleTaskRange)
 {
 	FunctionAllocationData outData = FunctionAllocationData();
 	//spdlog::info("DigSpotRanges: {} - {}",DigSpotRange.first,DigSpotRange.second);
 
 	if (ItemID == 0) {
-		outData.BoundFunc = std::bind(Relic_1_Function, ItemGrade, GameRef,DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_1_Function, ItemGrade, GameRef,DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 1) {
-		outData.BoundFunc = std::bind(Relic_2_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_2_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 2) {
-		outData.BoundFunc = std::bind(Relic_3_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_3_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 3) {
-		outData.BoundFunc = std::bind(Relic_4_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_4_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 4) {
-		outData.BoundFunc = std::bind(Relic_5_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_5_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 5) {
-		outData.BoundFunc = std::bind(Relic_6_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_6_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 6) {
-		outData.BoundFunc = std::bind(Relic_7_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_7_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 7) {
-		outData.BoundFunc = std::bind(Relic_8_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_8_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 		outData.DigSlotsUsed += 1;
 	}	
 	else if (ItemID == 8) {
-		outData.BoundFunc = std::bind(Relic_9_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_9_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 9) {
-		outData.BoundFunc = std::bind(Relic_10_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_10_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 		outData.DigSlotsUsed += 1;
 	}	
 	else if (ItemID == 10) {
-		outData.BoundFunc = std::bind(Relic_11_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_11_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 11) {
-		outData.BoundFunc = std::bind(Relic_12_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_12_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 12) {
-		outData.BoundFunc = std::bind(Relic_13_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_13_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 13) {
-		outData.BoundFunc = std::bind(Relic_14_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_14_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 14) {
-		outData.BoundFunc = std::bind(Relic_15_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_15_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 		outData.DigSlotsUsed += 1;
 	}	
 	else if (ItemID == 15) {
-		outData.BoundFunc = std::bind(Relic_16_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_16_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 16) {
-		outData.BoundFunc = std::bind(Relic_17_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_17_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 17) {
-		outData.BoundFunc = std::bind(Relic_18_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_18_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 18) {
-		outData.BoundFunc = std::bind(Relic_19_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_19_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 		outData.DigSlotsUsed += 1;
 	}	
 	else if (ItemID == 19) {
-		outData.BoundFunc = std::bind(Relic_20_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_20_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 20) {
-		outData.BoundFunc = std::bind(Relic_21_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_21_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 21) {
-		outData.BoundFunc = std::bind(Relic_22_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_22_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 22) {
-		outData.BoundFunc = std::bind(Relic_23_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_23_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 23) {
-		outData.BoundFunc = std::bind(Relic_24_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_24_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 24) {
-		outData.BoundFunc = std::bind(Relic_25_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_25_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 25) {
-		outData.BoundFunc = std::bind(Relic_26_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_26_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}	
 	else if (ItemID == 26) {
-		outData.BoundFunc = std::bind(Relic_27_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_27_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
+		outData.ParticleTasksUsed += 1;
 	}
 	else if (ItemID == 27) {
-		outData.BoundFunc = std::bind(Relic_28_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_28_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 28) {
-		outData.BoundFunc = std::bind(Relic_29_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_29_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 29) {
-		outData.BoundFunc = std::bind(Relic_30_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_30_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 30) {
-		outData.BoundFunc = std::bind(Relic_31_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_31_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 33) {
-		outData.BoundFunc = std::bind(Relic_32_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_32_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 32) {
-		outData.BoundFunc = std::bind(Relic_33_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_33_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 33) {
-		outData.BoundFunc = std::bind(Relic_34_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_34_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 34) {
-		outData.BoundFunc = std::bind(Relic_35_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_35_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 35) {
-		outData.BoundFunc = std::bind(Relic_36_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_36_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 36) {
-		outData.BoundFunc = std::bind(Relic_37_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_37_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 37) {
-		outData.BoundFunc = std::bind(Relic_38_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_38_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 38) {
-		outData.BoundFunc = std::bind(Relic_39_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_39_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 39) {
-		outData.BoundFunc = std::bind(Relic_40_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_40_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 40) {
-		outData.BoundFunc = std::bind(Relic_41_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_41_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 41) {
-		outData.BoundFunc = std::bind(Relic_42_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_42_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 42) {
-		outData.BoundFunc = std::bind(Relic_43_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_43_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 43) {
-		outData.BoundFunc = std::bind(Relic_44_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_44_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 44) {
-		outData.BoundFunc = std::bind(Relic_45_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_45_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 45) {
-		outData.BoundFunc = std::bind(Relic_46_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_46_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 46) {
-		outData.BoundFunc = std::bind(Relic_47_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_47_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	else if (ItemID == 47) {
-		outData.BoundFunc = std::bind(Relic_48_Function, ItemGrade, GameRef, DigSpotRange);
+		outData.BoundFunc = std::bind(Relic_48_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
 	}
 	return outData;
 }
 
 //Commons
 
-void Relic_1_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Increase radius by 1 plus (0 to 1) depeding on grade //Common
+void Relic_1_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) //Increase radius by 1 plus (0 to 1) depeding on grade //Common
 {
 	float size = GameRef->m_digBOs[0].DigInfo.z;
 	size -= 1.0f  + (1.0f * (Grade/6.0f));
@@ -168,7 +169,7 @@ void Relic_1_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	GameRef->m_digBOs[0].DigInfo.z = size;
 }
 
-void Relic_2_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Decrease segments by 1 plus (0 to 6) depeding on grade //Common
+void Relic_2_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) //Decrease segments by 1 plus (0 to 6) depeding on grade //Common
 {
 	int Segments = GameRef->Segments;
 	Segments -= 1 + Grade;
@@ -176,7 +177,7 @@ void Relic_2_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	GameRef->Segments = Segments;
 }
 
-void Relic_3_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Decrease dig time by 0.1 plus (0 to 0.1) depending on grade //Common
+void Relic_3_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) //Decrease dig time by 0.1 plus (0 to 0.1) depending on grade //Common
 {
 	float digTime = GameRef->timeToDig;
 	digTime -= 0.1f + (0.1f * (Grade / 6.0f));
@@ -184,7 +185,7 @@ void Relic_3_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	GameRef->timeToDig = digTime;
 }
 
-void Relic_4_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Decrease scenery extraction segments by 16 plus (0 to 16) depending on grade //Common
+void Relic_4_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) //Decrease scenery extraction segments by 16 plus (0 to 16) depending on grade //Common
 {
 	if (GameRef->isScenery) {
 		int Segments = GameRef->Segments;
@@ -194,7 +195,7 @@ void Relic_4_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	}
 }
 
-void Relic_5_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Randomizes dig rotation for every segment and has a (1% to 25%) chance to make the dig larger by (5 to 15) depending on grade //Common
+void Relic_5_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) //Randomizes dig rotation for every segment and has a (1% to 25%) chance to make the dig larger by (5 to 15) depending on grade //Common
 {
 	if (GameRef->RelicSegmentTrigger) {
 		GameRef->m_digBOs[0].rotation = Randomiser::uniformFloatBetween(-glm::pi<float>(), glm::pi<float>());
@@ -209,7 +210,7 @@ void Relic_5_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	}
 }
 
-void Relic_6_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) // chance to instantly destroy scenery (1% to 2%) depending on grade //Common
+void Relic_6_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) // chance to instantly destroy scenery (1% to 2%) depending on grade //Common
 {
 	if (GameRef->RelicSegmentTrigger) {
 		if (GameRef->isScenery) {
@@ -224,13 +225,13 @@ void Relic_6_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	}
 }
 
-void Relic_7_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Increases Dig depth by (0.05 to 0.15) depending on grade and reduces radius by 5 //Common
+void Relic_7_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) //Increases Dig depth by (0.05 to 0.15) depending on grade and reduces radius by 5 //Common
 {
 	GameRef->m_digBOs[0].DigInfo.z += 5;
 	GameRef->m_digBOs[0].DigInfo.w += 0.05 + (0.1 * (Grade/6.0f));
 }
 
-void Relic_8_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //Increase Dig depth by (0.05 to 0.15) depending on grade and empty dig slot
+void Relic_8_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) //Increase Dig depth by (0.05 to 0.15) depending on grade and empty dig slot
 {
 	GameRef->m_digBOs[0].DigInfo.w += 0.05 + (0.1 * (Grade/6.0f));
 	int target = DigSpotRange.first;
@@ -238,7 +239,7 @@ void Relic_8_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	GameRef->m_digBOs[target].DigInfo.w += 0.05 + (0.1 * (Grade/6.0f));
 }
 
-void Relic_9_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) // chance to remove random scenery (0.5% to 1%) depending on grade
+void Relic_9_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) // chance to remove random scenery (0.5% to 1%) depending on grade
 {
 	if (GameRef->RelicSegmentTrigger) {
 		float chance = Randomiser::uniformFloatBetween(0, 20.0f - (10.0f * (Grade / 6.0f)));
@@ -258,7 +259,7 @@ void Relic_9_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	}
 }
 
-void Relic_10_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// chance to dig a small hole in a random spot near the player dig site
+void Relic_10_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// chance to dig a small hole in a random spot near the player dig site
 {
 	int target = DigSpotRange.first;
 	//spdlog::info("10: Slot edited: {}",target);
@@ -278,7 +279,7 @@ void Relic_10_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	}
 }
 
-void Relic_11_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) //changes primary dig to cross rotated 45 degrees, changes dig pos to random around cursor but is bigger
+void Relic_11_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) //changes primary dig to cross rotated 45 degrees, changes dig pos to random around cursor but is bigger
 {
 	GameRef->m_digBOs[0].DigMask = 1;
 	float size = GameRef->m_digBOs[0].DigInfo.z;
@@ -299,13 +300,13 @@ void Relic_11_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 
 }
 
-void Relic_12_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Increases Digging depth drastically, increases dig time just as much
+void Relic_12_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// Increases Digging depth drastically, increases dig time just as much
 {
 	GameRef->timeToDig += 4 * (Grade / 6.0f);
 	GameRef->m_digBOs[0].DigInfo.w += 0.2 * (Grade / 6.0f);
 }
 
-void Relic_13_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Increases Radius of all Relics but reduces dig speed
+void Relic_13_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// Increases Radius of all Relics but reduces dig speed
 {
 	for(int i = 0; i < GameRef->m_digBOs.size(); i++){
 		float size = GameRef->m_digBOs[i].DigInfo.z;
@@ -319,13 +320,13 @@ void Relic_13_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	GameRef->timeToDig += 1.0f + (5.0f * (Grade / 6.0f));
 }
 
-void Relic_14_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Increases Segments when extracting but reduces segment time
+void Relic_14_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// Increases Segments when extracting but reduces segment time
 {
 	GameRef->Segments += 30 * (Grade / 6.0f);
 	GameRef->timePerSegment -= 0.1f * (Grade / 6.0f);
 }
 
-void Relic_15_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// digs in a single circle pattern around the player cursor scales to normal dig depth (100% to 200%) by grade
+void Relic_15_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// digs in a single circle pattern around the player cursor scales to normal dig depth (100% to 200%) by grade
 {
 	
 	if(GameRef->ProgressBar > 1.0f/3.0f){
@@ -352,7 +353,7 @@ void Relic_15_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 
 }
 
-void Relic_16_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) // pulls all dig spots closer to player cursor (0% to 60%) scales by grade
+void Relic_16_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) // pulls all dig spots closer to player cursor (0% to 60%) scales by grade
 {
 	if(GameRef->RelicSegmentTrigger){
 		glm::vec2 localPos = glm::vec2(GameRef->m_digBOs[0].DigInfo);
@@ -368,13 +369,13 @@ void Relic_16_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 
 //Uncommons
 
-void Relic_17_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// increase dig depth by (40% to 100%) but dig size by (40% to 100%)
+void Relic_17_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// increase dig depth by (40% to 100%) but dig size by (40% to 100%)
 {
 	GameRef->m_digBOs[0].DigInfo.z *= 1.4f + (Grade/6.0f);
 	GameRef->m_digBOs[0].DigInfo.w *= 1.4f + (Grade/6.0f);
 }
 
-void Relic_18_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// changes dig brush to cat scratch with random rotations increases dig depth (0.01 to 0.1)
+void Relic_18_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// changes dig brush to cat scratch with random rotations increases dig depth (0.01 to 0.1)
 {
 	GameRef->m_digBOs[0].DigMask = 4;
 	GameRef->m_digBOs[0].DigInfo.w += 0.01 + (0.09 * (Grade/6.0f));
@@ -384,7 +385,7 @@ void Relic_18_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	}
 }
 
-void Relic_19_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// dig spot that is placed randomly and goes towards the player cursour is sped up (0.05 to 0.35) by grade
+void Relic_19_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// dig spot that is placed randomly and goes towards the player cursour is sped up (0.05 to 0.35) by grade
 {
 
 	int target = DigSpotRange.first;
@@ -405,7 +406,7 @@ void Relic_19_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	//spdlog::info("Values: x:{} , y:{}",GameRef->m_digBOs[target].DigInfo.z,GameRef->m_digBOs[target].DigInfo.w);
 }
 
-void Relic_20_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange) // increase all digspots size at random by (0% - 10% to 0% - 30%)
+void Relic_20_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) // increase all digspots size at random by (0% - 10% to 0% - 30%)
 {
 		for(int i = 0; i < GameRef->m_digBOs.size(); i++){
 			float size = GameRef->m_digBOs[i].DigInfo.z;
@@ -418,13 +419,13 @@ void Relic_20_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 		}
 }
 
-void Relic_21_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// decreases dig and extraction time by (10% to 30%)
+void Relic_21_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// decreases dig and extraction time by (10% to 30%)
 {
 	GameRef->timeToDig *= 0.9f - (0.2f * (Grade / 6.0f));
 	GameRef->timePerSegment *= 0.9f - (0.2f * (Grade / 6.0f));
 }
 
-void Relic_22_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// creates a ravine between dig pos and mouse pointer at a size limit
+void Relic_22_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// creates a ravine between dig pos and mouse pointer at a size limit
 {
 	GameRef->m_digBOs[0].DigMask = 6;
 	glm::vec2 dir = GameRef->m_PointerPos_inGame - GameRef->m_DigPos;
@@ -444,7 +445,7 @@ void Relic_22_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 }
 
 //VVVVVVVVVVVVVV maybe also move at a slower rate that goes up with level??
-void Relic_23_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Moves currently removing scenery with mouse cursor increases scenery segments drastically (400% to 100%)
+void Relic_23_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// Moves currently removing scenery with mouse cursor increases scenery segments drastically (400% to 100%)
 {
 	if(GameRef->isScenery){
 		GameRef->Segments *= 4.0f - (3.0f * (Grade / 6.0f));
@@ -468,7 +469,7 @@ void Relic_23_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	}
 }
 
-void Relic_24_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// locks all Digpos to grid of dig size increases dig depth by (0% to 100%)
+void Relic_24_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// locks all Digpos to grid of dig size increases dig depth by (0% to 100%)
 {
 	for(int i = 0; i < GameRef->m_digBOs.size(); i++){
 		float size = GameRef->m_digBOs[i].DigInfo.z / 2.0f;
@@ -484,7 +485,7 @@ void Relic_24_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	}
 }
 
-void Relic_25_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// increase radius and dig strength but mirror dig spot around center
+void Relic_25_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// increase radius and dig strength but mirror dig spot around center
 {
 	glm::vec2 location = glm::vec2(GameRef->m_digBOs[0].DigInfo);
 	location -= 0.5f;
@@ -496,7 +497,7 @@ void Relic_25_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	GameRef->m_digBOs[0].DigInfo.w *= 1 + (1 * (Grade / 6.0f));
 }
 
-void Relic_26_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Plays sound in direction of closest relic when extracting
+void Relic_26_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// Plays sound in direction of closest relic when extracting
 {
 	if(GameRef->RelicBeginTrigger && GameRef->m_interactionType == InteractionType::Extraction){
 		GameRef->m_relicPingSound_channel = GameRef->m_soundManager.playSoundAtPosition(GameRef->m_relicPingSound.get(),0,glm::vec3(0,0,-1),glm::vec3(99999,99999,99999),GameRef->m_relicPingSound_channel,-1);
@@ -531,14 +532,24 @@ void Relic_26_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 }
 
 //VVVVVVVVVV needs partical ring.
-void Relic_27_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)// Ring placed randomly around the map when within will boost dig depth of player
+void Relic_27_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// Ring placed randomly around the map when within will boost dig depth of player
 {
+
+
 	int factor =  GameRef->m_relicLastTime - glm::floor(GameRef->allTime);
-	if(factor == 0){
+	if(factor <= 0){
 		GameRef->m_relicLastTime += Randomiser::uniformIntBetween(1,2);
 		if(GameRef->m_relicLastTime > 1000) GameRef->m_relicLastTime -= 1000;
 		
-		GameRef->m_relicZonePos = glm::vec2(Randomiser::uniformFloatBetween(0,1),Randomiser::uniformFloatBetween(0,1));
+		float edge = glm::mix(0.1, 0.2, (Grade / 6.0f));
+
+		GameRef->m_relicZonePos = glm::vec2(Randomiser::uniformFloatBetween(edge,1 - edge),Randomiser::uniformFloatBetween(edge,1 - edge));
+		ParticleBehaviour pb;
+		pb.target = GameRef->m_relicZonePos;
+		pb.factor = edge;
+		pb.Mode = 2;
+		GameRef->m_particleTasks[ParticleTaskRange.first] = pb;
+
 	}
 
 	if(glm::distance(GameRef->m_DigPos,GameRef->m_relicZonePos) < glm::mix(0.1,0.2,(Grade / 6.0f))){
@@ -546,86 +557,86 @@ void Relic_27_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRan
 	}
 }
 
-void Relic_28_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_28_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_29_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_29_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_30_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_30_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_31_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_31_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_32_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_32_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_33_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_33_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_34_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_34_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_35_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_35_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_36_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_36_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_37_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_37_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_38_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_38_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_39_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_39_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_40_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_40_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_41_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_41_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_42_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_42_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_43_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_43_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_44_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_44_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_45_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_45_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_46_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_46_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_47_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_47_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }
 
-void Relic_48_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange)
+void Relic_48_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)
 {
 }

@@ -58,6 +58,7 @@ public:
 	Archo(GLFWWindowImpl& win);
 
 	std::array<DiggingSpot, 16> m_digBOs;
+	std::array<ParticleBehaviour, 8> m_particleTasks;
 
 	float Segments{ 0 };
 	float timeToDig{ 1.0f };
@@ -86,7 +87,7 @@ public:
 	glm::vec2 m_DigPos = glm::vec2(0.5);
 
 	glm::vec2 m_relicZonePos;
-	int m_relicLastTime;
+	int m_relicLastTime{ 1 };
 
 	std::shared_ptr<Scene> m_SceneryScene;
 	std::vector<entt::entity> m_Sceneries;
@@ -184,7 +185,6 @@ private:
 
 	std::shared_ptr<SSBO> m_particles;
 	std::shared_ptr<SSBO> m_particleBehaviour;
-	std::array<ParticleBehaviour,8> m_particleTasks;
 	std::shared_ptr<Material> m_particlesComputeMat;
 
 

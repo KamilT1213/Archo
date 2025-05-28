@@ -52,9 +52,10 @@ void main()
 	}
 	else if (tasks[Task].Mode == 2) {
 		float offsets = ((mod(Particle, 16) + 1) / 16);
+		float depthOffset = floor(mod(Particle,2)-0.5)/2;
 		particles[Particle].size = 8;
 		particles[Particle].colour = vec4(Particle / 128, 1, 1, 1);
-		particles[Particle].depth = 0.0;
+		particles[Particle].depth = 0;
 
 		particles[Particle].position.y = tasks[Task].target.y + (sin((allTime + offsets ) * pi * 2 ) * tasks[Task].factor);
 		particles[Particle].position.x = tasks[Task].target.x + (cos((allTime + offsets ) * pi * 2 ) * tasks[Task].factor);

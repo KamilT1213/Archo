@@ -33,7 +33,7 @@ void Archo::ClearParticleTasksSSBO()
 {
 	for(int i = 0; i < m_particleTasks.size(); i++){
 		m_particleTasks[i] = ParticleBehaviour();
-		m_particleTasks[i].Mode = 1;
+		//m_particleTasks[i].Mode = 1;
 	}
 	UpdateParticleTasksSSBO();
 }
@@ -471,19 +471,14 @@ void Archo::onUpdate(float timestep)
 
 		RunRelicFunctions();
 		UpdateDigSpotSSBO();
+		UpdateParticleTasksSSBO();
 
 		//spdlog::info("Functions Active: {} | {} | {}", RelicFunctions[0] == NULL, RelicFunctions[1] == NULL, RelicFunctions[2] == NULL);
 		//spdlog::info("Dig Spot Data: {} | {} | {} | {}", m_digBOs[0].DigInfo.x, m_digBOs[0].DigInfo.y, m_digBOs[0].DigInfo.z, m_digBOs[0].DigInfo.w);
 	
 		//spdlog::info("Rarity: {}", Rarity);
 
-		ParticleBehaviour test;
-		test.factor = 0.1f;
-		test.Mode = 2;
-		test.target = m_DigPos;
 
-		m_particleTasks[0] = test;
-		UpdateParticleTasksSSBO();
 		//spdlog::info("ID: {}", RelId - 1);
 
 		if (m_interactionState == InteractionState::Idle) {
@@ -2497,6 +2492,7 @@ void Archo::resetLayer()
 void Archo::RefreshRelicFunctions()
 {
 	int currentDigSlot = 1;
+	int currentTaskSlot = 0;
 	for (int i = 0; i < 3; i++) {
 		int Grade = 0;
 		for (int j = 0; j < m_save.s_Items.size(); j++) {
@@ -2512,8 +2508,9 @@ void Archo::RefreshRelicFunctions()
 				break;
 			}
 		}
-		FunctionAllocationData FuncDat = BindNewFunction(m_save.s_Equiped[i], Grade, this, std::pair<int, int>{currentDigSlot, 16 - currentDigSlot});
+		FunctionAllocationData FuncDat = BindNewFunction(m_save.s_Equiped[i], Grade, this, std::pair<int, int>{currentDigSlot, m_digBOs.size() - currentDigSlot}, std::pair<int, int>{currentTaskSlot, m_particleTasks.size() - currentTaskSlot});
 		currentDigSlot += FuncDat.DigSlotsUsed;
+		currentTaskSlot += FuncDat.ParticleTasksUsed;
 		RelicFunctions[i] = FuncDat.BoundFunc;
 		//spdlog::info("Grade: {}",Grade);
 	}
@@ -2523,6 +2520,7 @@ void Archo::RefreshRelicFunctions()
 	m_mainRenderer.getRenderPass(ScreenGroundPassIDx).scene->m_entities.get<Render>(Quad).material->setValue("DigSpotTotal", currentDigSlot);
 
 	ClearDigSpotSSBO();
+	ClearParticleTasksSSBO();
 }
 
 void Archo::RunRelicFunctions()
