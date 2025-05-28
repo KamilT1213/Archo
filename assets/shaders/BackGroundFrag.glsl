@@ -69,8 +69,14 @@ void old() {
 	bTotal = ((bTotal / 5) + 1) / 2.0;
 	bTotal = ((floor(bTotal * 20) + 0.5) / 20);
 
+	vec2 val2 = (texCoords * u_ScreenSize * 0.3) + vec2(sin(allTime * pi * 2 * 0.1), cos(allTime * pi * 2 * 0.1));
+	float aTotal =  (1 - step(noise(val2).x,0.499)) / 2;
+
+	vec2 val = (texCoords * u_ScreenSize * 0.1) + vec2(sin(allTime * pi * 2),cos(allTime * pi * 2));
+	float factor = noise(val).x;
+
 	vec2 normedTex = texCoords;
-	vec2 dist = vec2(normedTex.x - 0.5f, normedTex.y - 0.5f);
+	vec2 dist = vec2(normedTex.x - 0.5, normedTex.y - 0.5);
 
 	if (u_ScreenSize.x > u_ScreenSize.y) {
 		dist.x *= (u_ScreenSize.x / u_ScreenSize.y);
@@ -87,8 +93,8 @@ void old() {
 	//float distance = (max(abs(dist.x), abs(dist.y)) - (d * s));
 	float distance = (demp - (d * s));
 	bTotal += clamp(((distance) * 2), -1.0, 0.3);
-	total = vec4(mix(vec3(0.2, 0.2, 0.2),vec3(0.05, 0.05,0.05),bTotal), 1.0);
-
+	total = vec4(mix(vec3(0.2, 0.175, 0.2),vec3(0.05, 0.05,0.05), bTotal), 1.0);
+	total = vec4(mix(total.xyz, vec3(1.0, 1.0, 1.0), aTotal), 1.0);
 
 	colour = total;
 };

@@ -96,12 +96,16 @@ void main()
 
         colour = vec4(vec3(groundDepth),1.0);
 
-        vec4 col1 = vec4(0.2, 0.4, 0.4, 1.0);
-        vec4 col2 = vec4(0.2, 0.1, 0.3, 1.0);
-        vec4 col3 = vec4(0.05, 0.01, 0.05, 1.0);
+        vec4 col1 = vec4(0.7, 0.7, 0.7, 1.0);
+        vec4 col2 = vec4(0.2, 0.5, 0.2, 1.0);
+        vec4 col3 = vec4(0.5, 0.4, 0.2, 1.0);
 
-        if(groundDepth > 0.5) colour = mix( col2,col1, (groundDepth * 2.0) - 1.0);
-        if(groundDepth < 0.5) colour = mix( col3,col2, (groundDepth * 2.0));
+        float edge1 = 0.3;
+        float edge2 = 0.9;
+
+        if (groundDepth > edge1) colour = mix(col2, col1, smoothstep(edge1, 1.0, groundDepth));// (groundDepth * 2.0) - 1.0);
+        else if (groundDepth < edge2) colour = mix(col3, col2, smoothstep(0.0, edge2, groundDepth));// (groundDepth * 2.0));
+        else colour = col2;
         if(groundDepth < groundHeightOff && distance(groundDepth,groundHeightOff)  > 0.0001 || Dot - (1 - groundDepth) < 0.35){
             //colour -= vec4(0.15, 0.15, 0.15, 0.0) * (1.0 * (1 - groundDepth));
         }

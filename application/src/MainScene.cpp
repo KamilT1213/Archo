@@ -108,12 +108,12 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	m_particles->bind(6);
 
 	ParticleData test;
-	test.colour = glm::vec4(1,0,1,1);
+	test.colour = glm::vec4(0,0,0,0);
 	test.direction = glm::vec2(0.0);
-	test.lifespan = 1.0f;
-	test.position = glm::vec2(0.5f);
-	test.depth = 0.5f;
-	test.size = 64.0f;
+	test.lifespan = 0.0f;
+	test.position = glm::vec2(0.0f);
+	test.depth = 0.0f;
+	test.size = 0.0f;
 	test.speed = 0.0f;
 
 	m_particles->edit(0,sizeof(ParticleData),&test);
@@ -121,6 +121,7 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	m_particleBehaviour = std::make_shared<SSBO>(sizeof(ParticleBehaviour) * 8, 8);
 	m_particleBehaviour->bind(7);
 	ClearParticleTasksSSBO();
+	m_particleTasks[0].Mode = 1;
 
 	//m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
 	//for (int i = 0; i < m_seedingPoints.size(); i++) {
@@ -473,6 +474,7 @@ void Archo::onUpdate(float timestep)
 		UpdateDigSpotSSBO();
 		UpdateParticleTasksSSBO();
 
+
 		//spdlog::info("Functions Active: {} | {} | {}", RelicFunctions[0] == NULL, RelicFunctions[1] == NULL, RelicFunctions[2] == NULL);
 		//spdlog::info("Dig Spot Data: {} | {} | {} | {}", m_digBOs[0].DigInfo.x, m_digBOs[0].DigInfo.y, m_digBOs[0].DigInfo.z, m_digBOs[0].DigInfo.w);
 	
@@ -492,8 +494,14 @@ void Archo::onUpdate(float timestep)
 		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && UVData[3] > 0) {
 			Pressed = true;
 			if(m_interactionState == InteractionState::Idle) RelicBeginTrigger = true;
+
+			m_particleTasks[0].target = glm::vec2(m_digBOs[0].DigInfo);
+			m_particleTasks[0].factor = 1.0f / m_digBOs[0].DigInfo.z;
+			m_particleTasks[0].Mode = 1;
 		}
 		else {
+
+			m_particleTasks[0].Mode = 0;
 			Pressed = false;
 		}
 
@@ -2492,7 +2500,7 @@ void Archo::resetLayer()
 void Archo::RefreshRelicFunctions()
 {
 	int currentDigSlot = 1;
-	int currentTaskSlot = 0;
+	int currentTaskSlot = 1;
 	for (int i = 0; i < 3; i++) {
 		int Grade = 0;
 		for (int j = 0; j < m_save.s_Items.size(); j++) {

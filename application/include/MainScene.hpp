@@ -68,6 +68,8 @@ public:
 	int Rarity{ -1 };
 	bool isScenery{ false };
 
+	entt::entity RelicEntity = entt::null;
+
 	bool RelicBeginTrigger{ false };
 	bool RelicSegmentTrigger{ false };
 	bool RelicFinishTrigger{ false };

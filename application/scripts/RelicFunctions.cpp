@@ -34,6 +34,7 @@ FunctionAllocationData BindNewFunction(int ItemID, int ItemGrade, Archo* GameRef
 	}	
 	else if (ItemID == 8) {
 		outData.BoundFunc = std::bind(Relic_9_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
+		outData.ParticleTasksUsed += 1;
 	}	
 	else if (ItemID == 9) {
 		outData.BoundFunc = std::bind(Relic_10_Function, ItemGrade, GameRef, DigSpotRange, ParticleTaskRange);
@@ -239,24 +240,48 @@ void Relic_8_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRang
 	GameRef->m_digBOs[target].DigInfo.w += 0.05 + (0.1 * (Grade/6.0f));
 }
 
-void Relic_9_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) // chance to remove random scenery (0.5% to 1%) depending on grade
+void Relic_9_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange) // chance to remove random scenery (1% to 2%) depending on grade
 {
 	if (GameRef->RelicSegmentTrigger) {
-		float chance = Randomiser::uniformFloatBetween(0, 20.0f - (10.0f * (Grade / 6.0f)));
+		float chance = Randomiser::uniformFloatBetween(0, 10.0f - (5.0f * (Grade / 6.0f)));
 		if(chance < 0.1f){
 			auto view = GameRef->m_SceneryScene->m_entities.view<Scenery>();
 			for(auto Obj : view){
 				Scenery& sceneComp = GameRef->m_SceneryScene->m_entities.get<Scenery>(Obj);
-				if(sceneComp.DugOut < 1.0){
-					auto& renderComp = GameRef->m_SceneryScene->m_entities.get<Render>(Obj);
-					renderComp.material->setValue("u_active", 0.0f);
-					sceneComp.DugOut = 1.0;
-					GameRef->m_sceneryRenderer.render();
+				bool notWorking = true;
+				if (GameRef->m_SceneryScene->m_entities.try_get<Scenery>(GameRef->RelicEntity)) {
+					Scenery& sceneComp2 = GameRef->m_SceneryScene->m_entities.get<Scenery>(GameRef->RelicEntity);
+					if (sceneComp2.DugOut < 1.0) notWorking = false;
+				};
+				if(sceneComp.DugOut < 1.0 && notWorking){
+					auto& transformComp = GameRef->m_SceneryScene->m_entities.get<Transform>(Obj);
+					ParticleBehaviour pb;
+					pb.target = glm::vec2(transformComp.translation.x / 1024.0f, 1.0 - (transformComp.translation.y / 1024.0f));
+					pb.factor = 3;
+					pb.Mode = 3;
+					GameRef->m_particleTasks[ParticleTaskRange.first] = pb;
+					GameRef->RelicEntity = Obj;
 					break;
 				}
 			}
 		}
 	}
+	if (GameRef->m_particleTasks[ParticleTaskRange.first].factor > 0) {
+		if (GameRef->RelicEntity != entt::null) {
+			auto& transformComp = GameRef->m_SceneryScene->m_entities.get<Transform>(GameRef->RelicEntity);
+			GameRef->m_particleTasks[ParticleTaskRange.first].target = glm::vec2(transformComp.translation.x / 1024.0f, 1.0 - (transformComp.translation.y / 1024.0f));
+		}
+		GameRef->m_particleTasks[ParticleTaskRange.first].factor -= GameRef->deltaTime;
+		if (GameRef->m_particleTasks[ParticleTaskRange.first].factor < 0){ 
+			Scenery& sceneComp = GameRef->m_SceneryScene->m_entities.get<Scenery>(GameRef->RelicEntity);
+			auto& renderComp = GameRef->m_SceneryScene->m_entities.get<Render>(GameRef->RelicEntity);
+			renderComp.material->setValue("u_active", 0.0f);
+			sceneComp.DugOut = 1.0;
+			GameRef->m_particleTasks[ParticleTaskRange.first].factor = 0;
+			GameRef->m_sceneryRenderer.render();
+		}
+	}
+
 }
 
 void Relic_10_Function(int Grade, Archo* GameRef, std::pair<int, int> DigSpotRange, std::pair<int,int> ParticleTaskRange)// chance to dig a small hole in a random spot near the player dig site
