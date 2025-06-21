@@ -6,38 +6,23 @@
 #include <string>
 #include "scripts/RelicFunctions.hpp"
 
-float DigCurve1(float t, float s, float o) {
-	float d = glm::floor(t * s) / s;
-	t = glm::mod(t * s, 1.0f);
-	t = glm::pow(t, o);
-	t /= s;
-	t += d;
-	return t;
-}
 
-float DigCurve2(float t, float s) {
-	float d = glm::floor(t * s) / s;
-	t = glm::mod(t * s, 1.0f);
-	t = (-glm::sqrt(1.0f - glm::pow(t, 2.0f))) + 1.0f;
-	t /= s;
-	t += d;
-	return t;
-}
-
+//Particle SSBO Handling
 void Archo::UpdateParticleTasksSSBO()
 {
 	m_particleBehaviour->edit(0,sizeof(ParticleBehaviour) * m_particleTasks.size(), m_particleTasks.data());
 }
 
+//Particle Task SSBO Handling
 void Archo::ClearParticleTasksSSBO()
 {
 	for(int i = 0; i < m_particleTasks.size(); i++){
 		m_particleTasks[i] = ParticleBehaviour();
-		//m_particleTasks[i].Mode = 1;
 	}
 	UpdateParticleTasksSSBO();
 }
 
+//Relic State SSBO Handling used in rendering of Relics in different contexts
 void Archo::UpdateRelicsSSBO()
 {
     for (int i = 0; i < m_save.s_Items.size(); i++) {
@@ -61,6 +46,7 @@ void Archo::ClearRelicsSSBO() {
 	}
 }
 
+//Dig Spot SSBO Handling, Used when one or more locations for digging are picked to be ran in the dig compute
 void Archo::UpdateDigSpotSSBO() {
 	m_digSSBO->edit(0, m_digBOs.size() * sizeof(DiggingSpot), m_digBOs.data());
 }
@@ -71,7 +57,7 @@ void Archo::ClearDigSpotSSBO(){
 
 Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 {
-
+	//Debugging Device and platform limits
 	spdlog::info("Support for multi image binding in compute: {}", glfwExtensionSupported("GL_ARB_shader_image_load_store"));
 	int ver;
 	int ver2;
@@ -83,9 +69,11 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	glGetIntegerv(GL_MAX_IMAGE_UNITS, &imgLim);
 	spdlog::info("Image Binding Units Limit: {}", imgLim);
 
+	//Initialization and gpu binding of seeding points for relic and scenery placement on island
 	m_seedingSSBO = std::make_shared<SSBO>(sizeof(SeedingPoint) * (seedingResolution * seedingResolution), (seedingResolution * seedingResolution));
 	m_seedingSSBO->bind(3);
 
+	//Initialization and gpu binding of currently active relic data
 	m_relicsSSBO = std::make_shared<SSBO>(sizeof(RelicsBO) * (48), (48));
 	m_relicsSSBO->bind(4);
 	for (int i = 0; i < 48; i++) {
@@ -97,16 +85,21 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 		m_relicsSSBO->edit(i * sizeof(RelicsBO), sizeof(RelicsBO), &current);
 	}
 
+	//uploading relic data to gpu
 	UpdateRelicsSSBO();
 
+	//Initialization and binding of digspots
 	m_digSSBO = std::make_shared<SSBO>(sizeof(DiggingSpot) * 16, 16);
 	m_digSSBO->bind(5);
 
+	//uploading digging data to gpu
 	UpdateDigSpotSSBO();
 
+	//Initialization and binding of particles
 	m_particles = std::make_shared<SSBO>(sizeof(ParticleData) * (128), 128);
 	m_particles->bind(6);
 
+	//Creation of test particle, used for debugging
 	ParticleData test;
 	test.colour = glm::vec4(0,0,0,0);
 	test.direction = glm::vec2(0.0);
@@ -116,34 +109,35 @@ Archo::Archo(GLFWWindowImpl& win) : Layer(win)
 	test.size = 0.0f;
 	test.speed = 0.0f;
 
+	//Adding test particle data to first particle
 	m_particles->edit(0,sizeof(ParticleData),&test);
 
+	//Initialization and binding of particle behaviour/tasks
 	m_particleBehaviour = std::make_shared<SSBO>(sizeof(ParticleBehaviour) * 8, 8);
 	m_particleBehaviour->bind(7);
+
+	//uploading defualt settings of tasks to gpu
 	ClearParticleTasksSSBO();
+
+	//Setting mode for debugging
 	m_particleTasks[0].Mode = 1;
 
-	//m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
-	//for (int i = 0; i < m_seedingPoints.size(); i++) {
-	//	m_seedingPoints[i] = SeedingPoint();
-	//}
+	//Create and populate seeding point vector to be written to back from the gpu
 	m_seedingPoints.reserve((seedingResolution * seedingResolution));
 	for (int i = 0; i < (seedingResolution * seedingResolution); i++) {
 		m_seedingPoints.push_back(SeedingPoint());
 	}
 
+	//Set seeding point SSBO to defaults, used to define the distance the seeding point needs to be from the edge of the island, and other requirements
 	m_seedingSSBO->edit(0, sizeof(SeedingPoint) * m_seedingPoints.size(), m_seedingPoints.data());
-	//for (int i = 0; i < m_seedingPoints.size(); i++) {
-	//	spdlog::info("Item: {},{},{},{} , At: {}", 
-	//		m_seedingPoints[i].position.x, 
-	//		m_seedingPoints[i].position.y, 
-	//		m_seedingPoints[i].position.z, 
-	//		m_seedingPoints[i].position.w, i);
-	//}
 
+	//Enable shader level point size editing when rendering points
 	glEnable(GL_PROGRAM_POINT_SIZE);
 
+	//Loads all data, creates all objects and scenes needed for the game to function
 	createLayer();
+
+	//Updated Augmentation system after everything has been loaded
 	RefreshRelicFunctions();
 }
 
@@ -153,6 +147,26 @@ void Archo::onImGUIRender()
 	// Scripts widgets
 }
 
+//Functions used to change the behaviour of a linearly increasing value to still complete in a linear fashion but the progress itself between start and finish fluctuates consistantly
+float DigCurve1(float t, float s, float o) {
+	float d = glm::floor(t * s) / s;
+	t = glm::mod(t * s, 1.0f);
+	t = glm::pow(t, o);
+	t /= s;
+	t += d;
+	return t;
+}
+
+float DigCurve2(float t, float s) {
+	float d = glm::floor(t * s) / s;
+	t = glm::mod(t * s, 1.0f);
+	t = (-glm::sqrt(1.0f - glm::pow(t, 2.0f))) + 1.0f;
+	t /= s;
+	t += d;
+	return t;
+}
+
+//Handles Rendering, Changes Render pipeline based on game state
 void Archo::onRender()
 {
 	
@@ -176,9 +190,10 @@ void Archo::onRender()
 	m_finalRenderer.render();
 }
 
+//Handles all Real time behaviour based on game state
 void Archo::onUpdate(float timestep)
 {
-
+	//Manual Pause key that can enter pause and quickly leave pause menus back to the game
 	if (m_winRef.doIsKeyPressed(GLFW_KEY_ESCAPE) && !Pausing) {
 		if (state == GameState::InGame) {
 			pauseMenu();
@@ -200,49 +215,44 @@ void Archo::onUpdate(float timestep)
 		Pausing = false;
 	}
 
-	//if (m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && !modeToggle) {
-	//	modeToggle = true;
-	//	focusMode = !focusMode;
-	//	m_winRef.doSwitchInput();
-	//}
-	//if (!m_winRef.doIsKeyPressed(GLFW_KEY_TAB) && modeToggle) {
-	//	modeToggle = false;
-	//}
-
-
-
-
-
-
+	//Access to background material
 	auto& backgroundPass = m_backgroundRenderer.getRenderPass(BackgroundPassIDx);
 	auto& BackgroundQuad = backgroundPass.scene->m_entities.get<Render>(backgroundQuad).material;
-	auto& generatePass = m_generationRenderer.getComputePass(0).material;
 
+	//Update and clamp virtual mouse positions only based on window focus
 	if (focusMode) {
 		m_PointerPos += (m_winRef.doGetMouseVector() * glm::vec2(1, -1)) / glm::min((float)backgroundPass.viewPort.width, (float)backgroundPass.viewPort.height) * 1000.0f * (1.0f / (m_settings.s_ResolutionFract * m_settings.s_ResolutionFract));
 		m_PointerPos = glm::clamp((m_PointerPos), glm::vec2(0), glm::vec2((float)backgroundPass.viewPort.width, (float)backgroundPass.viewPort.height));
 		//spdlog::info("Mouse Position: x:{}  y:{}", m_PointerPos.x, m_PointerPos.y);
 	}
 
+	//Calculate longer scale time
 	allTime += timestep / 10.0f;
 
+	//Prevent value from exceeding limits which might effect precision during long play sessions
 	if (allTime > 1000) {
 		allTime = (allTime - 1000);
 	}
 
-	//spdlog::info("Relics Left: {}", RemainingRelics);
-	//generatePass->setValue("Seed", allTime);
-
+	//Update long scale value in background shader
 	BackgroundQuad->setValue("allTime", allTime);
 
+	//Get material of final composite object, its result will be drawn to screen
 	auto& FinalQuad = m_finalRenderer.getRenderPass(0).scene->m_entities.get<Render>(finalQuad).material;
 
+	//checking current game state to determine what scenes need to be simulated or what game mechanics need to be executed
 	if (state == GameState::MainMenu) {
+		//Update final quad state to use the main menus render output
 		FinalQuad->setValue("u_State", 0.0f);
+
+		//Get material and update its mouse position tracking for visual indicator of virtual mouse
 		auto& menuPassMat = m_mainMenuRenderer.getRenderPass(FinalMainMenuPassIDx).scene->m_entities.get<Render>(MenuQuad).material;
 		menuPassMat->setValue("u_mousePos", m_PointerPos);
 
+		//Find which menus' buttons are being interacted with
 		if (menuState == MenuState::Main) {
+
+			//Run main menus button scripts
 			auto view = m_mainMenu->m_entities.view<ScriptComp>();
 			for (auto& entity : view) {
 				ScriptComp script = view.get<ScriptComp>(entity);
@@ -250,6 +260,8 @@ void Archo::onUpdate(float timestep)
 			}
 		}
 		else if (menuState == MenuState::Settings) {
+
+			//Run settings menu button scripts
 			auto view = m_mainMenu_Settings->m_entities.view<ScriptComp>();
 			for (auto& entity : view) {
 				ScriptComp script = view.get<ScriptComp>(entity);
@@ -257,6 +269,8 @@ void Archo::onUpdate(float timestep)
 			}
 		}
 		else if (menuState == MenuState::Save) {
+
+			//Run save menu button scripts
 			auto view = m_mainMenu_Save->m_entities.view<ScriptComp>();
 			for (auto& entity : view) {
 				ScriptComp script = view.get<ScriptComp>(entity);
@@ -266,11 +280,18 @@ void Archo::onUpdate(float timestep)
 
 	}
 	else if (state == GameState::Paused) {
+
+		//Switch Final output to take pause menu's result
 		FinalQuad->setValue("u_State", 2.0f);
+
+		//Also update virtual mouse position
 		auto& pausePassMat = m_pausedRenderer.getRenderPass(FinalPausePassIDx).scene->m_entities.get<Render>(PauseQuad).material;
 		pausePassMat->setValue("u_mousePos", m_PointerPos);
 
+		//Find which menu and submenu is being interactive with
 		if (pauseState == PauseState::Pause) {
+
+			//Run pause menu scripts
 			auto view = m_pauseMenu->m_entities.view<ScriptComp>();
 			for (auto& entity : view) {
 				ScriptComp script = view.get<ScriptComp>(entity);
@@ -278,6 +299,8 @@ void Archo::onUpdate(float timestep)
 			}
 		}
 		else if (pauseState == PauseState::Settings) {
+
+			//Run pause settings scripts
 			auto view = m_pauseMenu_Settings->m_entities.view<ScriptComp>();
 			for (auto& entity : view) {
 				ScriptComp script = view.get<ScriptComp>(entity);
@@ -289,21 +312,27 @@ void Archo::onUpdate(float timestep)
 			
 			//Inventory selection
 
+			//Get Transform of large inventory quad containing all the items to pick from
 			Transform& transComp = m_pauseMenu_Inventory->m_entities.get<Transform>(InventoryItemsQuad);
 
+			//Translate screen mouse position to inventory scene coordinates
 			glm::vec2 mousePos = m_PointerPos;
 			mousePos.y = height - mousePos.y;
+
+			//find bounds of the box containing items
 			std::pair<glm::vec2, glm::vec2> boundingBox;
 			boundingBox.first = glm::vec2(transComp.translation - glm::abs(transComp.scale));
 			boundingBox.second = glm::vec2(transComp.translation + glm::abs(transComp.scale));
 
+			//checks if item has been selected and marks what the index at which the item is positioned
 			if (invRelicSelected >= 0) {
 				m_itemInventoryMat->setValue("u_index", invRelicSelected);
 			}
 
-			//auto& matRef = m_scene->m_entities.get<Material>(m_entity);
+			//checks if virtual mouse pointer is within inventoru bounds
 			if (mousePos.x > boundingBox.first.x && mousePos.x < boundingBox.second.x && mousePos.y > boundingBox.first.y && mousePos.y < boundingBox.second.y) {
 
+				//converts mouse position into an index in the inventory
 				mousePos -= boundingBox.first;
 				mousePos /= glm::vec2(transComp.scale.x, transComp.scale.y) * 2.0f;
 				mousePos *= InvGridSize;
@@ -311,14 +340,17 @@ void Archo::onUpdate(float timestep)
 
 				int index = mousePos.x + (mousePos.y * InvGridSize.x);
 
-				
+				//updates inventory material with a tracking of if the player has hovered into the right area as well as the index at which the mouse is hovered
 				m_itemInventoryMat->setValue("Hovered", 1.0f);
 				m_itemInventoryMat->setValue("u_index2", index);
 
+				//checks for left mouse input on inventory
 				if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1)) {
 
-
+					//sets material pressed value to be able to display interaction
 					m_itemInventoryMat->setValue("Pressed", 1.0f);
+
+					//checks if current item is available to be selected
 					bool found = false;
 					for (auto item : m_save.s_Items) {
 						if (item.first == index) {
@@ -327,6 +359,7 @@ void Archo::onUpdate(float timestep)
 						}
 					}
 
+					//if item is available currently selected item is updated
 					if (index != invRelicSelected && found) {
 						invRelicSelected = index;
 
@@ -336,15 +369,18 @@ void Archo::onUpdate(float timestep)
 
 				}
 				else {
+					//remove pressed if button is not down
 					m_itemInventoryMat->setValue("Pressed", 0.0f);
 				}
 			}
 			else {
+				//else wise set values to none
 				m_itemInventoryMat->setValue("Hovered", 0.0f);
 				m_itemInventoryMat->setValue("u_index2", -1);
 				m_itemInventoryMat->setValue("Pressed", 0.0f);
 			}
 
+			//loop through any button in inventory and run their scripts
 			auto view = m_pauseMenu_Inventory->m_entities.view<ScriptComp>();
 			for (auto& entity : view) {
 				ScriptComp script = view.get<ScriptComp>(entity);
@@ -354,60 +390,86 @@ void Archo::onUpdate(float timestep)
 		}
 	}
 	else if (state == GameState::InGame) {
-
+		//assigns variable deltaTime with time since last frame
 		deltaTime = timestep;
+
+		//Update particle compute shaders time parameters
 		m_particlesComputeMat->setValue("dt",timestep);
 		m_particlesComputeMat->setValue("allTime",allTime);
 
+		//Run script of all buttons in main game scene
 		auto view = m_gameMenu->m_entities.view<ScriptComp>();
 		for (auto& entity : view) {
 			ScriptComp script = view.get<ScriptComp>(entity);
 			script.onUpdate(timestep);
 		}
 
+		//Update final output to use game render
 		FinalQuad->setValue("u_State", 1.0f);
 		ZoneScoped;
 
+		//Update long term time on small inventory display button
 		m_gameInventoryMat->setValue("Time", allTime / 100.f);
 
 		//auto& computeGroundPass = m_mainRenderer.getComputePass(GroundComputePassIDx);
-		auto& relicPass = m_relicRenderer.getRenderPass(ScreenRelicPassIDx);
+
+		//Get required passes and materials
+
+		//auto& relicPass = m_relicRenderer.getRenderPass(ScreenRelicPassIDx);
 		auto& screenGroundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
 		auto& screenAAPass = m_mainRenderer.getRenderPass(AAPassIDx);
 
 		auto& QuadMat = screenGroundPass.scene->m_entities.get<Render>(Quad).material;
 		auto& AAQuadMat = screenAAPass.scene->m_entities.get<Render>(AAQuad).material;
 
+		//get current screen resolution based on background pass
 		float sHeight, sWidth;
 		sHeight = backgroundPass.viewPort.height;
 		sWidth = backgroundPass.viewPort.width;
 
-
+		//Assign in game mouse position to current screen position
 		m_PointerPos_inGame = m_PointerPos; //-(m_winRef.getSizef() * 0.5f);
 		//temp /= glm::vec2(sHeight, sWidth);
+
+		//find if screen ratio is more wide or tall
 		if (sHeight > sWidth) {
+			//if screen is taller
+			//first find difference between them
 			float diff = (sHeight - sWidth) / 2.0f;
+
+			//subtract half the difference from the mouse height
 			m_PointerPos_inGame.y -= diff;
+
+			//divide position by the width of the screen to place the mouse into 0 to 1 space
 			m_PointerPos_inGame /= (glm::vec2(sWidth, sHeight) - glm::vec2(0, diff * 2.0f));
 		}
 		else if (sHeight < sWidth) {
+
+			//if screen is wider
+			//first find difference between them
 			float diff = (sWidth - sHeight) / 2.0f;
+
+			//subtract half the difference from the mouse width
 			m_PointerPos_inGame.x -= diff;
 
+			//divide position by the height of the screen to place the mouse into 0 to 1 space
 			m_PointerPos_inGame /= (glm::vec2(sWidth, sHeight) - glm::vec2(diff * 2.0f, 0));
 			//spdlog::info("MousePos: x:{} , y:{}", temp.x, temp.y);
 		}
+
+		//clamp in game mouse to be limited to just coordinates between 0 and 1
 		m_PointerPos_inGame = glm::clamp(m_PointerPos_inGame, glm::vec2(0), glm::vec2(1));
 
+		//check if an action is currently occuring in game
 		if (m_interactionState == InteractionState::Idle) {
+
+			//if no action is being made update current digging position to the mouse position in game
 			m_DigPos = m_PointerPos_inGame;
 
 		}
 
 
-
-		float x = ProgressBar;
-
+		//find the location of the current digspot in the games texture space to use for sampling the game data texture
 		glm::vec2 temp = m_DigPos * glm::min(width, height);
 		float a = glm::max(width, height) - glm::min(width, height);
 		a /= 2;
@@ -417,11 +479,10 @@ void Archo::onUpdate(float timestep)
 		else {
 			temp.y += a;
 		}
-		//temp = m_DigPos;
 		temp -= glm::clamp(temp, 0.01f, 0.99f);
 		temp = glm::floor(temp);
-		//temp = glm::clamp(temp, glm::vec2(0), glm::vec2(width, height));
 
+		//Sample the game data texture at location of digging
 		screenGroundPass.target->use();
 		float UVData[4];
 		glNamedFramebufferReadBuffer(screenGroundPass.target->getID(), screenGroundPass.target->m_colAttachments[1]);
@@ -429,67 +490,60 @@ void Archo::onUpdate(float timestep)
 
 		//spdlog::info("Data Layer info: [0]:{} [1]:{} [2]:{} [3]:{}", UVData[0], UVData[1], UVData[2], UVData[3]);
 
-		////for (int i = 0; i < 4; i++) {
-		////	UVData[i] = glm::clamp(UVData[i], 0.0f, 1.0f);
-		////}
-
-		//gameMouseLocation = glm::vec2(UVData[0], UVData[1]);
-		////spdlog::info("mouse x: {:03.2f}, mouse y: {:03.2f}", gameMouseLocation.x, gameMouseLocation.y);
-		////spdlog::info("Relic id: {:03.5f}", glm::round(UVData[2] * (Relics + 1)));
+		//reset values to default for extraction
 		Segments = 0;
 		timePerSegment = 0.2f;
 
+		//reset values to be updated by data texture
 		RelId = -1;
 		Rarity = -1;
+
+		//using data aquired from data texture find if object is scenery
 		isScenery = (bool)glm::round(UVData[1]);
 
-		//m_digBOs[0].DigInfo = glm::vec4(0, 0, 25.0f, 0.10f);
-		//m_digBOs[0].DigMask = 0;
-
+		//Reset vector containing all dig spot information other than their positions
 		for (int i = 0; i <= Digspots; i++) {
 			m_digBOs[i].DigInfo = glm::vec4(glm::vec2(m_digBOs[i].DigInfo), 25.0f, 0.10f);
 			m_digBOs[i].DigMask = 0;
 		}
 
+
 		if(isScenery){
+			//if object is scenery Set Id based on number of current scenery items (both active and inactive) and set segments to base value
 			RelId = (int)glm::round(UVData[2] * (m_Sceneries.size() + 1));
 			Segments = 64;
 		}
 		else{
+			//if object is a relic find its ID based on total relics and its rarity to determine how many segment need to be set
 			RelId = (int)glm::round((UVData[2]) * (Relics + 1));
 			Rarity = (int)glm::round(UVData[0] * 64.0f);
 			//spdlog::info("Rarity: {}", UVData[0]);
 			Segments = (Rarity + 1);//((Rarity + 1) * (Rarity + 1)) + 5.0f;
 		}
 
+		//updates a change in between rarites (used for debugging)
 		if (LastRareity != Rarity) {
 			LastRareity = Rarity;
 			//spdlog::info("Switched Rarity: {} at: x:{} , y:{}", LastRareity, temp.x, temp.y);
 		}
 
+		//Updates first digging spots position to he digging spot position itself
 		m_digBOs[0].DigInfo.x = m_DigPos.x;
 		m_digBOs[0].DigInfo.y = m_DigPos.y;
 
+		//executes augmentation system as well as uploads newely updated game state functions like digging spots and particles
 		RunRelicFunctions();
 		UpdateDigSpotSSBO();
 		UpdateParticleTasksSSBO();
 
-
-		//spdlog::info("Functions Active: {} | {} | {}", RelicFunctions[0] == NULL, RelicFunctions[1] == NULL, RelicFunctions[2] == NULL);
-		//spdlog::info("Dig Spot Data: {} | {} | {} | {}", m_digBOs[0].DigInfo.x, m_digBOs[0].DigInfo.y, m_digBOs[0].DigInfo.z, m_digBOs[0].DigInfo.w);
-	
-		//spdlog::info("Rarity: {}", Rarity);
-
-
-		//spdlog::info("ID: {}", RelId - 1);
-
+		//enforces idle state in case of state changes due to augmentations
 		if (m_interactionState == InteractionState::Idle) {
 			if (RelId != 0) m_interactionType = InteractionType::Extraction;
 			else m_interactionType = InteractionType::Digging;
 			//spdlog::info("Digging?: {}", m_interactionType == InteractionType::Digging);
 		}
 
-
+		//Handle interaction base particles
 		RelicBeginTrigger = false;
 		if (m_winRef.doIsMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && UVData[3] > 0) {
 			Pressed = true;
@@ -505,6 +559,7 @@ void Archo::onUpdate(float timestep)
 			Pressed = false;
 		}
 
+		//determines interaction state based on action progress
 		if (ProgressBar != 0) {
 			m_interactionState = InteractionState::InProgress;
 		}
@@ -514,35 +569,39 @@ void Archo::onUpdate(float timestep)
 
 		}
 
+		//reset Level Completion check for new frame of information
 		bool LevelComplete = false;
 
+		//determines actions based on current interaction type
 		if (m_interactionType == InteractionType::Digging) {
+			//checks if input is held and is over viable digging location
 			if (Pressed && UVData[3] > 0.0f) {
 
+				//sets terrain compute mode to dig
 				compute_GroundMaterial->setValue("Mode", 1.0f);
 
-				
+				//executes loop unless action is interupted or finished
 				if (!finished) {
 					Pressed = true;
-					ProgressBar += timestep / timeToDig;
+					ProgressBar += timestep / timeToDig; //increment digging progress
 					if (ProgressBar > 1) {
-						finished = true;
+						finished = true; //dig completion
 						ProgressBar = 1;
 					}
 					if ((RelId != 0)) {
-						finished = true;
+						finished = true; //interuption
 
 					}
-					//m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
 					for (int i = 0; i < 16; i++) {
-						m_digBOs[i].DigProgression = 1.0f - DigCurve1(ProgressBar, (float)DigSegments, 10.0f);
+						m_digBOs[i].DigProgression = 1.0f - DigCurve1(ProgressBar, (float)DigSegments, 10.0f); //set dig progress for all dig spots individually
 					}
-					compute_GroundMaterial->setValue("Factor", ProgressBar);
+					compute_GroundMaterial->setValue("Factor", ProgressBar);// set linear progress overall
 
 				}
 				else {
 
-
+					//once action is complete or interupted the effects of the action are saved to terrain
+					//then everything is steadily reset back to normal
 					finished = true;
 					RelicFinishTrigger = true;
 					compute_GroundMaterial->setValue("Mode", 1.5f);
@@ -560,45 +619,17 @@ void Archo::onUpdate(float timestep)
 					}
 				}
 
-				
-				//spdlog::info("Checking: {}",ProgressBar * timeToDig);
+				//if progress is made at specific milestones a sound is played from the a library at random
 				if (ProgressBar * timeToDig >= ProgressSegmentTarget) {
-					//spdlog::info("Check: {} is >= to {}",ProgressBar * timeToDig,ProgressSegmentTarget);
-					//int r = rand() % 2;
-					//int r2 = rand() % 4;
-
-					//std::string s2 = "./assets/sounds/Extraction_soft_var";
-					//s2 += char('0' + r2);
-					//s2.append(".wav");
-
-					//m_soundManager.playSound(s2.c_str());
-
-					//std::string s = "./assets/sounds/Digging_soft_var";
-					//s += char('0' + r);
-					//s.append(".wav");
-
-
-
-					//m_soundManager.playSound(s.c_str());
-					//spdlog::info("PlaySound");
-					//for (int i = 1; i < 16; i++) {
-						//m_digBOs[i].DigInfo.x = Randomiser::uniformFloatBetween(0, 1);
-						//m_digBOs[i].DigInfo.y = Randomiser::uniformFloatBetween(0, 1);
-					//}
-					//m_digBOs[0].rotation = Randomiser::uniformFloatBetween(-glm::pi<float>(), glm::pi<float>());
-					//m_soundManager.playSound(sound.get(),0);
-					//m_soundManager.playSoundAtPosition(sound.get(),256,glm::vec3(0,0,-1),glm::vec3(glm::vec3(0,0,-1)));
-					//spdlog::info("Playing sound at {}",ProgressSegmentTarget);
-					//spdlog::info("Dug Segment: {}",ProgressSegmentTarget);
 					m_soundManager.playRandomFromLibrary(ExtractionSound);
 					ProgressSegmentTarget += timeToDig / (float)DigSegments;
 					RelicSegmentTrigger = true;
 				}
 			}
 			else {
+				//saves terrain and slowly sets everything back to normal
 				compute_GroundMaterial->setValue("Mode", 1.5f);
 				finished = true;
-				//m_computeRenderer.render();
 				ProgressBar -= timestep * 5;
 				if (ProgressBar < 0) {
 					ProgressBar = 0;
@@ -610,12 +641,14 @@ void Archo::onUpdate(float timestep)
 					RelicFinishTrigger = false;
 
 				}
-				//m_digBOs[0].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
 				for (int i = 0; i < 16; i++) {
 					m_digBOs[i].DigProgression = 1.0f - DigCurve1(ProgressBar, 3.0f, 10.0f);
 				}
 			}
+			//Updated dig data for compute
 			UpdateDigSpotSSBO();
+
+			//Computes digging
 			m_groundComputeRenderer.render();
 		}
 		else if (m_interactionType == InteractionType::Extraction) {
@@ -628,6 +661,8 @@ void Archo::onUpdate(float timestep)
 			if (Pressed) {
 				if (!finished) {
 					Pressed = true;
+
+					//checks if scenery if so sets progress bar back to last known state to continue extraction
 					if (isScenery && ProgressBar <= 0) {
 						auto& sceneComp = m_SceneryScene->m_entities.get<Scenery>(m_Sceneries.at(RelId - 1));
 						ProgressBar = sceneComp.DugOut;
@@ -635,8 +670,10 @@ void Archo::onUpdate(float timestep)
 						ProgressSegmentTarget_RelicTrigger = (ProgressBar * Segments) + 1;
 					}
 
+					//increments progress bar
 					ProgressBar += timestep * ((1 / timePerSegment) / Segments);
 
+					//checks if scenery again after incrementation and updates visuals and database
 					if (isScenery) {
 						auto& renderComp = m_SceneryScene->m_entities.get<Render>(m_Sceneries.at(RelId - 1));
 						auto& sceneComp = m_SceneryScene->m_entities.get<Scenery>(m_Sceneries.at(RelId - 1));
@@ -645,11 +682,12 @@ void Archo::onUpdate(float timestep)
 						m_sceneryRenderer.render();
 					}
 
-
+					//if progress bar reaches the end
 					if (ProgressBar > 1) {
 						finished = true;
 						ProgressBar = 1;
 
+						//if scenery will be set to inactive
 						if(isScenery){
 							auto& renderComp = m_SceneryScene->m_entities.get<Render>(m_Sceneries.at(RelId - 1));
 							auto& sceneComp = m_SceneryScene->m_entities.get<Scenery>(m_Sceneries.at(RelId - 1));
@@ -659,7 +697,7 @@ void Archo::onUpdate(float timestep)
 						}
 						else{
 
-							
+							//if relic, set to inactive and its true id is located
 							auto& relicComp = m_RelicScene->m_entities.get<Relic>(m_Relics.at(RelId - 1));
 							auto& renderComp = m_RelicScene->m_entities.get<Render>(m_Relics.at(RelId - 1));
 							renderComp.material->setValue("u_active", 0.0f);
@@ -667,6 +705,7 @@ void Archo::onUpdate(float timestep)
 							auto& renderComp2 = m_InventoryButtonScene->m_entities.get<Render>(m_Relics2.at(RelId - 1));
 							renderComp2.material->setValue("u_active", 0.0f);
 
+							//find if relic is contained within inventory already
 							bool found = false;
 							for(auto& item : m_save.s_Items){
 								if(item.first == Rarity){
@@ -675,26 +714,39 @@ void Archo::onUpdate(float timestep)
 									break;
 								}
 							}
+							//if not founf is added into inventory
 							if(!found){
 								m_save.s_Items.emplace_back(std::pair<int,int>(Rarity,1));
 							}
 
 							//spdlog::info("Picked Up: {} : {}", RelId, UVData[0]);
 
+							//game is saved
 							saveGame();
+
+							//relics ssbo is updated
 							UpdateRelicsSSBO();
+
+							//relic augmentations are recalculated
 							RefreshRelicFunctions();
+
+							//relics are rerendered to apply changes
 							m_relicRenderer.render();
 
+							//checks off new relic and if all relics have been found
 							relicComp.Active = false;
 							RemainingRelics--;
 							if(RemainingRelics <= 0){
+
+								//if all relics have been found then generate new island
 								m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
 								m_generationRenderer.render();
 						
+								//place new relics and scenery
 								placeRelics();
 								placeScenery();
 
+								//save all adjustments made and rerender
 								compute_GroundMaterial->setValue("Mode",0.0f);
 								m_groundComputeRenderer.render();
 							}
@@ -702,6 +754,7 @@ void Archo::onUpdate(float timestep)
 					}
 				}
 				else {
+					//once finished or interupted return back to normal smoothly
 					finished = true;
 					RelicFinishTrigger = true;
 					ProgressBar -= timestep * 5;
@@ -716,27 +769,18 @@ void Archo::onUpdate(float timestep)
 					}
 				}
 
+				//play sound on each segment reached
 				if (ProgressBar * Segments >= ProgressSegmentTarget) {
-
-					// int r = rand() % 4;
-
-					// std::string s = "./assets/sounds/Extraction_soft_var";
-					// s += char('0' + r);
-					// s.append(".wav");
-
-					//m_soundManager.playSound(sound.get(),0);
-					//m_soundManager.playSoundAtPosition(sound.get(),256,glm::vec3(0,0,-1),glm::vec3(glm::vec3(0,0,-1)));
-					//spdlog::info("PlaySound");
 					m_soundManager.playRandomFromLibrary(ExtractionSound);
 					RelicSegmentTrigger = true;
 					ProgressSegmentTarget++;
 				}
 
-				x = floor(ProgressBar * Segments) / Segments;
+				;// x = floor(ProgressBar * Segments) / Segments;
 			}
 			else {
+				//once finished or interupted return back to normal smoothly
 				finished = true;
-				//m_computeRenderer.render();
 				ProgressBar -= timestep * 5;
 				if (ProgressBar < 0) {
 					ProgressBar = 0;
@@ -750,20 +794,16 @@ void Archo::onUpdate(float timestep)
 
 		}
 
-
+		//clamp progress to a possitive value
 		if (ProgressBar < 0) {
 			ProgressBar = 0;
 		}
 		
+		//Update Values for visuals
 
-
-		//QuadMat->setValue("MousePos", (m_PointerPos));
 		QuadMat->setValue("DigPos", (m_DigPos));
-		QuadMat->setValue("Progress", x);
-		//QuadMat->setValue("DigStyle", glm::vec4(25.0f,0.05f,0.0f,0.0f));
+		QuadMat->setValue("Progress", ProgressBar);
 		QuadMat->setValue("isDigging", (float)(int)(m_interactionType == InteractionType::Digging));
-		//QuadMat->setValue("RelicFill", RelicSetWave);
-		//QuadMat->setValue("u_flip", (float)(int)Flip);
 
 		AAQuadMat->setValue("MousePos", m_PointerPos);
 	}
@@ -771,6 +811,7 @@ void Archo::onUpdate(float timestep)
 
 void Archo::onKeyPressed(KeyPressedEvent& e)
 {
+	//Debug key for generating new island
 	if (e.getKeyCode() == GLFW_KEY_R) {
 		//spdlog::info("Seed: {}", glm::mod(allTime,1.0f));
 		m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
@@ -782,32 +823,15 @@ void Archo::onKeyPressed(KeyPressedEvent& e)
 		compute_GroundMaterial->setValue("Mode",0.0f);
 		m_groundComputeRenderer.render();
 	}
+
+	//key for fullscreen
 	if (e.getKeyCode() == GLFW_KEY_F11) {
 
 		toggleFullscreen();
 	}
-	//if (e.getKeyCode() == GLFW_KEY_R) {
-
-	//	state = GameState::Reset;
-	//}
-	/*if (e.getKeyCode() == GLFW_KEY_SPACE && m_state == GameState::intro) m_state = GameState::running;
-	for (auto it = m_RelicScene->m_actors.begin(); it != m_RelicScene->m_actors.end(); ++it)
-	{
-		it->onKeyPress(e);
-	}*/
-	//if (e.getKeyCode() == GLFW_KEY_O)
-	//{
-	//	if (m_wireframe) {
-	//		m_wireframe = false;
-	//		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	//	}
-	//	else {
-	//		m_wireframe = true;
-	//		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	//	}
-	//}
 }
 
+//Window management events
 void Archo::onFocus(WindowFocusEvent& e)
 {
 	focusMode = true;
@@ -837,60 +861,9 @@ void Archo::onResize(WindowResizeEvent& e)
 
 	trans.scale = glm::vec3((float)e.getWidth(), (float)e.getHeight(), 1.0f);
 	trans.recalc();
-
-	/*m_mainRenderer.onResize(e,m_settings.s_ResolutionFract);
-	m_mainMenuRenderer.onResize(e, m_settings.s_ResolutionFract);
-	m_computeRenderer.onResize(e, m_settings.s_ResolutionFract);
-	m_backgroundRenderer.onResize(e, m_settings.s_ResolutionFract);
-	m_pausedRenderer.onResize(e, m_settings.s_ResolutionFract);
-	m_generationRenderer.onResize(e, m_settings.s_ResolutionFract);
-	m_finalRenderer.onResize(e, m_settings.s_ResolutionFract);
-
-	auto& pausePass = m_pausedRenderer.getRenderPass(FinalPausePassIDx);
-	auto& finalPass = m_finalRenderer.getRenderPass(0);
-	auto& menuPass = m_mainMenuRenderer.getRenderPass(FinalMainMenuPassIDx);
-	auto& groundPass = m_mainRenderer.getRenderPass(ScreenGroundPassIDx);
-	auto& aaPass = m_mainRenderer.getRenderPass(AAPassIDx);
-	auto& bgPass = m_backgroundRenderer.getRenderPass(BackgroundPassIDx);
-	auto& pauseBtPass = m_pausedRenderer.getRenderPass(PauseButtonPassIDx);
-	auto& mainBtPass = m_mainMenuRenderer.getRenderPass(ButtonPassIDx);
-	auto& relicPass = m_mainRenderer.getRenderPass(ScreenRelicPassIDx);
-
-	auto& pRenderMat = pausePass.scene->m_entities.get<Render>(PauseQuad).material;
-	pRenderMat->setValue("u_background", bgPass.target->getTarget(0));
-	pRenderMat->setValue("u_buttons", pauseBtPass.target->getTarget(0));
-	pRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));
-
-	auto& fRenderMat = finalPass.scene->m_entities.get<Render>(finalQuad).material;
-	fRenderMat->setValue("u_PausedIn", pausePass.target->getTarget(0));
-	fRenderMat->setValue("u_MainMenuIn", menuPass.target->getTarget(0));
-	fRenderMat->setValue("u_InGameIn", aaPass.target->getTarget(0));
-
-	auto& mmRenderMat = menuPass.scene->m_entities.get<Render>(MenuQuad).material;
-	mmRenderMat->setValue("u_background", bgPass.target->getTarget(0));
-	mmRenderMat->setValue("u_buttons", mainBtPass.target->getTarget(0));
-	mmRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));
-
-	auto& sRenderMat = groundPass.scene->m_entities.get<Render>(Quad).material;
-	sRenderMat->setValue("u_RelicTexture", relicPass.target->getTarget(0));
-	sRenderMat->setValue("u_RelicDataTexture", relicPass.target->getTarget(1));
-	sRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));
-
-	auto& aaRenderMat = aaPass.scene->m_entities.get<Render>(AAQuad).material;
-	aaRenderMat->setValue("u_inputTexture", groundPass.target->getTarget(0));
-	aaRenderMat->setValue("u_background", bgPass.target->getTarget(0));
-	aaRenderMat->setValue("u_ScreenSize", glm::vec2(e.getSize()));*/
-
-
-	//spdlog::info("resized");
-	//m_mainRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_mainMenuRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_computeRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_backgroundRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_pausedRenderer.updateRenderAndDepthPassSize(e.getSize());
-	//m_generationRenderer.updateRenderAndDepthPassSize(e.getSize());
 }
 
+//Hard renderer reset (Debug only)
 void Archo::onReset(GLFWWindowImpl& win)
 {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -921,11 +894,14 @@ void Archo::onReset(GLFWWindowImpl& win)
 	createLayer();
 }
 
+//setup for all game scenes
 void Archo::createLayer()
 {
+	//Load save data
 	m_settings = Load_Settings();
 	m_save = Load_Game();
 
+	//Sound Loading Tests
 	const char* soundFile = "./assets/sounds/Extraction_soft_var0.wav";
 	sound = (std::shared_ptr<Mix_Chunk>)Mix_LoadWAV(soundFile);
 	if (!sound) {
@@ -944,6 +920,8 @@ void Archo::createLayer()
 		//return;
 	}
 
+
+	//Load background music
 	soundFile = "./assets/sounds/Music_var0.wav";
 	Mix_Music* music = Mix_LoadMUS(soundFile);
 	if (!music) {
@@ -953,12 +931,17 @@ void Archo::createLayer()
 		//return;
 	}
 	
+	//Play background music on repeat
 	Mix_PlayMusic(music,-1);
 	Mix_VolumeMusic(128);
 
+	//Load 5 sounds of extraction family into random accessed library
 	ExtractionSound = m_soundManager.addNewSoundsToLibrary("Extraction_soft",5);
 
+	//turn of vSync
 	m_winRef.setVSync(false);
+
+	//Initialize all scenes
 	m_RelicScene.reset(new Scene);
 	m_InventoryButtonScene.reset(new Scene);
 	m_screenScene.reset(new Scene);
@@ -972,6 +955,7 @@ void Archo::createLayer()
 	m_SceneryScene.reset(new Scene);
 	m_particleScene.reset(new Scene);
 
+	//find starting screen ratio
 	initialRatio = width / height;
 
 
@@ -1107,12 +1091,14 @@ void Archo::createLayer()
 	RelicShaderDesc.fragmentSrcPath = "./assets/shaders/RelicFrag.glsl";
 	std::shared_ptr<Shader> RelicShader = std::make_shared<Shader>(RelicShaderDesc);
 
+	//Relic mat for inventory button
 	ShaderDescription InvButRelicShaderDesc;
 	InvButRelicShaderDesc.type = ShaderType::rasterization;
 	InvButRelicShaderDesc.vertexSrcPath = "./assets/shaders/RelicVert.glsl";
 	InvButRelicShaderDesc.fragmentSrcPath = "./assets/shaders/InvButRelicFrag.glsl";
 	std::shared_ptr<Shader> InvButRelicShader = std::make_shared<Shader>(InvButRelicShaderDesc);
 
+	//Scenery Mat
 	ShaderDescription Scenery_ShaderDesc;
 	Scenery_ShaderDesc.type = ShaderType::rasterization;
 	Scenery_ShaderDesc.vertexSrcPath = "./assets/shaders/SceneryVert.glsl";
@@ -1157,19 +1143,6 @@ void Archo::createLayer()
 	compute_GroundMaterial->setValue("Size", glm::vec2(groundTexture->getWidthf(), groundTexture->getHeightf()));
 	//compute_GroundMaterial->setValue("DigStyle", glm::vec4(25.0f,0.25f,0.0f,0.0f));
 	compute_GroundMaterial->setValue("DigSpotTotal", Digspots);
-	
-	//m_digBOs[0].DigInfo = glm::vec4(0, 0, 25.0f, 0.25f);
-	//m_digBOs[0].DigMask = 5;
-	//for (int i = 1; i < 16; i++) {
-	//	m_digBOs[i].DigInfo = glm::vec4(0, 0, Randomiser::uniformFloatBetween(25.f,15.f), 0.25f);
-	//	m_digBOs[i].DigMask = Randomiser::uniformIntBetween(0,5);
-	//}
-
-	//ShaderDescription compute_GroundNormalShaderDesc;
-	//compute_GroundNormalShaderDesc.type = ShaderType::compute;
-	//compute_GroundNormalShaderDesc.computeSrcPath = "./assets/shaders/compute_CDMnormals.glsl";
-	//std::shared_ptr<Shader> compute_GroundNormalShader = std::make_shared<Shader>(compute_GroundNormalShaderDesc);
-	//std::shared_ptr<Material> compute_GroundNormalMaterial = std::make_shared<Material>(compute_GroundNormalShader);
 
 	//VAOs ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1308,6 +1281,7 @@ void Archo::createLayer()
 
 	float widthRatio = 1.0f / (width / height);
 
+	//Play Button
 	{
 		entt::entity startButton = m_mainMenu->m_entities.create();
 
@@ -1332,6 +1306,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(startButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(startButtonMat.get()), boundFunc, m_soundManager,sound);
 	}
 
+	//Settings Button
 	{
 		entt::entity settingsButton = m_mainMenu->m_entities.create();
 
@@ -1357,6 +1332,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(settingsButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(settingsButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Save Button
 	{
 		entt::entity saveButton = m_mainMenu->m_entities.create();
 
@@ -1382,6 +1358,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(saveButton, m_mainMenu, m_winRef, m_PointerPos, height, transformComp, *(saveButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Exit Button
 	{
 		entt::entity exitButton = m_mainMenu->m_entities.create();
 
@@ -1411,6 +1388,7 @@ void Archo::createLayer()
 	*  Main Menu Settings Buttons
 	**************************/
 
+	//Exit Settings Button
 	{
 		entt::entity exitButton = m_mainMenu_Settings->m_entities.create();
 
@@ -1440,6 +1418,7 @@ void Archo::createLayer()
 	*  Main Menu Save Buttons
 	**************************/
 
+	//Delete Save Button
 	{
 		entt::entity deleteSaveButton = m_mainMenu_Save->m_entities.create();
 
@@ -1465,6 +1444,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(deleteSaveButton, m_mainMenu_Save, m_winRef, m_PointerPos, height, transformComp, *(deleteSaveButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Exit Save Button
 	{
 		entt::entity exitButton = m_mainMenu_Save->m_entities.create();
 
@@ -1493,7 +1473,7 @@ void Archo::createLayer()
 	/*************************
 	*  Game Menu Buttons
 	**************************/
-
+	//Inventory Button
 	{
 		entt::entity inventoryButton = m_gameMenu->m_entities.create();
 
@@ -1519,6 +1499,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(inventoryButton, m_gameMenu, m_winRef, m_PointerPos, height, transformComp, *(m_gameInventoryMat.get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Pause Button
 	{
 		entt::entity PauseButton = m_gameMenu->m_entities.create();
 
@@ -1548,6 +1529,7 @@ void Archo::createLayer()
 	*  Pause Menu Buttons
 	**************************/
 
+	//Resume Game Button
 	{
 		entt::entity startButton = m_pauseMenu->m_entities.create();
 
@@ -1573,6 +1555,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(startButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(startButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Settings Button
 	{
 		entt::entity settingsButton = m_pauseMenu->m_entities.create();
 
@@ -1598,6 +1581,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(settingsButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(settingsButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Save Button
 	{
 		entt::entity saveButton = m_pauseMenu->m_entities.create();
 
@@ -1623,6 +1607,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(saveButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(saveButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Save and Quit Button
 	{
 		entt::entity saveAndExitButton = m_pauseMenu->m_entities.create();
 
@@ -1648,36 +1633,11 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(saveAndExitButton, m_pauseMenu, m_winRef, m_PointerPos, height, transformComp, *(saveAndExitButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
-
-	//{
-	//	entt::entity exitButton = m_pauseMenu->m_entities.create();
-
-	//	Render& renderComp = m_pauseMenu->m_entities.emplace<Render>(exitButton);
-	//	Transform& transformComp = m_pauseMenu->m_entities.emplace<Transform>(exitButton);
-	//	ScriptComp& scriptComp = m_pauseMenu->m_entities.emplace<ScriptComp>(exitButton);
-
-
-	//	renderComp.geometry = buttonQuadVAO;
-
-	//	std::shared_ptr<Material> exitButtonMat = std::make_shared<Material>(buttonQuadShader);
-	//	exitButtonMat->setValue("u_ButtonTexture", exitButtonTexture);
-
-	//	renderComp.material = exitButtonMat;
-
-	//	transformComp.scale = glm::vec3((width / 10.f) * widthRatio, height / 10.f, 1.f);
-	//	transformComp.translation = glm::vec3(width / 2.f, height / 2.f, 0.f) + glm::vec3(0, height / 5.f, 0);
-
-	//	transformComp.recalc();
-
-	//	std::function<void()> boundFunc = std::bind(&Archo::playGame, this);
-	//	//boundFunc();
-	//	scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu, m_winRef, transformComp, *(exitButtonMat.get()), boundFunc, m_soundManager, sound);
-	//}
-
 	/*************************
 	*  Pause Menu Settings Buttons
 	**************************/
 
+	//Exit Settings Button
 	{
 		entt::entity exitButton = m_pauseMenu_Settings->m_entities.create();
 
@@ -1707,6 +1667,7 @@ void Archo::createLayer()
 	*  Pause Menu Inventory Buttons
 	**************************/
 
+	//Exit Inventory Button
 	{
 		entt::entity exitButton = m_pauseMenu_Inventory->m_entities.create();
 
@@ -1732,6 +1693,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(exitButton, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(exitButtonMat.get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Display Quad
 	{
 		InventoryItemsQuad = m_pauseMenu_Inventory->m_entities.create();
 
@@ -1757,6 +1719,7 @@ void Archo::createLayer()
 
 	}
 
+	//Item Slot 1 Button
 	{
 		entt::entity slot1Button = m_pauseMenu_Inventory->m_entities.create();
 
@@ -1783,6 +1746,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(slot1Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[0].get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Item Slot 2 Button
 	{
 		entt::entity slot2Button = m_pauseMenu_Inventory->m_entities.create();
 
@@ -1808,6 +1772,7 @@ void Archo::createLayer()
 		scriptComp.attachScript<ButtonScript>(slot2Button, m_pauseMenu_Inventory, m_winRef, m_PointerPos, height, transformComp, *(slotsButtonMats[1].get()), boundFunc, m_soundManager, sound);
 	}
 
+	//Item Slot 3 Button
 	{
 		entt::entity slot3Button = m_pauseMenu_Inventory->m_entities.create();
 
@@ -1838,11 +1803,13 @@ void Archo::createLayer()
 	**************************/
 
 	//int Curve[6]{ 13,8,5,3,2,1 };
+
+	//Get Relic distribution 
 	int Curve[6]{ 6,4,2,2,1,1 };
 	std::array<std::pair<int, int>, 6> Ranges{ std::pair<int,int>(0,15), std::pair<int,int>(16,26), std::pair<int,int>(27,34), std::pair<int,int>(35,40), std::pair<int,int>(41,44), std::pair<int,int>(45,47) };
 
 
-
+	//Populate game with relics
 	for (int i = 0; i < Relics; i++) {
 		
 		float rarity = 0;
@@ -1881,9 +1848,10 @@ void Archo::createLayer()
 
 		transformComp.recalc();
 
+		//Populate Inventory button with relics
+
 		entt::entity progressRelic = m_InventoryButtonScene->m_entities.create();
 		m_Relics2.push_back(progressRelic);
-		//m_Relics.push_back(relic);
 		Render& renderComp2 = m_InventoryButtonScene->m_entities.emplace<Render>(progressRelic);
 		Transform& transformComp2 = m_InventoryButtonScene->m_entities.emplace<Transform>(progressRelic);
 		Relic& relicComp2 = m_InventoryButtonScene->m_entities.emplace<Relic>(progressRelic);
@@ -1891,7 +1859,6 @@ void Archo::createLayer()
 		std::shared_ptr<Material> RelicMaterial2 = std::make_shared<Material>(InvButRelicShader);
 		RelicMaterial2->setValue("u_RelicTexture", RelicTexture1);
 		RelicMaterial2->setValue("u_Rarity", rarity + 0.001f);
-		//RelicMaterial2->setValue("u_Id", -1.0f);
 		RelicMaterial2->setValue("u_active", (float)(int)true);
 		transformComp2.translation = glm::vec3(glm::mod((float)i, 4.f), floorf(i / 4.f), -0.5f);
 		transformComp2.translation += glm::vec3(0.5f, 0.5f, 0);
@@ -1908,6 +1875,7 @@ void Archo::createLayer()
 	*  Scenery
 	**************************/
 
+	//Populate Game with 10 Arches
 	for(int i = 0; i < 10; i++){
 		entt::entity arch = m_SceneryScene->m_entities.create();
 		m_Sceneries.push_back(arch);
@@ -1940,6 +1908,7 @@ void Archo::createLayer()
 
 	}	
 	
+	//Populate Game with 20 Rocks
 	for(int i = 0; i < 20; i++){
 		entt::entity rock = m_SceneryScene->m_entities.create();
 		m_Sceneries.push_back(rock);
@@ -1972,6 +1941,7 @@ void Archo::createLayer()
 
 	}
 
+	//Populate Current Relics SSBO with grid of relics to find
 	for (int i = 0; i < m_save.s_Items.size(); i++) {
 		RelicsBO current;
 		current.Quantity = m_save.s_Items.at(i).second;
@@ -1982,7 +1952,8 @@ void Archo::createLayer()
 	}
 
 	//Particles
-
+	
+	//Create Particle entity to render with
 	{
 		entt::entity particle = m_particleScene->m_entities.create();
 		Render& renderComp = m_particleScene->m_entities.emplace<Render>(particle);
@@ -1999,38 +1970,11 @@ void Archo::createLayer()
 		transformComp.recalc();
 	}
 
-
-
-	//Particles
-	//Actor particles;
-
-	//uint32_t numberOfParticles = 4096 * 4;
-
-	//terrainParticlesStartPoints = std::make_shared<SSBO>(sizeof(Particle) * numberOfParticles, numberOfParticles);
-	//terrainParticlesStartPoints->bind(0);
-	//terrainParticles = std::make_shared<SSBO>(sizeof(Particle) * numberOfParticles, numberOfParticles);
-	//terrainParticles->bind(1);
-	////ParticleMaterial->setValue("particles", terrainParticles->getID());
-
-	//particles.SSBOgeometry = terrainParticlesStartPoints;
-	//particles.material = ParticleMaterial;
-	////particles.SSBOdepthGeometry = terrainParticlesStartPoints;
-	////particles.depthMaterial = ParticleMaterial;
-	////particles.translation = glm::vec3(-5, -3, -5);
-	//particles.recalc();
-	//particlesIdx = m_mainScene->m_actors.size();
-	//m_mainScene->m_actors.push_back(particles);
-
-	//Main Camera
-
-	//Actor camera;
-	//cameraIdx = m_mainScene->m_actors.size();
-	//m_mainScene->m_actors.push_back(camera);
-
 	/*************************
 	*  Compute Pass
 	**************************/
 
+	//Setup particle simulation pass
 	ComputePass ParticleComputePass;
 	ParticleComputePass.material = m_particlesComputeMat;
 	ParticleComputePass.workgroups = {8,1,1};
@@ -2040,6 +1984,8 @@ void Archo::createLayer()
 
 	setupGenerator(m_generationRenderer, groundTexture, groundTextureTemp, m_generators.at(0));
 
+
+	//Setup seeding point compute pass
 	ComputePass SeedingComputePass;
 	SeedingComputePass.material = m_seedingFinder;
 	SeedingComputePass.workgroups = { TerrainSize.x / 16,TerrainSize.y / 16,1 };// { seedingResolution, seedingResolution, 1 };
@@ -2058,7 +2004,7 @@ void Archo::createLayer()
 
 	//Terrain:
 
-	//Terrain Normals Compute Pass
+	//Setup digging compute pass
 	ComputePass GroundComputePass;
 	GroundComputePass.material = compute_GroundMaterial;
 	GroundComputePass.workgroups = { glm::max(groundTexture->getWidth() / 32, (unsigned)1),glm::max(groundTexture->getHeight() / 32, (unsigned)1),1 };
@@ -2096,35 +2042,7 @@ void Archo::createLayer()
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	//ComputePass GroundNormalComputePass;
-	//GroundNormalComputePass.material = compute_GroundNormalMaterial;
-	//GroundNormalComputePass.workgroups = { 128,128,1 };
-	//GroundNormalComputePass.barrier = MemoryBarrier::ShaderImageAccess;
-
-	//Image GroundNormalImg;
-	//GroundNormalImg.mipLevel = 0;
-	//GroundNormalImg.layered = false;
-	//GroundNormalImg.texture = groundNormalTexture;
-	//GroundNormalImg.imageUnit = GroundNormalComputePass.material->m_shader->m_imageBindingPoints["groundNormalImg"];
-	//GroundNormalImg.access = TextureAccess::ReadWrite;
-
-	//GroundNormalComputePass.images.push_back(GroundImg);
-	//GroundNormalComputePass.images.push_back(GroundNormalImg);
-
-	//GroundNormalComputePassIDx = m_computeRenderer.getSumPassCount();
-	//m_computeRenderer.addComputePass(GroundNormalComputePass);
-	//m_computeRenderer.render();
-
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-	//AAquad.translation = glm::vec3(500.9f,0,0);
-	//AAquad.scale = glm::vec3(2);
-	//AAquad.recalc();
 
 	/*************************
 	*  Background Render Pass
@@ -2341,14 +2259,6 @@ void Archo::createLayer()
 	SceneryPass.UBOmanager.setCachedValue("b_sceneryCamera2D", "u_sceneryView2D", SceneryPass.camera.view);
 	SceneryPass.UBOmanager.setCachedValue("b_sceneryCamera2D", "u_sceneryProjection2D", SceneryPass.camera.projection);
 
-	//entt::basic_view view = m_RelicScene->m_entities.view<Render>();
-	//for (auto& rel : view) {
-	//	Render render = m_RelicScene->m_entities.get<Render>(rel);
-	//	render.material->setValue("u_relicView2D", ScreenRelicPass.camera.view);
-	//	render.material->setValue("u_relicProjection2D", ScreenRelicPass.camera.projection);
-	//}
-
-	//ScreenRelicPassIDx = m_sceneryRenderer.getSumPassCount();
 	m_sceneryRenderer.addRenderPass(SceneryPass);
 	m_sceneryRenderer.render();
 
@@ -2356,9 +2266,6 @@ void Archo::createLayer()
 	screenQuadMaterial->setValue("u_SceneryTexture", SceneryPass.target->getTarget(0));
 	screenQuadMaterial->setValue("u_SceneryDepthTexture", SceneryPass.target->getTarget(2));
 	screenQuadMaterial->setValue("u_SceneryDataTexture", SceneryPass.target->getTarget(1));
-
-	//screenQuadMaterial->setValue("u_SceneryDataTexture", ScreenRelicPass.target->getTarget(1));
-
 
 	m_screenScene.reset(new Scene);
 
@@ -2448,6 +2355,9 @@ void Archo::createLayer()
 	AAPassIDx = m_mainRenderer.getSumPassCount();
 	m_mainRenderer.addRenderPass(ScreenAAPass);
 
+	/*******************************
+	*  Final to Screen Render Pass *
+	********************************/
 
 	finalQuadMaterial->setValue("u_InGameIn", ScreenAAPass.target->getTarget(0));
 
@@ -2490,8 +2400,6 @@ void Archo::createLayer()
 
 }
 
-
-
 void Archo::resetLayer()
 {
 
@@ -2499,10 +2407,12 @@ void Archo::resetLayer()
 
 void Archo::RefreshRelicFunctions()
 {
+	//Dig slot 1 and Particles 1 reserved for main dig spot and digging effects
 	int currentDigSlot = 1;
 	int currentTaskSlot = 1;
 	for (int i = 0; i < 3; i++) {
 		int Grade = 0;
+		//Finding Grade of current relic being evaulated
 		for (int j = 0; j < m_save.s_Items.size(); j++) {
 			if (m_save.s_Items[j].first == m_save.s_Equiped[i]) {
 				int counter = 0;
@@ -2516,6 +2426,7 @@ void Archo::RefreshRelicFunctions()
 				break;
 			}
 		}
+		//Relic function found and bound
 		FunctionAllocationData FuncDat = BindNewFunction(m_save.s_Equiped[i], Grade, this, std::pair<int, int>{currentDigSlot, m_digBOs.size() - currentDigSlot}, std::pair<int, int>{currentTaskSlot, m_particleTasks.size() - currentTaskSlot});
 		currentDigSlot += FuncDat.DigSlotsUsed;
 		currentTaskSlot += FuncDat.ParticleTasksUsed;
@@ -2524,42 +2435,34 @@ void Archo::RefreshRelicFunctions()
 	}
 	if (currentDigSlot == 0) currentDigSlot = 1;
 
+	//Inform compute about digspot total
 	compute_GroundMaterial->setValue("DigSpotTotal", currentDigSlot);
 	m_mainRenderer.getRenderPass(ScreenGroundPassIDx).scene->m_entities.get<Render>(Quad).material->setValue("DigSpotTotal", currentDigSlot);
 
+	//Reset DigSpots and Particles
 	ClearDigSpotSSBO();
 	ClearParticleTasksSSBO();
 }
 
 void Archo::RunRelicFunctions()
 {
-	//if (ProgressBar * timeToDig >= ProgressSegmentTarget_RelicTrigger) {
-		//RelicSegmentTrigger = true;
-				//spdlog::info("Trigger with: {} with dig time of {}",ProgressSegmentTarget_RelicTrigger,timeToDig);
-		//ProgressSegmentTarget_RelicTrigger += timeToDig / (float)DigSegments;
-
-	//}
-
-	//if (ProgressBar * Segments >= ProgressSegmentTarget_RelicTrigger) {
-		//RelicSegmentTrigger = true;
-				//spdlog::info("Trigger with: {}",ProgressSegmentTarget_RelicTrigger);
-		//ProgressSegmentTarget_RelicTrigger++;
-	//}
+	//Executes all bound relic functions
 	timeToDig = 1.0f;
 	for (int i = 0; i < 3; i++) {
 		if(RelicFunctions[i] != NULL) RelicFunctions[i]();
 	}
 
+	//Clears trigger flags
 	if (RelicSegmentTrigger == true) RelicSegmentTrigger = false;
 	if (RelicFinishTrigger == true) RelicFinishTrigger = false;
 	if (RelicBeginTrigger == true) RelicBeginTrigger = false;
 	
 }
 
+//Changes state of the game, bound to buttons
 void Archo::playGame()
 {
 	m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
-	//spdlog::info("dispatched with: {}",allTime);
 	m_generationRenderer.render();
 
 	placeRelics();
@@ -2683,15 +2586,6 @@ void Archo::unpauseInventory()
 	pass.scene = m_pauseMenu;
 	pass.parseScene();
 
-	//m_generationRenderer.getComputePass(0).material->setValue("Seed", glm::mod(allTime, 1.0f));
-	//m_generationRenderer.render();
-
-	//placeRelics();
-	//placeScenery();
-
-	//compute_GroundMaterial->setValue("Mode", 0.0f);
-	//m_groundComputeRenderer.render();
-
 	pauseState = PauseState::Pause;
 	state = GameState::InGame;
 }
@@ -2721,7 +2615,6 @@ void Archo::exitGame()
 
 void Archo::saveGame()
 {
-	//spdlog::info("Game Saved! (not implemented yet)");
 	Save_Game(m_save);
 }
 
@@ -2763,6 +2656,7 @@ void Archo::deleteGameSave()
 	RefreshRelicFunctions();
 }
 
+//Fullscreen toggle
 #include "windows/window.hpp"
 #include "windows/GLFW_GL_GC.hpp"
 void Archo::toggleFullscreen()
@@ -2780,6 +2674,7 @@ void Archo::toggleFullscreen()
 	Save_Settings(m_settings);
 }
 
+//find seeding points at random
 std::vector<glm::vec2> IslandSeeder(int lines) {
 	std::vector<glm::vec2> pointsOut;
 	for (int i = 0; i < lines; i++) {
@@ -2795,6 +2690,7 @@ std::vector<glm::vec2> IslandSeeder(int lines) {
 	return pointsOut;
 }
 
+//Generates Island
 void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, std::shared_ptr<Texture> working, std::shared_ptr<Shader> shader)
 {
 
@@ -2843,6 +2739,7 @@ void Archo::setupGenerator(Renderer& renderer, std::shared_ptr<Texture> target, 
 
 }
 
+//Gets seeding points on island
 std::vector<SeedingPoint> Archo::getSeedingPoints()
 {
 	for (int i = 0; i < m_seedingPoints.size(); i++) {
@@ -2852,13 +2749,6 @@ std::vector<SeedingPoint> Archo::getSeedingPoints()
 
 	m_seedingFinderRenderer.render();
 
-
-	//auto view = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.view<Relic>();
-
-	//for (auto relic : view) {
-	//	Render& rendComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(relic);
-	//	rendComp.material->setValue("u_active", (float)(int)false);
-	//}
 	m_seedingPoints = m_seedingSSBO->writeToCPU<SeedingPoint>();
 
 	std::vector<SeedingPoint> outputPoints;
@@ -2869,25 +2759,13 @@ std::vector<SeedingPoint> Archo::getSeedingPoints()
 		if (current.position.x > -0.5f) {
 
 			outputPoints.push_back(current);
-
-			//if (false) {
-			//	Render& rendComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Render>(view[counter]);
-			//	rendComp.material->setValue("u_active", (float)(int)true);
-			//	rendComp.material->setValue("u_Rarity", 6.0f);
-
-			//	Transform& transComp = m_relicRenderer.getRenderPass(ScreenRelicPassIDx).scene->m_entities.get<Transform>(view[counter]);
-			//	transComp.translation = glm::vec3(glm::vec2(current.position) * float(m_relicRenderer.getRenderPass(ScreenRelicPassIDx).viewPort.height / m_generationRenderer.getComputePass(0).images[0].texture->getHeight()), -0.5f);
-			//	transComp.scale = glm::vec3(4096.f / (current.position.w / 2.0f));
-			//	transComp.recalc();
-
-			//	counter++;
-			//}
 		}
 	}
 
 	return outputPoints;
 }
 
+//Re distributes and resets all relics
 void Archo::placeRelics()
 {
 	std::vector<SeedingPoint> points = getSeedingPoints();
@@ -2946,6 +2824,7 @@ void Archo::placeRelics()
 	m_relicRenderer.render();
 }
 
+//Re distributes and places all scenery
 void Archo::placeScenery()
 {
 	auto view = m_SceneryScene->m_entities.view<Transform>();
@@ -2993,11 +2872,6 @@ void Archo::placeScenery()
 			renderComp.material->setValue("u_active", (float)(int)false);
 		}
 
-
-
-		//transformComp.rotation = glm::quat(glm::vec3(Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),Randomiser::uniformFloatBetween(-3.14159f, 3.14159f),0.0f));
-		//transformComp.translation = glm::vec3(Randomiser::uniformFloatBetween(transformComp.scale.x, 4096.0f - transformComp.scale.x), Randomiser::uniformFloatBetween(transformComp.scale.y, 4096.0f - transformComp.scale.y), -1.0f);
-		//transformComp.recalc();
 	}
 
 	m_sceneryRenderer.render();
