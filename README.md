@@ -60,3 +60,9 @@ The project is broken up into two main projects.
 
 Shader Programs are stored in the asset folder and are compiled during runtime.
 
+---
+## Known Limitations
+
+Since the renderer was adopted a lot of integral systems used are not functioning correctly or intuitively.
+
+- UBOs the current system does not correctly support these objects across mutliple render passes, its often overwritten or targeting the wrong buffer.
